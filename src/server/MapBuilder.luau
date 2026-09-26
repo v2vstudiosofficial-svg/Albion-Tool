@@ -36,6 +36,12 @@ local COLOR = {
 
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- cylinders are X-axis aligned
 
+local MUSHROOM_CAPS = {
+	Color3.fromRGB(235, 95, 95),
+	Color3.fromRGB(245, 155, 80),
+	Color3.fromRGB(175, 115, 215),
+}
+
 local function ensure(parent: Instance, name: string, className: string, props: { [string]: any }?): Instance
 	local existing = parent:FindFirstChild(name)
 	if existing then
@@ -288,6 +294,77 @@ local function buildForge(parent: Instance)
 	})
 end
 
+local function buildVillageProps(village: Instance)
+	local props = ensure(village, "Props", "Folder")
+
+	local well = Vector3.new(-14, 0, 24)
+	for index = 1, 8 do
+		local angle = index / 8 * math.pi * 2
+		part(props, "WellStone" .. index, {
+			Size = Vector3.new(1.4, 1.6, 1.4),
+			CFrame = CFrame.new(well + Vector3.new(math.cos(angle) * 2.2, 0.8, math.sin(angle) * 2.2)) * CFrame.Angles(0, -angle, 0),
+			Color = COLOR.stone,
+			Material = Enum.Material.Slate,
+		})
+	end
+	disc(props, "WellWater", 3.4, well + Vector3.new(0, 0.5, 0), COLOR.water, Enum.Material.Glass)
+	for index, side in { -1, 1 } do
+		cylinder(props, "WellPost" .. index, 4.6, 0.4, well + Vector3.new(side * 2.4, 0, 0), COLOR.trunk)
+	end
+	part(props, "WellRoof", {
+		Size = Vector3.new(6, 0.6, 3.4),
+		Position = well + Vector3.new(0, 4.9, 0),
+		Color = COLOR.roof,
+	})
+
+	local plaza = Vector3.new(0, 0, 12)
+	for index, position in { Vector3.new(-20, 0, 6), Vector3.new(20, 0, 6) } do
+		local facing = CFrame.lookAt(position, Vector3.new(plaza.X, 0, plaza.Z))
+		part(props, "BenchSeat" .. index, {
+			Size = Vector3.new(4.5, 0.5, 1.5),
+			CFrame = facing * CFrame.new(0, 1.2, 0),
+			Color = COLOR.trunk,
+			Material = Enum.Material.Wood,
+		})
+		part(props, "BenchBack" .. index, {
+			Size = Vector3.new(4.5, 1.4, 0.4),
+			CFrame = facing * CFrame.new(0, 2, 0.6),
+			Color = COLOR.trunk,
+			Material = Enum.Material.Wood,
+		})
+		for leg, x in { -1.8, 1.8 } do
+			part(props, "BenchLeg" .. index .. "_" .. leg, {
+				Size = Vector3.new(0.4, 1, 1.2),
+				CFrame = facing * CFrame.new(x, 0.5, 0),
+				Color = COLOR.stoneDark,
+			})
+		end
+	end
+
+	for houseIndex, base in { Vector3.new(-35, 0, 0), Vector3.new(35, 0, 0), Vector3.new(-35, 0, 32), Vector3.new(35, 0, 32) } do
+		local facing = if base.X > 0 then -1 else 1
+		for potIndex, z in { -2.6, 2.6 } do
+			local potBase = base + Vector3.new(facing * 8.4, 0, z)
+			local name = "Pot" .. houseIndex .. "_" .. potIndex
+			cylinder(props, name, 0.9, 1.4, potBase, Color3.fromRGB(200, 110, 70))
+			ballPart(props, name .. "_Plant", 1.3, potBase + Vector3.new(0, 1.3, 0), COLOR.bush, { CanCollide = false })
+			ballPart(props, name .. "_Bloom", 0.6, potBase + Vector3.new(0, 1.9, 0), MUSHROOM_CAPS[(houseIndex + potIndex) % 3 + 1], {
+				CanCollide = false,
+			})
+		end
+	end
+
+	for index, z in { -24, -42, -60 } do
+		local side = if index % 2 == 0 then -1 else 1
+		local base = Vector3.new(pathX(z) + side * 6, 0, z)
+		cylinder(props, "PathLampPost" .. index, 6, 0.4, base, COLOR.stoneDark)
+		ballPart(props, "PathLamp" .. index, 1.3, base + Vector3.new(0, 6.5, 0), COLOR.lanternOff, {
+			Material = Enum.Material.Glass,
+			Transparency = 0.2,
+		})
+	end
+end
+
 local function buildVillage(map: Instance)
 	local village = ensure(map, "Village", "Folder")
 	part(village, "VillageSpawn", {
@@ -310,6 +387,7 @@ local function buildVillage(map: Instance)
 	buildNpc(village, "Elder", Color3.fromRGB(95, 115, 205), Color3.fromRGB(95, 115, 205), "npc_talk_action")
 	buildNpc(village, "Demir", Color3.fromRGB(190, 115, 60), Color3.fromRGB(80, 70, 80), "npc_shop_action")
 	buildForge(village)
+	buildVillageProps(village)
 
 	local bushes = {
 		Vector3.new(-24, 0, 44),
@@ -394,6 +472,50 @@ local function treeExclusions(): { { number } }
 	return list
 end
 
+-- Deterministically places up to `count` props in a rectangle, avoiding the path (if clearance > 0)
+-- and every (x, z, radius) circle in `avoid`. A fixed seed keeps names and positions stable.
+local function scatter(seed: number, count: number, rect: { number }, clearance: number, avoid: { { number } }, place: (number, number, number, any) -> ())
+	local rng = Random.new(seed)
+	local placed = 0
+	for _ = 1, count * 6 do
+		if placed >= count then
+			break
+		end
+		local x = rng:NextNumber(rect[1], rect[2])
+		local z = rng:NextNumber(rect[3], rect[4])
+		local blocked = clearance > 0 and z < -6 and math.abs(x - pathX(z)) < clearance
+		for _, circle in avoid do
+			local dx, dz = x - circle[1], z - circle[2]
+			if dx * dx + dz * dz < circle[3] * circle[3] then
+				blocked = true
+			end
+		end
+		if not blocked then
+			placed += 1
+			place(placed, x, z, rng)
+		end
+	end
+end
+
+local function buildForestProps(forest: Instance, avoid: { { number } })
+	local props = ensure(forest, "Props", "Folder")
+	scatter(11, 24, { -74, 74, -224, -78 }, 7, avoid, function(index, x, z, rng)
+		local height = rng:NextNumber(1.2, 2.2)
+		local capSize = rng:NextNumber(2, 3.2)
+		cylinder(props, "Mushroom_" .. index .. "_Stem", height, 0.6, Vector3.new(x, 0, z), Color3.fromRGB(245, 235, 215), { CanCollide = false })
+		local cap = ballPart(props, "Mushroom_" .. index .. "_Cap", capSize, Vector3.new(x, height + 0.2, z), MUSHROOM_CAPS[index % #MUSHROOM_CAPS + 1], {
+			CanCollide = false,
+		})
+		ensure(cap, "Squash", "SpecialMesh", { MeshType = Enum.MeshType.Sphere, Scale = Vector3.new(1, 0.55, 1) })
+	end)
+	scatter(13, 18, { -74, 74, -224, -78 }, 7, avoid, function(index, x, z, rng)
+		local size = rng:NextNumber(2, 4)
+		ballPart(props, "Rock_" .. index, size, Vector3.new(x, size * 0.3, z), if index % 2 == 0 then COLOR.stone else COLOR.stoneDark, {
+			Material = Enum.Material.Slate,
+		})
+	end)
+end
+
 local function buildForest(map: Instance)
 	local forest = ensure(map, "Forest", "Folder")
 	local index = 0
@@ -426,10 +548,12 @@ local function buildForest(map: Instance)
 			trees += 1
 			cylinder(forest, "Tree_" .. trees .. "_Trunk", height, 2, Vector3.new(x, 0, z), COLOR.trunk)
 			ballPart(forest, "Tree_" .. trees .. "_Leaves", crown, Vector3.new(x, height + crown * 0.3, z), if trees % 3 == 0 then COLOR.leavesDark else COLOR.leaves)
+			table.insert(exclusions, { x, z, 3 })
 		end
 	end
 
 	buildLandmarks(forest)
+	buildForestProps(forest, exclusions)
 end
 
 local function buildRuins(map: Instance)
@@ -477,6 +601,28 @@ local function buildRuins(map: Instance)
 			Material = Enum.Material.Slate,
 		})
 	end
+	local props = ensure(ruins, "Props", "Folder")
+	local arenaAvoid = {
+		{ arena.center[1], arena.center[3], 42 },
+		{ 0, gate.z, gate.halfWidth + 6 },
+	}
+	scatter(17, 16, { -72, 72, -326, -236 }, 0, arenaAvoid, function(index, x, z, rng)
+		local size = rng:NextNumber(1, 2.6)
+		ballPart(props, "Rubble_" .. index, size, Vector3.new(x, size * 0.35, z), if index % 2 == 0 then COLOR.stone else COLOR.stoneDark, {
+			Material = Enum.Material.Slate,
+			CanCollide = false,
+		})
+	end)
+	for index, spec in { { Vector3.new(-50, 0, -270), 0.4 }, { Vector3.new(52, 0, -258), -0.6 } } do
+		part(props, "FallenPillar" .. index, {
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(12, 2.6, 2.6),
+			CFrame = CFrame.new(spec[1] + Vector3.new(0, 1.3, 0)) * CFrame.Angles(0, spec[2], 0),
+			Color = COLOR.stoneDark,
+			Material = Enum.Material.Slate,
+		})
+	end
+
 	local broken = {
 		Vector3.new(-40, 0, -245),
 		Vector3.new(42, 0, -250),

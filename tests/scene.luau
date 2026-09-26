@@ -215,6 +215,48 @@ test("trees keep clear of the path, zones, landmarks and flowers", function()
 	assert(trees >= 30 and trees <= 60, "tree count " .. trees)
 end)
 
+test("props keep clear of the path and fight zones", function()
+	local checked = 0
+	for _, child in map.Forest.Props:GetChildren() do
+		if string.match(child.Name, "^Mushroom_%d+_Stem$") or string.match(child.Name, "^Rock_%d+$") then
+			checked += 1
+			local position = positionOf(child)
+			assert(math.abs(position.X - math.sin(position.Z * 0.06) * 4) >= 7, "prop on the path: " .. child.Name)
+			for name, area in WorldData.areas do
+				local c = area.center
+				local dx, dz = position.X - c[1], position.Z - c[3]
+				assert(math.sqrt(dx * dx + dz * dz) >= area.radius, "prop in zone " .. name .. ": " .. child.Name)
+			end
+		end
+	end
+	assert(checked >= 30, "forest props placed: " .. checked)
+	local arena = WorldData.areas.arena.center
+	for _, child in map.Ruins.Props:GetChildren() do
+		if string.match(child.Name, "^Rubble_") then
+			local position = positionOf(child)
+			local dx, dz = position.X - arena[1], position.Z - arena[3]
+			assert(math.sqrt(dx * dx + dz * dz) >= 40, "rubble in the arena: " .. child.Name)
+		end
+	end
+end)
+
+test("map stays within a mobile-friendly part budget", function()
+	local parts, lights, emitters = 0, 0, 0
+	for _, descendant in map:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			parts += 1
+		elseif descendant:IsA("Light") then
+			lights += 1
+		elseif descendant:IsA("ParticleEmitter") then
+			emitters += 1
+		end
+	end
+	print(`  map budget: {parts} parts, {lights} lights, {emitters} particle emitters`)
+	assert(parts <= 900, "too many parts: " .. parts)
+	assert(lights <= 6, "too many static lights: " .. lights)
+	assert(emitters <= 10, "too many static emitters: " .. emitters)
+end)
+
 test("gate opening lines up with the vine barrier", function()
 	local gate = WorldData.gate
 	for _, vine in WorldData.vines do
