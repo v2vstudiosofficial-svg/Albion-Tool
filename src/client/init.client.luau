@@ -1,0 +1,1 @@
+print("[LanternValley] Client started")
