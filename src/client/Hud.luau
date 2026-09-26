@@ -349,9 +349,16 @@ function Hud.start()
 			showDialog(npc, Strings.get(key, table.unpack(translateArgs(...))))
 		end
 	end)
-	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, questId)
-		if kind == "questComplete" then
-			local def = QuestData.quests[questId]
+	local arenaCenter = WorldData.vector(WorldData.areas.arena.center)
+	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, first, second)
+		if kind == "purify" and second == "Warden" then
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if root and (root.Position - arenaCenter).Magnitude <= Balance.enemies.Warden.leashRadius + 30 then
+				showBanner(Strings.get("banner_boss_down"), Strings.get("banner_boss_down_sub"))
+			end
+		elseif kind == "questComplete" then
+			local def = QuestData.quests[first]
 			showBanner(Strings.get("banner_quest_complete"), if def then Strings.get(def.titleKey) else nil)
 			Audio.play("questComplete")
 		end

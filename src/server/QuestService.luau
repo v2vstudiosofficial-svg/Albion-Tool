@@ -188,6 +188,14 @@ function QuestService.start(map: Folder)
 		onTalkElder(player, elderBody)
 	end)
 
+	-- A brand-new player gets a short greeting so the first step is obvious.
+	PlayerProfiles.onReady(function(player)
+		local profile = PlayerProfiles.get(player)
+		if profile and profile.xp == 0 and next(profile.questProgress) == nil then
+			npcSay:FireClient(player, "Elder", "elder_welcome")
+		end
+	end)
+
 	interact.OnServerEvent:Connect(onInteract)
 	Players.PlayerRemoving:Connect(function(player)
 		lastInteract[player] = nil

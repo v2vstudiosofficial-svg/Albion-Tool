@@ -204,6 +204,11 @@ test("players load profiles (ProfileStore mock) and get staffs", function()
 		eq(attr(player, "QuestState"), "available")
 		eq(attr(player, "QuestId"), "first_purify")
 	end
+	for _, player in { alice, bob } do
+		eq(logCount("NpcSay", function(e)
+			return e.target == player and e.args[2] == "elder_welcome"
+		end), 1, player.Name .. " welcomed once")
+	end
 	spawnCharacter(alice, vec(WorldData.spawn, 3))
 	spawnCharacter(bob, vec(WorldData.spawn, 3))
 	advance(0.5)
@@ -457,6 +462,9 @@ test("leaving and rejoining restores the saved profile", function()
 	join(again)
 	advance(3)
 	eq(attr(again, "DataState"), "ready", "reloaded")
+	eq(logCount("NpcSay", function(e)
+		return e.target == again and e.args[2] == "elder_welcome"
+	end), 0, "returning player not greeted as new")
 	for key, value in snapshot do
 		eq(attr(again, key), value, key)
 	end

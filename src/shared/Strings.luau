@@ -29,6 +29,7 @@ local tables = {
 		elder_offer_first_upgrade = "Usta Demir'e git ve asanı güçlendir.",
 		elder_offer_ruin_vines = "Harabe kapısını sarmaşıklar kapatmış. Işık Dalgası ile temizle!",
 		elder_offer_warden = "Gölge Bekçisi harabelerde. Onu arındır, vadi yeniden parlasın!",
+		elder_welcome = "Hoş geldin, küçük Işık Koruyucusu! Yanıma gel, sana bir görevim var.",
 		elder_quest_active = "Görevin devam ediyor. Parlayan işareti takip et!",
 		elder_need_level = "Biraz daha güçlenmelisin. Seviye %d olunca gel!",
 		elder_all_done = "Vadimiz ışıl ışıl! Sen gerçek bir Işık Koruyucususun.",
@@ -74,6 +75,8 @@ local tables = {
 		banner_quest_complete = "Görev tamamlandı!",
 		banner_boss = "Gölge Bekçisi uyandı!",
 		banner_boss_sub = "Kırmızı halkalardan kaç, kürelerin boşluğundan geç!",
+		banner_boss_down = "Gölge Bekçisi arındı!",
+		banner_boss_down_sub = "Harabeler yeniden ışıl ışıl!",
 		notice_respawn = "Köyde yeniden doğdun. Hiçbir şey kaybetmedin!",
 
 		attack_button = "IŞIK",
