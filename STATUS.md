@@ -29,7 +29,9 @@
 - Tip denetimi (luau-lsp) yok; simülasyonların taklit ettiği motor davranışları
   (fizik, raycast, tween, giriş) Studio'da farklı sonuç verebilir.
 - Ses kimlikleri çoğunlukla boş; müzik yok. Animasyonlar prosedürel (asset yok).
-- Denge değerleri tahmini; 45–60 dk hedefi oynanarak ayarlanmalı.
+- Denge tahmini: ana zincir ~15–20 dk, Sv10 + asa kademe 3 hedefleriyle ~45 dk;
+  gerçek oyun testleriyle ayarlanmalı.
+- Yayın hazırlığı taslağı `docs/RELEASE.md`; herkese açık yayın talimat bekler.
 
 ## Sonraki adım (tek)
 Kullanıcı `docs/SETUP.md` "Elle test listesi"ni Studio'da oynayıp Output hatalarını iletsin.
