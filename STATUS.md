@@ -15,17 +15,16 @@
   göstergeli yetenek tuşları, ekran boyutuna göre ölçeklenen HUD, FPS/ping göstergesi,
   bölge bazlı düşman uykusu, istemcide çizilen mermiler, sıcak ışıklandırma.
 
-## Doğrulanan testler (bu bulut ortamında çalıştırıldı)
-- `tests/logic`: 22/22 (tam görev zinciri, ödül tekrarı, co-op, veri temizleme,
-  yükseltme/tılsım kuralları, veri ve metin anahtarı tutarlılığı).
-- `tests/api`: ~1090 Roblox sınıf/özellik/enum referansı yansıma DB'sine karşı temiz;
-  denetleyicinin enjekte edilen hatalı adları yakaladığı doğrulandı.
-- `tests/place`: 34 dosya derleniyor, Rojo çıktısı doğru servislerde.
-- Roblox Studio'da HİÇ ÇALIŞTIRILMADI: oynanış, AI, UI yerleşimi, kayıt, çok oyunculu
-  davranış ve performans ölçülmedi.
+## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
+- logic 22/22, api ~1110 referans temiz, scene 8/8, sim 19/19, place 37 dosya.
+- sim: gerçek sunucu kodu + ProfileStore mock ile 6 görev, co-op ödülü, boss saldırıları,
+  geçersiz istekler, çık-gir ve hızlı yeniden bağlanmada veri korunumu. Enjekte edilen
+  çift ödül ve menzil hatalarını yakaladığı doğrulandı.
+- Roblox Studio'da HİÇ ÇALIŞTIRILMADI: istemci (UI, efekt, kontroller), fizik, gerçek
+  DataStore, çok istemcili ağ ve performans ölçülmedi.
 
 ## Bilinen riskler
-- Tip denetimi (luau-lsp) yok; çalışma zamanı hataları Studio'da çıkabilir.
+- Tip denetimi (luau-lsp) yok; istemci kodu hiç çalıştırılmadı, hatalar Studio'da çıkabilir.
 - Ses kimlikleri çoğunlukla boş; müzik yok. Animasyonlar prosedürel (asset yok).
 - Denge değerleri tahmini; 45–60 dk hedefi oynanarak ayarlanmalı.
 

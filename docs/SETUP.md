@@ -44,11 +44,15 @@ rojo serve
     grafik ayarını ve oyuncu sayısını not et (emülatör gerçek telefon ölçümü sayılmaz).
 
 ## Otomatik kontroller (Roblox gerektirmez; Lune 0.10 + Rojo 7.x)
-```
-lune run tests/logic      # oyun kuralları, görev zinciri, ödül tekrarı, veri tutarlılığı
-lune run tests/api        # sınıf/özellik/enum adları Roblox yansıma veritabanına karşı
-rojo build default.project.json -o build/test.rbxlx && lune run tests/place build/test.rbxlx
-```
+`lune run tests/all` hepsini çalıştırır:
+- `tests/logic`: oyun kuralları, tam görev zinciri, ödül tekrarı, veri/metin tutarlılığı.
+- `tests/api`: sınıf/özellik/enum adları Roblox yansıma veritabanına karşı.
+- `tests/scene`: MapBuilder ve düşman modelleri gerçek Lune Instance'larıyla; tekrar
+  çalıştırmada çoğaltmama ve elle düzenlemeleri koruma.
+- `tests/sim`: gerçek sunucu kodu + ProfileStore (mock) sahte oyuncular, sahte saat ve sahte
+  remote'larla: 6 görev, co-op, boss, geçersiz istekler, çık-gir kaydı, hızlı yeniden bağlanma.
+  Fizik, gerçek raycast ve istemci yok; Studio testinin yerini tutmaz.
+- `tests/place`: tüm dosyalar derleniyor ve Rojo çıktısı doğru servislerde.
 
 ## Sesler
 `src/shared/Sounds.luau` içindeki boş kimlikler sessizdir. Creator Store'dan lisansı uygun
