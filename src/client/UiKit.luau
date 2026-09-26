@@ -98,8 +98,12 @@ function UiKit.button(props: { [string]: any }, parent: Instance, onClick: () ->
 end
 
 -- Uniform scale so layouts designed for ~1000x560 fit small landscape phones without overlap.
+local function camera(): Camera
+	return workspace.CurrentCamera or (workspace:GetPropertyChangedSignal("CurrentCamera"):Wait() and workspace.CurrentCamera)
+end
+
 function UiKit.screenScale(): number
-	local viewport = workspace.CurrentCamera.ViewportSize
+	local viewport = camera().ViewportSize
 	return math.clamp(math.min(viewport.X / 1000, viewport.Y / 560), 0.6, 1)
 end
 
@@ -115,7 +119,7 @@ function UiKit.region(parent: Instance, anchor: Vector2, position: UDim2, size: 
 	local function update()
 		scale.Scale = UiKit.screenScale()
 	end
-	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
+	camera():GetPropertyChangedSignal("ViewportSize"):Connect(update)
 	update()
 	return frame
 end

@@ -195,7 +195,8 @@ function behaviors.shooter(enemy: Enemy, dt: number, now: number)
 
 	local distance = flatDistance(targetPosition, enemy.position)
 	if distance < stats.preferredMin then
-		local away = enemy.position + flat(enemy.position - targetPosition).Unit * 6
+		local awayDirection = if distance > 0.05 then flat(enemy.position - targetPosition).Unit else -enemy.facing
+		local away = enemy.position + awayDirection * 6
 		ctx.moveToward(enemy, away, stats.speed, dt, 0)
 		ctx.clampToLeash(enemy)
 	elseif distance > stats.preferredMax then
@@ -266,8 +267,14 @@ behaviors.boss = function(enemy: Enemy, dt: number, now: number)
 end
 
 local function place(enemy: Enemy, now: number)
-	local amplitude = if enemy.stats.isBoss then 0.7 else 0.4
-	local bob = Vector3.new(0, math.sin(now * 3 + enemy.id) * amplitude, 0)
+	local behavior = enemy.stats.behavior
+	local wave = math.sin(now * 3 + enemy.id)
+	local height = if behavior == "shooter"
+		then math.abs(math.sin(now * 4.5 + enemy.id)) * 1.1
+		elseif behavior == "charger" then wave * 0.2
+		elseif enemy.stats.isBoss then wave * 0.7
+		else wave * 0.4
+	local bob = Vector3.new(0, height, 0)
 	if enemy.state == "windup" then
 		bob += Vector3.new(math.sin(now * 60) * 0.12, 0, 0)
 	end

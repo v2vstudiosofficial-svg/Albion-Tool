@@ -2,6 +2,7 @@
 -- NPC quest markers and the village restoration decorations. None of it changes other players' world.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local QuestData = require(Shared:WaitForChild("QuestData"))
@@ -286,6 +287,49 @@ local function refreshMarkers()
 	end
 end
 
+-- NPC idle life: a gentle breathing bob and turning toward a nearby local player (local only).
+
+local NPC_LOOK_DISTANCE = 16
+
+local function animateNpcs()
+	local map = workspace:WaitForChild("LanternValleyMap", 10)
+	local village = map and map:WaitForChild("Village", 10)
+	if not village then
+		return
+	end
+	local npcs = {}
+	for name in WorldData.npcs do
+		local model = village:WaitForChild(name, 10)
+		if model and model:IsA("Model") and model.PrimaryPart then
+			table.insert(npcs, { model = model, base = model:GetPivot(), yaw = 0, phase = #npcs * 1.7 })
+		end
+	end
+	RunService.RenderStepped:Connect(function(dt)
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local now = os.clock()
+		for _, npc in npcs do
+			if not npc.model.Parent then
+				continue
+			end
+			local base: CFrame = npc.base
+			local targetYaw = 0
+			if root then
+				local offset = root.Position - base.Position
+				local flat = Vector3.new(offset.X, 0, offset.Z)
+				if flat.Magnitude < NPC_LOOK_DISTANCE and flat.Magnitude > 0.5 then
+					local localDir = base:VectorToObjectSpace(flat.Unit)
+					targetYaw = math.atan2(-localDir.X, -localDir.Z)
+				end
+			end
+			local difference = (targetYaw - npc.yaw + math.pi) % (2 * math.pi) - math.pi
+			npc.yaw += difference * math.min(dt * 6, 1)
+			local bob = math.sin(now * 2 + npc.phase) * 0.08
+			npc.model:PivotTo(base * CFrame.new(0, bob, 0) * CFrame.Angles(0, npc.yaw, 0))
+		end
+	end)
+end
+
 -- Restoration -----------------------------------------------------------------------------------
 
 local builtFlags: { [string]: boolean } = {}
@@ -446,6 +490,7 @@ function World.start()
 		markers.Demir = buildMarker("Demir")
 		refreshMarkers()
 	end)
+	task.spawn(animateNpcs)
 end
 
 return World

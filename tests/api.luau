@@ -38,11 +38,11 @@ local helperPatterns = {
 	{ "[^%w]label%(%s*{", "TextLabel" },
 	{ "newPart%(%s*{", "Part" },
 	{ "localPart%(%s*{", "Part" },
-	{ "decorPart%([^{]-{", "Part" },
-	{ "[^%w]part%([^{]-{", "Part" },
-	{ "ballPart%([^{]-{", "Part" },
-	{ "cylinder%([^{]-{", "Part" },
-	{ "pillar%([^{]-{", "Part" },
+	{ "decorPart%([^{\n]-{", "Part" },
+	{ "[^%w]part%([^{\n]-{", "Part" },
+	{ "ballPart%([^{\n]-{", "Part" },
+	{ "cylinder%([^{\n]-{", "Part" },
+	{ "pillar%([^{\n]-{", "Part" },
 }
 
 local function tableKeys(source: string, openIndex: number): { string }

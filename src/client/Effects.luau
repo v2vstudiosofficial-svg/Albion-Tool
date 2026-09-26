@@ -434,6 +434,12 @@ function Effects.start()
 	local enemies = workspace:WaitForChild("Enemies")
 	enemies.ChildAdded:Connect(function(child)
 		task.spawn(attachEnemyUi, child)
+		task.spawn(function()
+			local body = child:WaitForChild("Body", 5) :: BasePart?
+			if body then
+				Effects.burst(body.Position, Color3.fromRGB(170, 120, 230), if child:GetAttribute("Boss") then 60 else 18, 7)
+			end
+		end)
 	end)
 	for _, child in enemies:GetChildren() do
 		task.spawn(attachEnemyUi, child)

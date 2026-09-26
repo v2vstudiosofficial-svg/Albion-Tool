@@ -132,7 +132,8 @@ local function keepDistance(enemy, ctx, target, distance: number, dt: number)
 	if distance > stats.keepDistance + 2 then
 		ctx.moveToward(enemy, targetPosition, stats.speed, dt, stats.keepDistance)
 	elseif distance < stats.keepDistance - 2 then
-		local away = enemy.position + flat(enemy.position - targetPosition).Unit * 4
+		local direction = if distance > 0.05 then flat(enemy.position - targetPosition).Unit else -enemy.facing
+		local away = enemy.position + direction * 4
 		ctx.moveToward(enemy, away, stats.speed, dt, 0)
 	end
 	ctx.clampToLeash(enemy)

@@ -13,6 +13,9 @@ local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local equipCharm = Remotes:WaitForChild("EquipCharm") :: RemoteEvent
+local upgradeStaff = Remotes:WaitForChild("UpgradeStaff") :: RemoteEvent
+local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
 local player = Players.LocalPlayer
 local colors = UiKit.colors
 
@@ -148,7 +151,7 @@ function Menus.start()
 				return
 			end
 			local equipped = attr("Charm", "") == charmId
-			Remotes.EquipCharm:FireServer(if equipped then "" else charmId)
+			equipCharm:FireServer(if equipped then "" else charmId)
 			Audio.play("ui")
 		end)
 		charmRows[charmId] = { row = row, gem = gem, name = name, desc = desc, button = button }
@@ -194,7 +197,7 @@ function Menus.start()
 		Text = Strings.get("shop_upgrade"),
 		TextSize = 28,
 	}, shopBody, function()
-		Remotes.UpgradeStaff:FireServer()
+		upgradeStaff:FireServer()
 	end)
 
 	local function refreshShop()
@@ -337,7 +340,7 @@ function Menus.start()
 		Text = Strings.get("data_retry"),
 		TextSize = 26,
 	}, failed, function()
-		Remotes.RetryLoad:FireServer()
+		retryLoad:FireServer()
 	end)
 	local function refreshData()
 		local state = attr("DataState", "loading")

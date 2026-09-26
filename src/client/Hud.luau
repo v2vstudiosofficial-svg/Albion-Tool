@@ -221,6 +221,34 @@ function Hud.start()
 		end)
 	end
 
+	-- Small coins fly from the middle of the screen into the coin counter.
+	local function flyCoins(amount: number)
+		if amount <= 0 then
+			return
+		end
+		local target = coinIcon.AbsolutePosition + coinIcon.AbsoluteSize / 2
+		local viewport = gui.AbsoluteSize
+		for index = 1, math.clamp(math.ceil(amount / 5), 1, 8) do
+			task.delay(index * 0.06, function()
+				local coin = UiKit.create("Frame", {
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Position = UDim2.fromOffset(viewport.X / 2 + math.random(-40, 40), viewport.Y * 0.45 + math.random(-20, 20)),
+					Size = UDim2.fromOffset(18, 18),
+					BackgroundColor3 = colors.coin,
+					BorderSizePixel = 0,
+					ZIndex = 20,
+				}, gui)
+				UiKit.corner(coin, 9)
+				UiKit.create("UIStroke", { Color = Color3.fromRGB(170, 110, 20), Thickness = 2 }, coin)
+				local flight = UiKit.tween(coin, 0.55, { Position = UDim2.fromOffset(target.X, target.Y), Size = UDim2.fromOffset(12, 12) }, Enum.EasingStyle.Quad)
+				flight.Completed:Connect(function()
+					coin:Destroy()
+					UiKit.pop(coinIcon)
+				end)
+			end)
+		end
+	end
+
 	local bannerToken = 0
 	local function showBanner(title: string, subtitle: string?)
 		bannerToken += 1
@@ -284,6 +312,21 @@ function Hud.start()
 		else
 			showToast(Strings.get("reward_purify", xp, coins))
 		end
+		if typeof(coins) == "number" then
+			flyCoins(coins)
+		end
+	end)
+
+	-- Reassure players after a defeat: nothing is ever lost.
+	local firstCharacter = player.Character == nil
+	player.CharacterAdded:Connect(function()
+		if firstCharacter then
+			firstCharacter = false
+			return
+		end
+		task.delay(0.5, function()
+			showToast(Strings.get("notice_respawn"), colors.good)
+		end)
 	end)
 	Remotes:WaitForChild("Notice").OnClientEvent:Connect(function(key, ...)
 		if typeof(key) == "string" then
@@ -322,6 +365,9 @@ function Hud.start()
 			end
 			local near = root ~= nil and (root.Position - arena).Magnitude <= bossStats.leashRadius + 30
 			local show = boss ~= nil and near and boss:GetAttribute("Engaged") == true
+			if show and not bossPanel.Visible then
+				showBanner(Strings.get("banner_boss"), Strings.get("banner_boss_sub"))
+			end
 			bossPanel.Visible = show
 			if show and boss then
 				local hp = boss:GetAttribute("Hp") or 0

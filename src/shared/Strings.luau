@@ -71,6 +71,9 @@ local tables = {
 		notice_boss_reset = "Gölge Bekçisi dinlenip toparlandı.",
 		friend_popup = "Dost oldu!",
 		banner_quest_complete = "Görev tamamlandı!",
+		banner_boss = "Gölge Bekçisi uyandı!",
+		banner_boss_sub = "Kırmızı halkalardan kaç, kürelerin boşluğundan geç!",
+		notice_respawn = "Köyde yeniden doğdun. Hiçbir şey kaybetmedin!",
 
 		attack_button = "IŞIK",
 		wave_button = "DALGA",

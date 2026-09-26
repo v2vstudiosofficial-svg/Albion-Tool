@@ -159,6 +159,22 @@ local function buildHouse(parent: Instance, name: string, base: Vector3)
 		Position = base + Vector3.new(0, 12, 0),
 		Color = COLOR.roof,
 	})
+	local chimney = part(house, "Chimney", {
+		Size = Vector3.new(2, 4, 2),
+		Position = base + Vector3.new(-4 * (if base.X > 0 then -1 else 1), 13, 3),
+		Color = COLOR.stoneDark,
+		Material = Enum.Material.Slate,
+	})
+	ensure(chimney, "Smoke", "ParticleEmitter", {
+		Rate = 1.5,
+		Lifetime = NumberRange.new(3, 4),
+		Speed = NumberRange.new(1.5, 2.5),
+		SpreadAngle = Vector2.new(10, 10),
+		EmissionDirection = Enum.NormalId.Top,
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 2.6) }),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 1) }),
+		Color = ColorSequence.new(Color3.fromRGB(235, 235, 240)),
+	})
 	local facing = if base.X > 0 then -1 else 1
 	part(house, "Door", {
 		Size = Vector3.new(0.4, 5, 3),
@@ -324,7 +340,17 @@ local function buildLandmarks(forest: Instance)
 	end
 
 	local pond = v(WorldData.landmarks.glow_pond.position)
-	disc(marks, "Pond_Water", 18, pond, COLOR.water, Enum.Material.Glass)
+	local water = disc(marks, "Pond_Water", 18, pond, COLOR.water, Enum.Material.Glass)
+	ensure(water, "Sparkles", "ParticleEmitter", {
+		Rate = 3,
+		EmissionDirection = Enum.NormalId.Right, -- the disc is rotated, so local +X points up
+		Lifetime = NumberRange.new(1.5, 2.5),
+		Speed = NumberRange.new(0.3, 0.8),
+		SpreadAngle = Vector2.new(20, 20),
+		LightEmission = 1,
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 0) }),
+		Color = ColorSequence.new(COLOR.glowPink),
+	})
 	for index = 1, 10 do
 		local angle = index / 10 * math.pi * 2
 		ballPart(marks, "Pond_Stone" .. index, 2.4, pond + Vector3.new(math.cos(angle) * 9.6, 0.5, math.sin(angle) * 9.6), COLOR.stone)

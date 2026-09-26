@@ -139,6 +139,7 @@ local function onCharacterAdded(player: Player, character: Model)
 	if not humanoid then
 		return
 	end
+	humanoid.BreakJointsOnDeath = false
 	if humanoid.RigType == Enum.HumanoidRigType.R15 then
 		character:WaitForChild("RightHand", 5)
 	end
