@@ -92,6 +92,9 @@ for _, name in { "UiKit", "Audio", "Effects", "World", "Hud", "Controls", "Menus
 	expectClass(client and client:FindFirstChild(name), "ModuleScript", "Client." .. name)
 end
 
+check(game:GetService("Workspace").StreamingEnabled == false, "Workspace.StreamingEnabled should be false (small map, simpler client code)")
+check(game:GetService("Lighting"):FindFirstChildOfClass("Atmosphere") ~= nil, "Lighting has an Atmosphere")
+
 print(`place check: compiled {compiled} files, {failures} failures`)
 if failures > 0 then
 	error("place check failed")
