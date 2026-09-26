@@ -4,13 +4,16 @@
 --   require(game.ServerScriptService.Server.MapBuilder).build()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Strings = require(ReplicatedStorage.Shared.Strings)
+local Shared = ReplicatedStorage.Shared
+local Strings = require(Shared.Strings)
+local WorldData = require(Shared.WorldData)
 
 local MAP_NAME = "LanternValleyMap"
 
 local COLOR = {
 	grass = Color3.fromRGB(125, 195, 95),
 	forest = Color3.fromRGB(75, 145, 85),
+	ruins = Color3.fromRGB(150, 145, 160),
 	path = Color3.fromRGB(220, 185, 130),
 	plaza = Color3.fromRGB(200, 195, 185),
 	wall = Color3.fromRGB(245, 228, 195),
@@ -18,8 +21,16 @@ local COLOR = {
 	door = Color3.fromRGB(150, 100, 70),
 	trunk = Color3.fromRGB(135, 95, 65),
 	leaves = Color3.fromRGB(95, 175, 95),
+	leavesDark = Color3.fromRGB(70, 150, 90),
+	bush = Color3.fromRGB(110, 185, 100),
 	lanternOff = Color3.fromRGB(150, 150, 165),
-	robe = Color3.fromRGB(95, 115, 205),
+	stone = Color3.fromRGB(175, 170, 185),
+	stoneDark = Color3.fromRGB(125, 120, 140),
+	water = Color3.fromRGB(95, 175, 230),
+	lily = Color3.fromRGB(90, 170, 95),
+	glowPink = Color3.fromRGB(255, 150, 210),
+	star = Color3.fromRGB(255, 225, 120),
+	fire = Color3.fromRGB(255, 140, 60),
 	skin = Color3.fromRGB(240, 200, 160),
 }
 
@@ -53,8 +64,48 @@ local function part(parent: Instance, name: string, props: { [string]: any }): B
 	return ensure(parent, name, className, props) :: BasePart
 end
 
+local function ballPart(parent: Instance, name: string, size: number, position: Vector3, color: Color3, extra: { [string]: any }?): BasePart
+	local props = {
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(size, size, size),
+		Position = position,
+		Color = color,
+	}
+	for key, value in extra or {} do
+		props[key] = value
+	end
+	return part(parent, name, props)
+end
+
+local function cylinder(parent: Instance, name: string, height: number, diameter: number, base: Vector3, color: Color3, extra: { [string]: any }?): BasePart
+	local props = {
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(height, diameter, diameter),
+		CFrame = CFrame.new(base + Vector3.new(0, height / 2, 0)) * UPRIGHT,
+		Color = color,
+	}
+	for key, value in extra or {} do
+		props[key] = value
+	end
+	return part(parent, name, props)
+end
+
+local function disc(parent: Instance, name: string, diameter: number, center: Vector3, color: Color3, material: Enum.Material?): BasePart
+	return part(parent, name, {
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.2, diameter, diameter),
+		CFrame = CFrame.new(center + Vector3.new(0, 0.1, 0)) * UPRIGHT,
+		Color = color,
+		Material = material or Enum.Material.SmoothPlastic,
+	})
+end
+
 local function pathX(z: number): number
 	return math.sin(z * 0.06) * 4
+end
+
+local function v(p: { number }): Vector3
+	return WorldData.vector(p)
 end
 
 local function buildGround(map: Instance)
@@ -71,12 +122,20 @@ local function buildGround(map: Instance)
 		Color = COLOR.forest,
 		Material = Enum.Material.Grass,
 	})
-	-- Invisible walls around the playable area (x: -80..80, z: -230..70).
+	part(ground, "RuinsGround", {
+		Size = Vector3.new(160, 2, 100),
+		Position = Vector3.new(0, -1, -280),
+		Color = COLOR.ruins,
+		Material = Enum.Material.Slate,
+	})
+	local b = WorldData.bounds
+	local width, depth = b.maxX - b.minX, b.maxZ - b.minZ
+	local midX, midZ = (b.minX + b.maxX) / 2, (b.minZ + b.maxZ) / 2
 	local walls = {
-		NorthWall = { Vector3.new(160, 40, 2), Vector3.new(0, 20, -231) },
-		SouthWall = { Vector3.new(160, 40, 2), Vector3.new(0, 20, 71) },
-		WestWall = { Vector3.new(2, 40, 300), Vector3.new(-81, 20, -80) },
-		EastWall = { Vector3.new(2, 40, 300), Vector3.new(81, 20, -80) },
+		NorthWall = { Vector3.new(width, 40, 2), Vector3.new(midX, 20, b.minZ - 1) },
+		SouthWall = { Vector3.new(width, 40, 2), Vector3.new(midX, 20, b.maxZ + 1) },
+		WestWall = { Vector3.new(2, 40, depth), Vector3.new(b.minX - 1, 20, midZ) },
+		EastWall = { Vector3.new(2, 40, depth), Vector3.new(b.maxX + 1, 20, midZ) },
 	}
 	for name, spec in walls do
 		part(ground, name, { Size = spec[1], Position = spec[2], Transparency = 1 })
@@ -106,51 +165,110 @@ local function buildHouse(parent: Instance, name: string, base: Vector3)
 		Position = base + Vector3.new(facing * 7.1, 2.5, 0),
 		Color = COLOR.door,
 	})
+	for index, z in { -3.5, 3.5 } do
+		part(house, "Window" .. index, {
+			Size = Vector3.new(0.4, 2.2, 2.2),
+			Position = base + Vector3.new(facing * 7.1, 5.5, z),
+			Color = Color3.fromRGB(170, 215, 240),
+			Material = Enum.Material.Glass,
+		})
+	end
 end
 
-local function buildElder(parent: Instance)
-	local elder = ensure(parent, "Elder", "Model") :: Model
-	local origin = Vector3.new(8, 1.6, 28)
-	local bodyCFrame = CFrame.lookAt(origin, Vector3.new(0, 1.6, 40))
-	local body = part(elder, "Body", {
+local function buildNpc(parent: Instance, name: string, robe: Color3, hat: Color3, actionKey: string)
+	local spec = WorldData.npcs[name]
+	local npc = ensure(parent, name, "Model") :: Model
+	local bodyCFrame = CFrame.lookAt(v(spec.position), v(spec.lookAt))
+	local body = part(npc, "Body", {
 		Size = Vector3.new(2.4, 3.2, 1.6),
 		CFrame = bodyCFrame,
-		Color = COLOR.robe,
+		Color = robe,
 	})
-	part(elder, "Head", {
+	part(npc, "Head", {
 		Shape = Enum.PartType.Ball,
 		Size = Vector3.new(1.8, 1.8, 1.8),
 		CFrame = bodyCFrame * CFrame.new(0, 2.5, 0),
 		Color = COLOR.skin,
 	})
-	part(elder, "Hat", {
+	part(npc, "Hat", {
 		Size = Vector3.new(1.4, 1.2, 1.4),
 		CFrame = bodyCFrame * CFrame.new(0, 3.9, 0),
-		Color = COLOR.robe,
+		Color = hat,
 	})
-	if not elder.PrimaryPart then
-		elder.PrimaryPart = body
+	for index, x in { -0.35, 0.35 } do
+		part(npc, "Eye" .. index, {
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(0.3, 0.3, 0.3),
+			CFrame = bodyCFrame * CFrame.new(x, 2.65, -0.85),
+			Color = Color3.fromRGB(40, 30, 40),
+		})
+	end
+	if not npc.PrimaryPart then
+		npc.PrimaryPart = body
 	end
 	ensure(body, "TalkPrompt", "ProximityPrompt", {
-		ActionText = Strings.get("npc_talk_action"),
-		ObjectText = Strings.get("npc_elder_name"),
+		ActionText = Strings.get(actionKey),
+		ObjectText = Strings.get(spec.nameKey),
 		MaxActivationDistance = 10,
 		HoldDuration = 0,
 		RequiresLineOfSight = false,
 	})
 	local tag = ensure(body, "NameTag", "BillboardGui", {
 		Size = UDim2.fromScale(6, 1),
-		StudsOffset = Vector3.new(0, 4.2, 0),
-		MaxDistance = 60,
+		StudsOffset = Vector3.new(0, 4.4, 0),
+		MaxDistance = 70,
 	})
 	ensure(tag, "Label", "TextLabel", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		Text = Strings.get("npc_elder_name"),
+		Text = Strings.get(spec.nameKey),
 		TextScaled = true,
 		Font = Enum.Font.FredokaOne,
 		TextColor3 = Color3.new(1, 1, 1),
 		TextStrokeTransparency = 0.4,
+	})
+end
+
+local function buildForge(parent: Instance)
+	local forge = ensure(parent, "Forge", "Folder")
+	local base = Vector3.new(-32, 0, -40)
+	part(forge, "Floor", {
+		Size = Vector3.new(16, 0.6, 12),
+		Position = base + Vector3.new(0, 0.3, 0),
+		Color = COLOR.stone,
+		Material = Enum.Material.Slate,
+	})
+	for index, offset in { Vector3.new(-7, 0, -5), Vector3.new(7, 0, -5), Vector3.new(-7, 0, 5), Vector3.new(7, 0, 5) } do
+		cylinder(forge, "Post" .. index, 9, 0.9, base + offset, COLOR.trunk)
+	end
+	part(forge, "Roof", {
+		Size = Vector3.new(17, 1.2, 13),
+		Position = base + Vector3.new(0, 9.6, 0),
+		Color = COLOR.roof,
+	})
+	part(forge, "Furnace", {
+		Size = Vector3.new(5, 6, 4),
+		Position = base + Vector3.new(-4, 3.6, -3),
+		Color = COLOR.stoneDark,
+		Material = Enum.Material.Slate,
+	})
+	local fire = part(forge, "FurnaceFire", {
+		Size = Vector3.new(2.6, 2, 0.4),
+		Position = base + Vector3.new(-4, 2.4, -0.9),
+		Color = COLOR.fire,
+		Material = Enum.Material.Neon,
+	})
+	ensure(fire, "Glow", "PointLight", { Color = COLOR.fire, Range = 14, Brightness = 1.5, Shadows = false })
+	part(forge, "Anvil", {
+		Size = Vector3.new(3, 1.2, 1.6),
+		Position = base + Vector3.new(4, 2.4, 1),
+		Color = Color3.fromRGB(90, 90, 105),
+		Material = Enum.Material.Metal,
+	})
+	part(forge, "AnvilBase", {
+		Size = Vector3.new(1.4, 1.8, 1.2),
+		Position = base + Vector3.new(4, 1.3, 1),
+		Color = COLOR.trunk,
 	})
 end
 
@@ -159,28 +277,13 @@ local function buildVillage(map: Instance)
 	part(village, "VillageSpawn", {
 		ClassName = "SpawnLocation",
 		Size = Vector3.new(10, 1, 10),
-		Position = Vector3.new(0, 0.5, 40),
+		Position = v(WorldData.spawn),
 		Color = COLOR.plaza,
 		Neutral = true,
 	})
-	part(village, "Plaza", {
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.2, 30, 30),
-		CFrame = CFrame.new(0, 0.1, 12) * UPRIGHT,
-		Color = COLOR.plaza,
-		Material = Enum.Material.Slate,
-	})
-	part(village, "LanternPost", {
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(10, 1, 1),
-		CFrame = CFrame.new(0, 5, 12) * UPRIGHT,
-		Color = COLOR.trunk,
-	})
-	part(village, "LanternLamp", {
-		Shape = Enum.PartType.Ball,
-		Size = Vector3.new(2.5, 2.5, 2.5),
-		Position = Vector3.new(0, 10.8, 12),
-		Color = COLOR.lanternOff,
+	disc(village, "Plaza", 30, Vector3.new(0, 0, 12), COLOR.plaza, Enum.Material.Slate)
+	cylinder(village, "LanternPost", 10, 1, Vector3.new(0, 0, 12), COLOR.trunk)
+	ballPart(village, "LanternLamp", 2.5, Vector3.new(0, 10.8, 12), COLOR.lanternOff, {
 		Material = Enum.Material.Glass,
 		Transparency = 0.2,
 	})
@@ -188,13 +291,87 @@ local function buildVillage(map: Instance)
 	buildHouse(village, "House2", Vector3.new(35, 0, 0))
 	buildHouse(village, "House3", Vector3.new(-35, 0, 32))
 	buildHouse(village, "House4", Vector3.new(35, 0, 32))
-	buildElder(village)
+	buildNpc(village, "Elder", Color3.fromRGB(95, 115, 205), Color3.fromRGB(95, 115, 205), "npc_talk_action")
+	buildNpc(village, "Demir", Color3.fromRGB(190, 115, 60), Color3.fromRGB(80, 70, 80), "npc_shop_action")
+	buildForge(village)
+
+	local bushes = {
+		Vector3.new(-24, 0, 44),
+		Vector3.new(24, 0, 44),
+		Vector3.new(-50, 0, 16),
+		Vector3.new(50, 0, 16),
+		Vector3.new(-18, 0, -8),
+		Vector3.new(18, 0, -8),
+		Vector3.new(-55, 0, -30),
+		Vector3.new(55, 0, -30),
+		Vector3.new(40, 0, -50),
+	}
+	for index, position in bushes do
+		ballPart(village, "Bush" .. index, 4, position + Vector3.new(0, 1.2, 0), COLOR.bush)
+	end
+end
+
+local function buildLandmarks(forest: Instance)
+	local marks = ensure(forest, "Landmarks", "Folder")
+
+	local oak = v(WorldData.landmarks.old_oak.position)
+	cylinder(marks, "OldOak_Trunk", 18, 5, oak, COLOR.trunk)
+	ballPart(marks, "OldOak_Crown1", 16, oak + Vector3.new(0, 20, 0), COLOR.leavesDark)
+	ballPart(marks, "OldOak_Crown2", 12, oak + Vector3.new(5, 17, 3), COLOR.leaves)
+	ballPart(marks, "OldOak_Crown3", 11, oak + Vector3.new(-5, 17, -2), COLOR.leaves)
+	for index, angle in { 0, 2.1, 4.2 } do
+		ballPart(marks, "OldOak_Root" .. index, 3, oak + Vector3.new(math.cos(angle) * 3.2, 0.6, math.sin(angle) * 3.2), COLOR.trunk)
+	end
+
+	local pond = v(WorldData.landmarks.glow_pond.position)
+	disc(marks, "Pond_Water", 18, pond, COLOR.water, Enum.Material.Glass)
+	for index = 1, 10 do
+		local angle = index / 10 * math.pi * 2
+		ballPart(marks, "Pond_Stone" .. index, 2.4, pond + Vector3.new(math.cos(angle) * 9.6, 0.5, math.sin(angle) * 9.6), COLOR.stone)
+	end
+	for index, offset in { Vector3.new(3, 0, 2), Vector3.new(-4, 0, -1), Vector3.new(1, 0, -4), Vector3.new(-2, 0, 4) } do
+		local pad = pond + offset
+		part(marks, "Pond_Lily" .. index, {
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.15, 2.4, 2.4),
+			CFrame = CFrame.new(pad + Vector3.new(0, 0.25, 0)) * UPRIGHT,
+			Color = COLOR.lily,
+		})
+		ballPart(marks, "Pond_Bloom" .. index, 0.8, pad + Vector3.new(0, 0.6, 0), COLOR.glowPink, { Material = Enum.Material.Neon })
+	end
+
+	local rock = v(WorldData.landmarks.star_rock.position)
+	ballPart(marks, "StarRock_A", 9, rock + Vector3.new(0, 3.5, 0), COLOR.stoneDark, { Material = Enum.Material.Slate })
+	ballPart(marks, "StarRock_B", 6, rock + Vector3.new(4.5, 2.2, 2), COLOR.stone, { Material = Enum.Material.Slate })
+	ballPart(marks, "StarRock_C", 5, rock + Vector3.new(-4, 1.8, -2.5), COLOR.stone, { Material = Enum.Material.Slate })
+	local star = part(marks, "StarRock_Star", {
+		Size = Vector3.new(2, 2, 2),
+		CFrame = CFrame.new(rock + Vector3.new(0, 9, 0)) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+		Color = COLOR.star,
+		Material = Enum.Material.Neon,
+	})
+	ensure(star, "Glow", "PointLight", { Color = COLOR.star, Range = 16, Brightness = 1.2, Shadows = false })
+end
+
+-- Circles (x, z, radius) that trees must stay out of.
+local function treeExclusions(): { { number } }
+	local list = {}
+	for _, area in WorldData.areas do
+		table.insert(list, { area.center[1], area.center[3], area.radius + 3 })
+	end
+	for _, landmark in WorldData.landmarks do
+		table.insert(list, { landmark.position[1], landmark.position[3], 13 })
+	end
+	for _, flower in WorldData.flowers do
+		table.insert(list, { flower[1], flower[3], 5 })
+	end
+	return list
 end
 
 local function buildForest(map: Instance)
 	local forest = ensure(map, "Forest", "Folder")
 	local index = 0
-	for z = -12, -120, -10 do
+	for z = -12, -222, -10 do
 		index += 1
 		part(forest, "Path_" .. index, {
 			Size = Vector3.new(8, 0.2, 10.5),
@@ -204,48 +381,85 @@ local function buildForest(map: Instance)
 		})
 	end
 
-	local clearing = Vector3.new(0, 0, -112)
+	local exclusions = treeExclusions()
 	local rng = Random.new(7) -- fixed seed keeps tree names and positions stable across runs
 	local trees = 0
-	for _ = 1, 120 do
+	for _ = 1, 220 do
 		local x = rng:NextNumber(-74, 74)
 		local z = rng:NextNumber(-224, -78)
-		local height = rng:NextNumber(7, 11)
-		local crown = rng:NextNumber(6, 9)
-		local nearPath = math.abs(x - pathX(z)) < 10 and z > -125
-		local inClearing = (Vector3.new(x, 0, z) - clearing).Magnitude < 24
-		if not nearPath and not inClearing and trees < 45 then
+		local height = rng:NextNumber(7, 12)
+		local crown = rng:NextNumber(6, 10)
+		local blocked = math.abs(x - pathX(z)) < 10
+		for _, circle in exclusions do
+			local dx, dz = x - circle[1], z - circle[2]
+			if dx * dx + dz * dz < circle[3] * circle[3] then
+				blocked = true
+			end
+		end
+		if not blocked and trees < 60 then
 			trees += 1
-			part(forest, "Tree_" .. trees .. "_Trunk", {
-				Shape = Enum.PartType.Cylinder,
-				Size = Vector3.new(height, 2, 2),
-				CFrame = CFrame.new(x, height / 2, z) * UPRIGHT,
-				Color = COLOR.trunk,
-			})
-			part(forest, "Tree_" .. trees .. "_Leaves", {
-				Shape = Enum.PartType.Ball,
-				Size = Vector3.new(crown, crown, crown),
-				Position = Vector3.new(x, height + crown * 0.3, z),
-				Color = COLOR.leaves,
-			})
+			cylinder(forest, "Tree_" .. trees .. "_Trunk", height, 2, Vector3.new(x, 0, z), COLOR.trunk)
+			ballPart(forest, "Tree_" .. trees .. "_Leaves", crown, Vector3.new(x, height + crown * 0.3, z), if trees % 3 == 0 then COLOR.leavesDark else COLOR.leaves)
 		end
 	end
 
-	local spawns = ensure(forest, "EnemySpawns", "Folder")
-	local spawnPoints = {
-		Vector3.new(-10, 0.5, -104),
-		Vector3.new(11, 0.5, -112),
-		Vector3.new(0, 0.5, -124),
-	}
-	for i, position in spawnPoints do
-		part(spawns, "EnemySpawn_" .. i, {
-			Size = Vector3.new(2, 1, 2),
-			Position = position,
-			Transparency = 1,
-			CanCollide = false,
-			CanQuery = false,
-			CanTouch = false,
+	buildLandmarks(forest)
+end
+
+local function buildRuins(map: Instance)
+	local ruins = ensure(map, "Ruins", "Folder")
+	local gate = WorldData.gate
+	local b = WorldData.bounds
+	local sideLength = (b.maxX - gate.halfWidth) - 1.5
+	for index, side in { -1, 1 } do
+		local centerX = side * (gate.halfWidth + 1.5 + sideLength / 2)
+		part(ruins, "Wall" .. index, {
+			Size = Vector3.new(sideLength, 14, 3),
+			Position = Vector3.new(centerX, 7, gate.z - 1),
+			Color = COLOR.stone,
+			Material = Enum.Material.Slate,
 		})
+		for block = 0, math.floor(sideLength / 8) - 1 do
+			part(ruins, "Crenel" .. index .. "_" .. block, {
+				Size = Vector3.new(3, 2, 3),
+				Position = Vector3.new(side * (gate.halfWidth + 5 + block * 8), 15, gate.z - 1),
+				Color = COLOR.stone,
+				Material = Enum.Material.Slate,
+			})
+		end
+		part(ruins, "GatePillar" .. index, {
+			Size = Vector3.new(3, 17, 4),
+			Position = Vector3.new(side * (gate.halfWidth + 1.5), 8.5, gate.z - 1),
+			Color = COLOR.stoneDark,
+			Material = Enum.Material.Slate,
+		})
+	end
+	part(ruins, "GateArch", {
+		Size = Vector3.new(gate.halfWidth * 2 + 6, 3, 4),
+		Position = Vector3.new(0, 18.5, gate.z - 1),
+		Color = COLOR.stoneDark,
+		Material = Enum.Material.Slate,
+	})
+
+	local arena = WorldData.areas.arena
+	local center = v(arena.center)
+	disc(ruins, "ArenaFloor", arena.radius * 2, center, Color3.fromRGB(185, 175, 200), Enum.Material.Slate)
+	for index = 1, 8 do
+		local angle = index / 8 * math.pi * 2
+		local height = if index % 3 == 0 then 6 else 11
+		cylinder(ruins, "ArenaPillar" .. index, height, 3, center + Vector3.new(math.cos(angle) * 38, 0, math.sin(angle) * 38), COLOR.stone, {
+			Material = Enum.Material.Slate,
+		})
+	end
+	local broken = {
+		Vector3.new(-40, 0, -245),
+		Vector3.new(42, 0, -250),
+		Vector3.new(-55, 0, -300),
+		Vector3.new(58, 0, -310),
+		Vector3.new(-25, 0, -320),
+	}
+	for index, position in broken do
+		cylinder(ruins, "BrokenPillar" .. index, 4 + index, 2.6, position, COLOR.stoneDark, { Material = Enum.Material.Slate })
 	end
 end
 
@@ -256,6 +470,7 @@ function MapBuilder.build(): Folder
 	buildGround(map)
 	buildVillage(map)
 	buildForest(map)
+	buildRuins(map)
 	return map :: Folder
 end
 

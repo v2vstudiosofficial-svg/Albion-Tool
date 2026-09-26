@@ -40,11 +40,23 @@ end
 local replicated = game:GetService("ReplicatedStorage")
 local shared = replicated:FindFirstChild("Shared")
 expectClass(shared, "Folder", "ReplicatedStorage.Shared")
-for _, name in { "Strings", "Balance", "QuestData" } do
+for _, name in { "Strings", "Balance", "QuestData", "WorldData", "Progression", "Sounds" } do
 	expectClass(shared and shared:FindFirstChild(name), "ModuleScript", "Shared." .. name)
 end
 local remotes = replicated:FindFirstChild("Remotes")
-for _, name in { "RequestAttack", "RewardGranted", "NpcSay" } do
+for _, name in {
+	"RequestAttack",
+	"RequestWave",
+	"Interact",
+	"UpgradeStaff",
+	"EquipCharm",
+	"RetryLoad",
+	"RewardGranted",
+	"Notice",
+	"NpcSay",
+	"OpenShop",
+	"Fx",
+} do
 	expectClass(remotes and remotes:FindFirstChild(name), "RemoteEvent", "Remotes." .. name)
 end
 
@@ -56,8 +68,14 @@ for _, name in {
 	"PlayerProfiles",
 	"QuestLogic",
 	"QuestService",
+	"ShopService",
+	"CharacterService",
+	"Targets",
+	"Projectiles",
 	"EnemyLogic",
+	"EnemyModels",
 	"EnemyService",
+	"WardenBehavior",
 	"CombatService",
 } do
 	expectClass(server and server:FindFirstChild(name), "ModuleScript", "Server." .. name)
@@ -67,7 +85,10 @@ local playerScripts = game:GetService("StarterPlayer"):FindFirstChild("StarterPl
 expectClass(playerScripts, "StarterPlayerScripts", "StarterPlayerScripts")
 local client = playerScripts and playerScripts:FindFirstChild("Client")
 expectClass(client, "LocalScript", "StarterPlayerScripts.Client")
-for _, name in { "Hud", "CombatInput" } do
+local packages = server and server:FindFirstChild("Packages")
+expectClass(packages, "Folder", "Server.Packages")
+expectClass(packages and packages:FindFirstChild("ProfileStore"), "ModuleScript", "Packages.ProfileStore")
+for _, name in { "UiKit", "Audio", "Effects", "World", "Hud", "Controls", "Menus", "Waypoint" } do
 	expectClass(client and client:FindFirstChild(name), "ModuleScript", "Client." .. name)
 end
 

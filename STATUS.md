@@ -1,34 +1,33 @@
 # Durum
 
-## Aşama: M1 — Oynanabilir beş dakika (kod hazır, Studio doğrulaması bekliyor)
+## Aşama: M2–M4 kodu yazıldı (kullanıcı isteğiyle hızlı geliştirme; Studio testi bekliyor)
 
 ## Tamamlananlar
-- M0 düzeltmesi: Rojo eşlemesi servisleri script'e dönüştürüyordu; artık
-  `ReplicatedStorage.Shared`, `ServerScriptService.Server`,
-  `StarterPlayerScripts.Client` + `ReplicatedStorage.Remotes` (3 RemoteEvent).
-- İdempotent sahne kurucu (`MapBuilder`): köy (4 ev, meydan, sönük fener,
-  spawn), NPC Bilge Nur, orman patikası, 45 ağaç, açıklık, 3 düşman noktası.
-- Tek görev (`first_purify`), tek düşman (Gölgecik: takip, temas hasarı,
-  arınma efekti, 10 sn'de yeniden doğma), ışık asası normal saldırısı
-  (istemci hedef yardımı; sunucu tür/bekleme/menzil/görüş hattı/canlılık
-  doğrular), XP/sikke, HUD (istatistik, tek hedef paneli, ödül bildirimi, NPC
-  konuşması). Metinler `Strings`, denge `Balance`, görev `QuestData` tablosunda.
-- Katılım ödülü: son 30 sn içinde vuran ve oyunda olan herkes kendi ödülünü alır.
-- Kalıcı kayıt YOK (bilerek; M2). Profil bellekte, plan şemasıyla.
+- M2: Seviye 1–10, Işık Dalgası (Sv3), 3 kademeli asa yükseltmesi, 3 tılsım + çanta;
+  ProfileStore ile kalıcı profil (oturum kilidi, periyodik/çıkış/kapanış kaydı, Studio
+  ayrı depo, yükleme hatasında ilerlemeyi koruyan "Tekrar Dene" ekranı, veri temizleme).
+- M3: 6 görevlik zincir (arındırma, çiçek toplama, keşif, yükseltme, sarmaşık, boss),
+  3 düşman davranışı (kovalayan, uzaktan atan, uyarılı hücum), iki saldırılı boss
+  (uyarı halkaları + boşluklu küre halkası, %50'de 2. evre, oyuncu sayısına göre can),
+  köyün 3 kişisel canlanma aşaması, katılımcı başına ödül, kişisel sarmaşık engeli.
+- M4: istemci efektleri (ışık oku, isabet sayıları, dostlaşma, dalga halkası, mermiler,
+  seviye/görev afişleri, kamera sarsıntısı), NPC ünlemleri, hedef işaretçisi, bekleme
+  göstergeli yetenek tuşları, ekran boyutuna göre ölçeklenen HUD, FPS/ping göstergesi,
+  bölge bazlı düşman uykusu, istemcide çizilen mermiler, sıcak ışıklandırma.
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı)
-- `lune run tests/logic`: 9/9 geçti (görev bir kez başlar/biter, düşman bir
-  kez arınır, 2 oyuncu co-op ödülü, geçersiz ödül reddi, veri/metin tutarlılığı).
-  Enjekte edilen ödül tekrarı hatasıyla 3 testin düştüğü de doğrulandı.
-- `tests/place`: 17 dosya Luau derlemesi + Rojo çıktısı yapı kontrolü geçti.
-- Roblox Studio'da ÇALIŞTIRILMADI: hareket, NPC, düşman AI, saldırı, HUD ve
-  iki istemci testi kullanıcı tarafında `docs/SETUP.md` listesiyle yapılmalı.
+- `tests/logic`: 22/22 (tam görev zinciri, ödül tekrarı, co-op, veri temizleme,
+  yükseltme/tılsım kuralları, veri ve metin anahtarı tutarlılığı).
+- `tests/api`: ~1090 Roblox sınıf/özellik/enum referansı yansıma DB'sine karşı temiz;
+  denetleyicinin enjekte edilen hatalı adları yakaladığı doğrulandı.
+- `tests/place`: 34 dosya derleniyor, Rojo çıktısı doğru servislerde.
+- Roblox Studio'da HİÇ ÇALIŞTIRILMADI: oynanış, AI, UI yerleşimi, kayıt, çok oyunculu
+  davranış ve performans ölçülmedi.
 
 ## Bilinen riskler
-- Roblox API tip denetimi yapılamadı (luau-lsp indirmesi ağda engelli).
-- Küçük telefonlarda HUD/konuşma paneli yerleşimi M4'te ölçülecek.
-- M0 Studio testi de henüz kullanıcı tarafından onaylanmadı.
+- Tip denetimi (luau-lsp) yok; çalışma zamanı hataları Studio'da çıkabilir.
+- Ses kimlikleri çoğunlukla boş; müzik yok. Animasyonlar prosedürel (asset yok).
+- Denge değerleri tahmini; 45–60 dk hedefi oynanarak ayarlanmalı.
 
 ## Sonraki adım (tek)
-Kullanıcı `docs/SETUP.md` → "M1 elle test listesi"ni Studio'da uygulayıp
-Output'taki hata satırlarını (varsa) iletsin; temizse M2'ye geçilir.
+Kullanıcı `docs/SETUP.md` "Elle test listesi"ni Studio'da oynayıp Output hatalarını iletsin.

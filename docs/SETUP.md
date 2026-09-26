@@ -13,25 +13,48 @@ rojo serve
 ```
 - Studio'da `LanternValley.rbxlx` dosyasını aç (Baseplate şablonu kullanma; zemin çakışır).
 - Plugins → Rojo → **Connect**. Yerel `.luau` değişiklikleri anında Studio'ya gelir.
-- Haritayı düzenleme modunda görmek için Studio Command Bar'da bir kez:
+- Haritayı düzenleme modunda görmek için Command Bar'da bir kez:
   `require(game.ServerScriptService.Server.MapBuilder).build()`
-  (Tekrar çalıştırmak çoğaltmaz, elle eklenen/değiştirilen parçaları silmez.)
+  Tekrar çalıştırmak çoğaltmaz ve elle yapılan düzenlemeleri silmez. Eski bir sürümle
+  "pişirilmiş" harita varsa önce `Workspace.LanternValleyMap` klasörünü silip yeniden çalıştır.
+- Kalıcı kayıt: Studio'da Game Settings → Security → "Enable Studio Access to API Services"
+  kapalıysa ProfileStore bellekte sahte kayıt kullanır (test için güvenli). Açıksa Studio,
+  canlı oyundan ayrı `LanternValley_Studio_v1` deposuna yazar. Yerin yayınlanmış olması gerekir.
+- Yayında maksimum oyuncu: Game Settings → Places → Max Players = 4.
 
-## M1 elle test listesi
-1. **Play**: Output'ta `[LanternValley] Server started` ve `Client started`, kırmızı hata yok.
-2. Bilge Nur'a yaklaş → **E** (mobilde dokun) → görev paneli "Gölgeciği arındır: 0/1".
-3. Patikayı takip et, Gölgecik'e sol tık / **F** / mobilde "Işık" butonu → 2 vuruşta arınır.
-4. Ekranda "+10 XP +5 Sikke" ve "Görev tamamlandı! +50 XP +20 Sikke"; HUD: XP 60, Sikke 25.
-5. 10 sn sonra yeni Gölgecik doğar; onu arındırmak yalnızca +10/+5 verir, görev ödülü tekrar gelmez.
-6. Bilge Nur ile tekrar konuş → "Yakında yeni görevler". Görev yeniden başlamaz.
-7. Gölgecik'e temas edip yenil → köyde yeniden doğ, XP/Sikke korunur.
-8. **Test → Clients and Servers → 2 Players**: iki oyuncu aynı Gölgecik'e vurunca ikisi de
-   kendi ödülünü alır; sadece izleyen oyuncu almaz.
-
-Not: M1'de kalıcı kayıt yok; oyundan çıkınca ilerleme sıfırlanır (M2'de eklenecek).
+## Elle test listesi (Studio)
+1. **Play**: Output'ta `Server started` ve `Client started`, kırmızı hata yok; "Kaydın yükleniyor"
+   kısa süre görünüp kaybolur.
+2. Görev 1: Bilge Nur'da **!** işareti → E/dokun → elmas işaret açıklığa götürür → Gölgecik'i
+   arındır (sol tık/F/IŞIK) → "Dost oldu" + "Görev tamamlandı" afişi.
+3. Görev 2: 5 Fener Çiçeği (yalnızca bu oyuncuya görünür) → köyde çiçek tarhları/bayraklar.
+4. Görev 3: 3 altın ışık sütunu → keşif bildirimi.
+5. Görev 4: Usta Demir → Asa Tezgâhı → Güçlendir (yetersiz sikkede uyarı) → asa küresi renk
+   değiştirir, köy fenerleri yanar, Kabuk Tılsımı gelir.
+6. Seviye 3'te DALGA/Q açılır. Görev 5: harabe kapısında dalga → sarmaşıklar temizlenir.
+7. Görev 6: arenada Gölge Bekçisi: kırmızı halkalardan çık, küre halkasındaki boşluktan geç;
+   %50'de renk değişir ve hızlanır. Sonunda köyde şenlik (büyük fener, ateş böcekleri).
+8. Çanta: tılsım tak/çıkar (Rüzgâr → hız, Kabuk → az hasar, Parıltı → dalga).
+9. Yenil → köyde yeniden doğ; XP/sikke/eşya kaybı yok.
+10. **Test → Clients and Servers → 2-4 Players**: aynı düşmana vuran herkes kendi ödülünü alır;
+    boss canı oyuncu sayısıyla artar; bir oyuncunun çiçek/sarmaşık/köy dekoru diğerini etkilemez;
+    sonradan katılan oyuncu kendi görevinden başlar.
+11. Kayıt (API erişimi açık, yayınlanmış yerde): çık-gir → ilerleme korunur.
+12. Ayarlar → Performans göstergesi: FPS/Ping. Ölçümü gerçek cihazda yap; cihaz modelini,
+    grafik ayarını ve oyuncu sayısını not et (emülatör gerçek telefon ölçümü sayılmaz).
 
 ## Otomatik kontroller (Roblox gerektirmez; Lune 0.10 + Rojo 7.x)
 ```
-lune run tests/logic
+lune run tests/logic      # oyun kuralları, görev zinciri, ödül tekrarı, veri tutarlılığı
+lune run tests/api        # sınıf/özellik/enum adları Roblox yansıma veritabanına karşı
 rojo build default.project.json -o build/test.rbxlx && lune run tests/place build/test.rbxlx
 ```
+
+## Sesler
+`src/shared/Sounds.luau` içindeki boş kimlikler sessizdir. Creator Store'dan lisansı uygun
+sesler seçip `rbxassetid://<id>` biçiminde doldur.
+
+## Üçüncü taraf
+`src/server/Packages/ProfileStore.luau`: loleris (MAD STUDIO) ProfileStore, npm
+`@rbxts/profile-store@1.0.3` paketindeki Luau kaynağı; lisans `docs/third_party/`.
+İçerik incelendi: yalnızca DataStore/MessagingService/HttpService.GenerateGUID kullanıyor.

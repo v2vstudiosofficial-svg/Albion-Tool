@@ -9,9 +9,12 @@
   `src/client` → StarterPlayerScripts.Client (LocalScript), `src/shared` →
   ReplicatedStorage.Shared; RemoteEvent'ler `default.project.json` içinde.
 - Saf mantığı (Roblox API'siz) ayrı modülde tut ve `tests/logic.luau`'ya test ekle.
-- Kontroller: `lune run tests/logic` ve `rojo build default.project.json -o
-  build/test.rbxlx && lune run tests/place build/test.rbxlx`. Kurulum/elle
-  test: `docs/SETUP.md`.
+- Kontroller: `lune run tests/logic`, `lune run tests/api` ve `rojo build
+  default.project.json -o build/test.rbxlx && lune run tests/place build/test.rbxlx`.
+  Kurulum/elle test: `docs/SETUP.md`.
+- Saf modüller `if script then require(...) else require("./X")` ile hem Roblox'ta
+  hem Lune'da çalışır. Metinler `Strings`, denge `Balance`, dünya noktaları
+  `WorldData`, görevler `QuestData` tablolarında.
 - Kod: Luau (`.luau` uzantısı). Sunucu her zaman otorite: hasar, ödül,
   para, seviye, görev tamamlama, ekipman sahipliği sunucuda doğrulanır.
 - Gereksiz refactor, alternatif mimari, gelecek özellik iskeleti üretme.

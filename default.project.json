@@ -9,8 +9,16 @@
       "Remotes": {
         "$className": "Folder",
         "RequestAttack": { "$className": "RemoteEvent" },
+        "RequestWave": { "$className": "RemoteEvent" },
+        "Interact": { "$className": "RemoteEvent" },
+        "UpgradeStaff": { "$className": "RemoteEvent" },
+        "EquipCharm": { "$className": "RemoteEvent" },
+        "RetryLoad": { "$className": "RemoteEvent" },
         "RewardGranted": { "$className": "RemoteEvent" },
-        "NpcSay": { "$className": "RemoteEvent" }
+        "Notice": { "$className": "RemoteEvent" },
+        "NpcSay": { "$className": "RemoteEvent" },
+        "OpenShop": { "$className": "RemoteEvent" },
+        "Fx": { "$className": "RemoteEvent" }
       }
     },
     "ServerScriptService": {
@@ -22,6 +30,51 @@
       "StarterPlayerScripts": {
         "Client": {
           "$path": "src/client"
+        }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 14.5,
+        "Brightness": 2.5,
+        "Ambient": [0.35, 0.33, 0.4],
+        "OutdoorAmbient": [0.55, 0.55, 0.62],
+        "EnvironmentDiffuseScale": 0.6,
+        "EnvironmentSpecularScale": 0.4,
+        "GlobalShadows": true
+      },
+      "Atmosphere": {
+        "$className": "Atmosphere",
+        "$properties": {
+          "Density": 0.28,
+          "Offset": 0.2,
+          "Color": [0.8, 0.78, 0.95],
+          "Decay": [0.6, 0.55, 0.75],
+          "Glare": 0.2,
+          "Haze": 1.2
+        }
+      },
+      "Bloom": {
+        "$className": "BloomEffect",
+        "$properties": {
+          "Intensity": 0.5,
+          "Size": 24,
+          "Threshold": 1.4
+        }
+      },
+      "ColorCorrection": {
+        "$className": "ColorCorrectionEffect",
+        "$properties": {
+          "Saturation": 0.12,
+          "Contrast": 0.05,
+          "TintColor": [1, 0.98, 0.95]
+        }
+      },
+      "SunRays": {
+        "$className": "SunRaysEffect",
+        "$properties": {
+          "Intensity": 0.06,
+          "Spread": 0.6
         }
       }
     }
