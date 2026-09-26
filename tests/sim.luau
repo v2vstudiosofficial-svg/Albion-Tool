@@ -4,199 +4,25 @@
 -- (no physics, raycasts always clear, no rendering). It exercises the quest chain, combat,
 -- co-op rewards, boss fight, invalid client payloads and save/rejoin, and fails on any error
 -- raised in any server thread. It is not a substitute for playing in Studio.
-local fs = require("@lune/fs")
-local luau = require("@lune/luau")
 local roblox = require("@lune/roblox")
+local H = require("./harness")
 
 local Instance, Vector3, CFrame = roblox.Instance, roblox.Vector3, roblox.CFrame
+local workspace = H.workspace
+local remotes = H.remotes
+local advance, test, eq, logCount = H.advance, H.test, H.eq, H.logCount
+local threadErrors, warnings = H.threadErrors, H.warnings
+local positionOf = function(object)
+	return H.read(object, "Position")
+end
+local run = H.run
+local task = H.task
 
--- Scheduler with a simulated clock -------------------------------------------------------------
-
-local clock = 0
-local queue: { { at: number, thread: thread, args: { any } } } = {}
-local threadErrors: { string } = {}
-local warnings: { string } = {}
-
-local function resume(thread: thread, ...)
-	local ok, err = coroutine.resume(thread, ...)
-	if not ok then
-		table.insert(threadErrors, debug.traceback(thread, tostring(err)))
-	end
-end
-
-local task = {}
-function task.spawn(target: any, ...)
-	local thread = if type(target) == "thread" then target else coroutine.create(target)
-	resume(thread, ...)
-	return thread
-end
-function task.defer(target: any, ...)
-	local thread = if type(target) == "thread" then target else coroutine.create(target)
-	table.insert(queue, { at = clock, thread = thread, args = table.pack(...) })
-	return thread
-end
-function task.delay(seconds: number?, target: any, ...)
-	local thread = if type(target) == "thread" then target else coroutine.create(target)
-	table.insert(queue, { at = clock + (seconds or 0), thread = thread, args = table.pack(...) })
-	return thread
-end
-function task.wait(seconds: number?): number
-	local start = clock
-	table.insert(queue, { at = clock + (seconds or 1 / 60), thread = coroutine.running(), args = table.pack() })
-	coroutine.yield()
-	return clock - start
-end
-
--- Minimal RBXScriptSignal.
-local Signal = {}
-Signal.__index = Signal
-function Signal.new()
-	return setmetatable({ handlers = {}, waiting = {} }, Signal)
-end
-function Signal:Connect(fn)
-	local handler = { fn = fn, connected = true }
-	table.insert(self.handlers, handler)
-	return {
-		Connected = true,
-		Disconnect = function()
-			handler.connected = false
-		end,
-	}
-end
-function Signal:Once(fn)
-	local connection
-	connection = self:Connect(function(...)
-		connection.Disconnect()
-		fn(...)
-	end)
-	return connection
-end
-function Signal:Fire(...)
-	for _, handler in table.clone(self.handlers) do
-		if handler.connected then
-			task.spawn(handler.fn, ...)
-		end
-	end
-	local waiting = self.waiting
-	self.waiting = {}
-	for _, thread in waiting do
-		resume(thread, ...)
-	end
-end
-function Signal:Wait()
-	table.insert(self.waiting, coroutine.running())
-	return coroutine.yield()
-end
-
-local heartbeat = Signal.new()
-
-local function advance(seconds: number, dt: number?)
-	local step = dt or 1 / 30
-	local target = clock + seconds
-	while clock < target - 1e-9 do
-		clock += step
-		heartbeat:Fire(step)
-		while true do
-			local bestIndex = nil
-			for index, item in queue do
-				if item.at <= clock and (bestIndex == nil or item.at < queue[bestIndex].at) then
-					bestIndex = index
-				end
-			end
-			if not bestIndex then
-				break
-			end
-			local item = table.remove(queue, bestIndex)
-			resume(item.thread, table.unpack(item.args, 1, item.args.n))
-		end
-	end
-end
-
--- Engine pieces Lune does not implement -------------------------------------------------------
-
--- Lune may hand out a different userdata for the same Instance, so key signals by full name.
-local instanceSignals = {}
-local function signalFor(instance, name: string)
-	local key = instance:GetFullName()
-	instanceSignals[key] = instanceSignals[key] or {}
-	local signals = instanceSignals[key]
-	signals[name] = signals[name] or Signal.new()
-	return signals[name]
-end
-roblox.implementProperty("ProximityPrompt", "Triggered", function(self)
-	return signalFor(self, "Triggered")
-end)
-roblox.implementMethod("Humanoid", "TakeDamage", function(self, amount: number)
-	self.Health = math.max(0, self.Health - amount)
-end)
-for _, className in { "Model", "Folder", "Part", "Workspace" } do
-	roblox.implementMethod(className, "WaitForChild", function(self, name: string)
-		return self:FindFirstChild(name)
-	end)
-end
-roblox.implementMethod("Workspace", "Raycast", function()
-	return nil
-end)
-roblox.implementMethod("DataStoreOptions", "SetExperimentalFeatures", function() end)
-
-local game = Instance.new("DataModel")
-local workspace = game:GetService("Workspace")
-
-local RaycastParams = {
-	new = function()
-		return { FilterType = nil, FilterDescendantsInstances = {} }
-	end,
-}
-
--- Fake remotes recording what the server sends.
-local remoteLog: { { remote: string, target: any, args: { any } } } = {}
-local function newRemote(name: string)
-	local remote = { Name = name, OnServerEvent = Signal.new() }
-	function remote:FireClient(player, ...)
-		table.insert(remoteLog, { remote = name, target = player, args = table.pack(...) })
-	end
-	function remote:FireAllClients(...)
-		table.insert(remoteLog, { remote = name, target = "all", args = table.pack(...) })
-	end
-	return remote
-end
-local remotes = {}
-for _, name in {
-	"RequestAttack",
-	"RequestWave",
-	"Interact",
-	"UpgradeStaff",
-	"EquipCharm",
-	"RetryLoad",
-	"RewardGranted",
-	"Notice",
-	"NpcSay",
-	"OpenShop",
-	"Fx",
-} do
-	remotes[name] = newRemote(name)
-end
-
-local proxyPaths = setmetatable({}, { __mode = "k" })
-local function pathProxy(path: string)
-	local name = string.match(path, "([^/]+)$")
-	local proxy = setmetatable({}, {
-		__index = function(_, key)
-			if key == "Name" then
-				return name
-			elseif key == "Parent" then
-				return pathProxy(string.match(path, "^(.*)/[^/]+$"))
-			end
-			return pathProxy(path .. "/" .. key)
-		end,
-	})
-	proxyPaths[proxy] = path
-	return proxy
-end
+-- Server-side fake services -----------------------------------------------------------------
 
 local Players = {
-	PlayerAdded = Signal.new(),
-	PlayerRemoving = Signal.new(),
+	PlayerAdded = H.Signal.new(),
+	PlayerRemoving = H.Signal.new(),
 	RespawnTime = 5,
 	list = {},
 }
@@ -204,14 +30,16 @@ function Players:GetPlayers()
 	return table.clone(self.list)
 end
 
-local ReplicatedStorage = { Shared = pathProxy("RS/Shared"), Remotes = remotes }
-local RunService = {
-	Heartbeat = heartbeat,
+local guid = 0
+H.services.Players = Players
+H.services.RunService = {
+	Heartbeat = H.heartbeat,
 	IsStudio = function()
 		return true
 	end,
 }
-local DataStoreService = {
+H.services.DataStoreService = {
+	-- Fails like Studio without API access, which puts ProfileStore into its mock mode.
 	GetDataStore = function()
 		return {
 			SetAsync = function()
@@ -220,224 +48,23 @@ local DataStoreService = {
 		}
 	end,
 }
-local guid = 0
-local services = {
-	Players = Players,
-	ReplicatedStorage = ReplicatedStorage,
-	RunService = RunService,
-	DataStoreService = DataStoreService,
-	MessagingService = {},
-	HttpService = {
-		GenerateGUID = function()
-			guid += 1
-			return "GUID-" .. guid
-		end,
-	},
-	Workspace = workspace,
-}
-local closeCallbacks = {}
-local fakeGame = {
-	JobId = "sim-job",
-	PlaceId = 1,
-	GetService = function(_, name: string)
-		return services[name] or game:GetService(name)
-	end,
-	BindToClose = function(_, fn)
-		table.insert(closeCallbacks, fn)
+H.services.MessagingService = {}
+H.services.HttpService = {
+	GenerateGUID = function()
+		guid += 1
+		return "GUID-" .. guid
 	end,
 }
 
--- Module loader ---------------------------------------------------------------------------------
-
--- Lune stores Position and CFrame separately and cannot read Position of a part placed by CFrame,
--- so simple `a.b.Position` reads in our sources are routed through __pos for the simulation only.
-local function rewritePositionReads(source: string): string
-	return (string.gsub(source, "([%a_][%w_%.]*)%.Position(%s*)(=?)(=?)", function(object, space, first, second)
-		if first == "=" and second ~= "=" then
-			return nil
-		end
-		return "__pos(" .. object .. ")" .. space .. first .. second
-	end))
-end
-
-local function positionOf(object: any)
-	if typeof(object) == "Instance" then
-		local ok, value = pcall(function()
-			return object.Position
-		end)
-		if ok and value ~= nil then
-			return value
-		end
-		return object.CFrame.Position
-	end
-	return object.Position
-end
-
-local simOs = setmetatable({
-	clock = function()
-		return clock
-	end,
-}, { __index = os })
-
-local modules = {}
-local loadModule
-
-local function moduleFile(instancePath: string): string
-	local shared = string.match(instancePath, "^RS/Shared/(.+)$")
-	if shared then
-		return "src/shared/" .. shared .. ".luau"
-	end
-	local server = string.match(instancePath, "^SSS/Server/(.+)$")
-	if server then
-		return "src/server/" .. server .. ".luau"
-	end
-	error("cannot require " .. instancePath)
-end
-
-local function scriptPathFor(file: string): string
-	local shared = string.match(file, "^src/shared/(.+)%.luau$")
-	if shared then
-		return "RS/Shared/" .. shared
-	end
-	if file == "src/server/init.server.luau" then
-		return "SSS/Server"
-	end
-	local server = string.match(file, "^src/server/(.+)%.luau$")
-	return "SSS/Server/" .. server
-end
-
--- fs.readFile yields when called from a coroutine in Lune, so read every source up front.
-local sources: { [string]: string } = {}
-local function preload(dir: string)
-	for _, name in fs.readDir(dir) do
-		local path = dir .. "/" .. name
-		if fs.isDir(path) then
-			preload(path)
-		elseif string.sub(name, -5) == ".luau" then
-			sources[path] = fs.readFile(path)
-		end
-	end
-end
-preload("src")
-
-local function run(file: string)
-	local dir = string.match(file, "^(.*)/[^/]+$")
-	local source = assert(sources[file], "unknown source " .. file)
-	if not string.find(file, "Packages", 1, true) then
-		source = rewritePositionReads(source)
-	end
-	local env = {
-		game = fakeGame,
-		workspace = workspace,
-		script = pathProxy(scriptPathFor(file)),
-		Instance = Instance,
-		Vector3 = Vector3,
-		Vector2 = roblox.Vector2,
-		CFrame = CFrame,
-		Color3 = roblox.Color3,
-		UDim = roblox.UDim,
-		UDim2 = roblox.UDim2,
-		NumberRange = roblox.NumberRange,
-		NumberSequence = roblox.NumberSequence,
-		NumberSequenceKeypoint = roblox.NumberSequenceKeypoint,
-		ColorSequence = roblox.ColorSequence,
-		ColorSequenceKeypoint = roblox.ColorSequenceKeypoint,
-		Enum = roblox.Enum,
-		RaycastParams = RaycastParams,
-		Random = {
-			new = function(seed: number)
-				local state = seed
-				return {
-					NextNumber = function(_, min: number, max: number)
-						state = (state * 1103515245 + 12345) % 2147483648
-						return min + (max - min) * state / 2147483648
-					end,
-				}
-			end,
-		},
-		task = task,
-		os = simOs,
-		__pos = positionOf,
-		warn = function(...)
-			table.insert(warnings, table.concat({ ... }, " "))
-		end,
-		print = function() end,
-		require = function(target)
-			local path = proxyPaths[target]
-			if path then
-				return loadModule(moduleFile(path))
-			end
-			local resolved = dir
-			for segment in string.gmatch(target, "[^/]+") do
-				if segment == ".." then
-					resolved = string.match(resolved, "^(.*)/[^/]+$")
-				elseif segment ~= "." then
-					resolved ..= "/" .. segment
-				end
-			end
-			return loadModule(resolved .. ".luau")
-		end,
-	}
-	return luau.load(source, { debugName = file, environment = env })()
-end
-
-function loadModule(file: string)
-	if modules[file] == nil then
-		modules[file] = run(file)
-	end
-	return modules[file]
-end
-
--- Test helpers ----------------------------------------------------------------------------------
-
-local passed, failed = 0, 0
-local function test(name: string, fn: () -> ())
-	local before = #threadErrors
-	local ok, err = pcall(fn)
-	if ok and #threadErrors > before then
-		ok, err = false, "server thread error:\n" .. threadErrors[before + 1]
-	end
-	if ok then
-		passed += 1
-	else
-		failed += 1
-		print("FAIL " .. name .. ": " .. tostring(err))
-	end
-end
-
-local function eq(actual, expected, message: string?)
-	if actual ~= expected then
-		error(`{message or "value"}: expected {tostring(expected)}, got {tostring(actual)}`, 2)
-	end
-end
-
-local WorldData = loadModule("src/shared/WorldData.luau")
-local Balance = loadModule("src/shared/Balance.luau")
+local WorldData = H.loadModule("src/shared/WorldData.luau")
+local Balance = H.loadModule("src/shared/Balance.luau")
 
 local function vec(p: { number }, lift: number?): any
 	return Vector3.new(p[1], p[2] + (lift or 0), p[3])
 end
 
 local function newPlayer(name: string, userId: number)
-	local attributes = {}
-	local player = {
-		Name = name,
-		UserId = userId,
-		Parent = Players,
-		Character = nil,
-		CharacterAdded = Signal.new(),
-		attributes = attributes,
-	}
-	function player:SetAttribute(key: string, value: any)
-		attributes[key] = value
-	end
-	function player:GetAttribute(key: string)
-		return attributes[key]
-	end
-	function player:Kick(message: string)
-		self.kicked = message
-	end
-	return player
+	return H.newPlayer(name, userId, Players)
 end
 
 local function join(player)
@@ -491,16 +118,6 @@ end
 local function heal(player)
 	local h = humanoid(player)
 	h.Health = h.MaxHealth
-end
-
-local function logCount(remote: string, predicate: ((any) -> boolean)?): number
-	local count = 0
-	for _, entry in remoteLog do
-		if entry.remote == remote and (predicate == nil or predicate(entry)) then
-			count += 1
-		end
-	end
-	return count
 end
 
 -- Destroyed Instances raise on access in Lune (unlike Roblox), so check liveness defensively.
@@ -871,7 +488,4 @@ test("no warnings from ProfileStore and no server thread errors", function()
 	eq(#threadErrors, 0, "thread errors")
 end)
 
-print(`sim tests: {passed} passed, {failed} failed`)
-if failed > 0 then
-	error("sim tests failed")
-end
+H.finish("sim tests")
