@@ -2,15 +2,27 @@
   "name": "LanternValley",
   "tree": {
     "$className": "DataModel",
-    "ServerScriptService": {
-      "$path": "src/server"
-    },
     "ReplicatedStorage": {
-      "$path": "src/shared"
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Remotes": {
+        "$className": "Folder",
+        "RequestAttack": { "$className": "RemoteEvent" },
+        "RewardGranted": { "$className": "RemoteEvent" },
+        "NpcSay": { "$className": "RemoteEvent" }
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "$path": "src/client"
+        "Client": {
+          "$path": "src/client"
+        }
       }
     }
   }

@@ -1,32 +1,34 @@
 # Durum
 
-## Aşama: M0 — Kurulum (tamamlandı, Studio doğrulaması bekliyor)
+## Aşama: M1 — Oynanabilir beş dakika (kod hazır, Studio doğrulaması bekliyor)
 
 ## Tamamlananlar
-- Rojo proje iskeleti: `default.project.json` (ServerScriptService ←
-  src/server, ReplicatedStorage ← src/shared, StarterPlayerScripts ←
-  src/client).
-- Başlangıç scriptleri: `src/server/init.server.luau`,
-  `src/client/init.client.luau` (her biri sadece bir `print` yapar),
-  `src/shared/init.luau` (boş placeholder modül).
-- `docs/MASTER_PLAN.md` (plan tek seferlik kaydedildi), `CLAUDE.md`,
-  `.gitignore`.
+- M0 düzeltmesi: Rojo eşlemesi servisleri script'e dönüştürüyordu; artık
+  `ReplicatedStorage.Shared`, `ServerScriptService.Server`,
+  `StarterPlayerScripts.Client` + `ReplicatedStorage.Remotes` (3 RemoteEvent).
+- İdempotent sahne kurucu (`MapBuilder`): köy (4 ev, meydan, sönük fener,
+  spawn), NPC Bilge Nur, orman patikası, 45 ağaç, açıklık, 3 düşman noktası.
+- Tek görev (`first_purify`), tek düşman (Gölgecik: takip, temas hasarı,
+  arınma efekti, 10 sn'de yeniden doğma), ışık asası normal saldırısı
+  (istemci hedef yardımı; sunucu tür/bekleme/menzil/görüş hattı/canlılık
+  doğrular), XP/sikke, HUD (istatistik, tek hedef paneli, ödül bildirimi, NPC
+  konuşması). Metinler `Strings`, denge `Balance`, görev `QuestData` tablosunda.
+- Katılım ödülü: son 30 sn içinde vuran ve oyunda olan herkes kendi ödülünü alır.
+- Kalıcı kayıt YOK (bilerek; M2). Profil bellekte, plan şemasıyla.
 
-## Doğrulanan testler
-- `rojo build default.project.json -o test-build.rbxlx` bu ortamda
-  (cargo ile kurulan Rojo 7.7.0) başarıyla çalıştı; çıktı dosyasında
-  scriptlerin doğru servislere yerleştiği ve print satırlarının içerikte
-  yer aldığı grep ile doğrulandı.
-- Roblox Studio'da ÇALIŞTIRILMADI — bu bulut ortamında Studio veya GUI
-  erişimi yok. "İstemci/sunucu hatasız çalışıyor" ölçütü kullanıcı
-  tarafından yerel makinede doğrulanmalı.
+## Doğrulanan testler (bu bulut ortamında çalıştırıldı)
+- `lune run tests/logic`: 9/9 geçti (görev bir kez başlar/biter, düşman bir
+  kez arınır, 2 oyuncu co-op ödülü, geçersiz ödül reddi, veri/metin tutarlılığı).
+  Enjekte edilen ödül tekrarı hatasıyla 3 testin düştüğü de doğrulandı.
+- `tests/place`: 17 dosya Luau derlemesi + Rojo çıktısı yapı kontrolü geçti.
+- Roblox Studio'da ÇALIŞTIRILMADI: hareket, NPC, düşman AI, saldırı, HUD ve
+  iki istemci testi kullanıcı tarafında `docs/SETUP.md` listesiyle yapılmalı.
 
-## Kalan sorun / engel
-- Kullanıcının Windows makinesinde Rojo CLI + Roblox Studio + Rojo Studio
-  eklentisinin kurulu olup olmadığı bilinmiyor.
+## Bilinen riskler
+- Roblox API tip denetimi yapılamadı (luau-lsp indirmesi ağda engelli).
+- Küçük telefonlarda HUD/konuşma paneli yerleşimi M4'te ölçülecek.
+- M0 Studio testi de henüz kullanıcı tarafından onaylanmadı.
 
 ## Sonraki adım (tek)
-Kullanıcı: Roblox Studio'da boş bir place açıp Rojo eklentisini
-"Connect" ile bu repodaki `rojo serve`ye bağlasın, `src/server` ve
-`src/client` scriptlerinin Output'ta print ettiğini doğrulasın, sonucu
-bildirsin. Onaylanınca M1'e geçilecek.
+Kullanıcı `docs/SETUP.md` → "M1 elle test listesi"ni Studio'da uygulayıp
+Output'taki hata satırlarını (varsa) iletsin; temizse M2'ye geçilir.
