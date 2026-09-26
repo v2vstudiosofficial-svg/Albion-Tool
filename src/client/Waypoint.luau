@@ -46,6 +46,18 @@ local function currentGoal(from: Vector3): (Vector3?, number)
 	local state = player:GetAttribute("QuestState")
 	if state == "available" then
 		return WorldData.vector(WorldData.npcs.Elder.position), HIDE_DISTANCE
+	elseif state == "level" then
+		-- Guide to the nearest creature zone so players know where to grow stronger.
+		local best, bestDistance, bestRadius = nil, math.huge, 0
+		for _, name in { "glade", "grove", "hollow" } do
+			local area = WorldData.areas[name]
+			local center = WorldData.vector(area.center)
+			local distance = (center - from).Magnitude
+			if distance < bestDistance then
+				best, bestDistance, bestRadius = center, distance, area.radius
+			end
+		end
+		return best, bestRadius
 	elseif state ~= "active" then
 		return nil, 0
 	end

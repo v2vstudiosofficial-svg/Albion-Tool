@@ -491,6 +491,20 @@ test("enemy billboards follow enemies coming and going", function()
 	eq(#playerGui.EnemyBillboards:GetChildren(), before, "billboard added")
 end)
 
+test("level-gated quest points to a creature zone and explains why", function()
+	teleport(vec(WorldData.spawn, 3))
+	setAttributes({ QuestId = "ruin_vines", QuestState = "level", QuestNeedLevel = 3, DataState = "ready" })
+	advance(0.5)
+	assert(shownText(Strings.get("quest_need_level", 3)), "level hint text")
+	local waypointShown = false
+	for _, child in playerGui:GetChildren() do
+		if child:IsA("BillboardGui") and child.Enabled and child.Adornee and child.Adornee.Name == "WaypointAnchor" then
+			waypointShown = true
+		end
+	end
+	assert(waypointShown, "waypoint guides to a zone")
+end)
+
 test("save failure shows the protective retry screen", function()
 	setAttributes({ DataState = "failed" })
 	assert(shownText(Strings.get("data_failed_title")), "failure panel")

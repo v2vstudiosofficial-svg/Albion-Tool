@@ -1,3 +1,9 @@
+local StarterGui = game:GetService("StarterGui")
+
+-- No tools are used, and our Bag/Settings buttons live where the player list would sit on PC.
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+
 local Audio = require(script.Audio)
 local Effects = require(script.Effects)
 local World = require(script.World)

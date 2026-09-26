@@ -47,7 +47,7 @@ local tables = {
 		quest_warden_title = "Gölge Bekçisi",
 		quest_warden_objective = "Gölge Bekçisi'ni arındır: %d/%d",
 		quest_talk_to_elder = "Bilge Nur ile konuş",
-		quest_need_level = "Seviye %d olunca Bilge Nur'a dön",
+		quest_need_level = "Yaratıkları arındırıp Seviye %d ol, sonra Bilge Nur'a dön",
 		quest_all_done = "Tüm görevler tamam! Işık Koruyucusu sensin",
 
 		hud_level = "Sv %d",
