@@ -6,10 +6,12 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local QuestData = require(Shared:WaitForChild("QuestData"))
+local Balance = require(Shared:WaitForChild("Balance"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local Audio = require(script.Parent.Audio)
 local Effects = require(script.Parent.Effects)
+local Hud = require(script.Parent.Hud)
 local UiKit = require(script.Parent.UiKit)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -276,14 +278,30 @@ local function buildMarker(npcName: string): BillboardGui?
 	return gui
 end
 
+-- True when the next staff tier is affordable; used to nudge players toward Usta Demir early,
+-- so the quest -> reward -> upgrade loop is visible within the first minutes.
+local function canAffordUpgrade(): boolean
+	local tier = player:GetAttribute("StaffTier") or 0
+	local nextTier = Balance.staff.tiers[tier + 2]
+	return nextTier ~= nil and (player:GetAttribute("Coins") or 0) >= nextTier.cost
+end
+
+local nudgedTier: number? = nil
+
 local function refreshMarkers()
 	local elder = markers.Elder
 	if elder then
 		elder.Enabled = player:GetAttribute("QuestState") == "available"
 	end
+	local affordable = canAffordUpgrade() and isCompleted("first_purify")
 	local demir = markers.Demir
 	if demir then
-		demir.Enabled = isActive("first_upgrade")
+		demir.Enabled = isActive("first_upgrade") or affordable
+	end
+	local tier = player:GetAttribute("StaffTier") or 0
+	if affordable and nudgedTier ~= tier then
+		nudgedTier = tier
+		Hud.toast(Strings.get("notice_can_upgrade"), Color3.fromRGB(255, 200, 70))
 	end
 end
 
@@ -459,6 +477,9 @@ function World.start()
 
 	for _, name in { "QuestState", "QuestId", "QuestFound" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshQuestVisuals)
+	end
+	for _, name in { "Coins", "StaffTier" } do
+		player:GetAttributeChangedSignal(name):Connect(refreshMarkers)
 	end
 	player:GetAttributeChangedSignal("Flags"):Connect(function()
 		refreshRestoration(true)

@@ -266,6 +266,21 @@ behaviors.boss = function(enemy: Enemy, dt: number, now: number)
 	WardenBehavior.update(enemy, ctx, dt, now)
 end
 
+-- Replicates a simple "noticed a player" flag so clients can pop a small "!" above the enemy.
+local function updateAggro(enemy: Enemy)
+	local stats = enemy.stats
+	local aggro = false
+	if stats.isBoss then
+		aggro = enemy.memory.engaged == true
+	else
+		aggro = ctx.nearest(enemy, stats.aggroRadius) ~= nil
+	end
+	if enemy.memory.aggro ~= aggro then
+		enemy.memory.aggro = aggro
+		enemy.model:SetAttribute("Aggro", aggro)
+	end
+end
+
 local function place(enemy: Enemy, now: number)
 	local behavior = enemy.stats.behavior
 	local wave = math.sin(now * 3 + enemy.id)
@@ -416,6 +431,7 @@ function EnemyService.start()
 		for _, enemy in enemies do
 			if isAwake(enemy) then
 				behaviors[enemy.stats.behavior](enemy, dt, now)
+				updateAggro(enemy)
 				place(enemy, now)
 			end
 		end

@@ -215,6 +215,11 @@ test("quest completes exactly once", function()
 	local p = Profile.new()
 	QuestLogic.start(p, QuestData, "first_purify", 1)
 	eq(#QuestLogic.record(p, QuestData, { kind = "purify", target = "Sporeling" }), 0, "wrong enemy")
+	local goal = QuestData.quests.first_purify.objective.count
+	for _ = 1, goal - 1 do
+		eq(#QuestLogic.record(p, QuestData, { kind = "purify", target = "Gloomling" }), 0, "not yet")
+	end
+	eq(p.questProgress.first_purify.count, goal - 1)
 	local completed = QuestLogic.record(p, QuestData, { kind = "purify", target = "Gloomling" })
 	eq(#completed, 1)
 	eq(completed[1], "first_purify")
@@ -274,7 +279,9 @@ test("full chain is completable with only the required fights, paying each rewar
 	end
 
 	start("first_purify")
-	purify("Gloomling")
+	for _ = 1, QuestData.quests.first_purify.objective.count do
+		purify("Gloomling")
+	end
 	start("lantern_flowers")
 	for _, id in QuestData.quests.lantern_flowers.objective.ids do
 		event({ kind = "collect", id = id })
@@ -308,7 +315,11 @@ test("full chain is completable with only the required fights, paying each rewar
 		expectedXp += reward.xp or 0
 		expectedCoins += reward.coins or 0
 	end
-	for _, kind in { "Gloomling", "Warden", "Warden" } do
+	local fights = { "Warden", "Warden" }
+	for _ = 1, QuestData.quests.first_purify.objective.count do
+		table.insert(fights, "Gloomling")
+	end
+	for _, kind in fights do
 		expectedXp += Balance.enemies[kind].reward.xp
 		expectedCoins += Balance.enemies[kind].reward.coins
 	end
@@ -350,8 +361,10 @@ end)
 test("co-op: each participant gets one enemy reward and one quest reward", function()
 	local stats = Balance.enemies.Gloomling
 	local profiles = { a = Profile.new(), b = Profile.new() }
-	QuestLogic.start(profiles.a, QuestData, "first_purify", 1)
-	QuestLogic.start(profiles.b, QuestData, "first_purify", 1)
+	for _, p in profiles do
+		QuestLogic.start(p, QuestData, "first_purify", 1)
+		p.questProgress.first_purify.count = QuestData.quests.first_purify.objective.count - 1
+	end
 	local state = EnemyLogic.new(stats.maxHp)
 	for i = 1, 10 do
 		local who = if i % 2 == 0 then "a" else "b"

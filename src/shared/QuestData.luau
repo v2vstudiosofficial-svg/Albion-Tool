@@ -15,7 +15,7 @@ return {
 			titleKey = "quest_first_purify_title",
 			offerKey = "elder_offer_first_purify",
 			objectiveKey = "quest_first_purify_objective",
-			objective = { kind = "purify", enemyType = "Gloomling", count = 1, area = "glade" },
+			objective = { kind = "purify", enemyType = "Gloomling", count = 3, area = "glade" },
 			reward = { xp = 50, coins = 20 },
 		},
 		lantern_flowers = {
@@ -56,6 +56,7 @@ return {
 			titleKey = "quest_warden_title",
 			offerKey = "elder_offer_warden",
 			objectiveKey = "quest_warden_objective",
+			minLevel = 5,
 			objective = { kind = "purify", enemyType = "Warden", count = 1, area = "arena" },
 			reward = { xp = 400, coins = 200, flag = "festival" },
 		},

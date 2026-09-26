@@ -388,9 +388,31 @@ local function attachEnemyUi(model: Instance)
 	end
 	model:GetAttributeChangedSignal("Hp"):Connect(refresh)
 	refresh()
+	model:GetAttributeChangedSignal("Aggro"):Connect(function()
+		if model:GetAttribute("Aggro") and model:GetAttribute("Alive") then
+			Effects.popup(body.Position + Vector3.new(0, stats.size * 0.5 + 1, 0), "!", Color3.fromRGB(255, 150, 80), 34)
+		end
+	end)
 	model.Destroying:Connect(function()
 		gui:Destroy()
 	end)
+end
+
+local CONFETTI = {
+	Color3.fromRGB(255, 130, 170),
+	Color3.fromRGB(120, 210, 255),
+	Color3.fromRGB(255, 220, 100),
+	Color3.fromRGB(150, 230, 150),
+}
+
+local function onQuestComplete()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root then
+		for _, color in CONFETTI do
+			Effects.burst(root.Position + Vector3.new(0, 3, 0), color, 16, 14)
+		end
+	end
 end
 
 local handlers = {
@@ -414,6 +436,7 @@ local handlers = {
 	bossPhase = onBossPhase,
 	levelUp = onLevelUp,
 	upgrade = onUpgrade,
+	questComplete = onQuestComplete,
 }
 
 function Effects.start()

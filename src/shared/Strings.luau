@@ -23,7 +23,7 @@ local tables = {
 		charm_glow_name = "Parıltı Tılsımı",
 		charm_glow_desc = "Işık Dalgası daha sık ve daha geniş.",
 
-		elder_offer_first_purify = "Fenerler söndü! Ormandaki Gölgeciği ışık asanla arındır.",
+		elder_offer_first_purify = "Fenerler söndü! Ormandaki 3 Gölgeciği ışık asanla arındır.",
 		elder_offer_lantern_flowers = "Ormanda parlayan 5 Fener Çiçeği var. Topla da köy renklensin!",
 		elder_offer_forest_explore = "Ormanın üç gizemli yerini keşfet. Parlayan işaretleri izle!",
 		elder_offer_first_upgrade = "Usta Demir'e git ve asanı güçlendir.",
@@ -35,7 +35,7 @@ local tables = {
 		demir_greet = "Asanı güçlendirelim mi? Sikkelerini getir!",
 
 		quest_first_purify_title = "İlk Arındırma",
-		quest_first_purify_objective = "Gölgeciği arındır: %d/%d",
+		quest_first_purify_objective = "Gölgecik arındır: %d/%d",
 		quest_lantern_flowers_title = "Fener Çiçekleri",
 		quest_lantern_flowers_objective = "Fener Çiçeği topla: %d/%d",
 		quest_forest_explore_title = "Orman Keşfi",
@@ -68,6 +68,7 @@ local tables = {
 		notice_upgrade_done = "Asan güçlendi! Asa seviyesi %d",
 		notice_upgrade_no_coins = "%d sikke daha gerekli",
 		notice_upgrade_max = "Asan zaten en güçlü hâlinde!",
+		notice_can_upgrade = "Sikken yetiyor! Usta Demir'de asanı güçlendir.",
 		notice_boss_reset = "Gölge Bekçisi dinlenip toparlandı.",
 		friend_popup = "Dost oldu!",
 		banner_quest_complete = "Görev tamamlandı!",

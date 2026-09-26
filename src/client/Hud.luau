@@ -16,6 +16,15 @@ local colors = UiKit.colors
 
 local Hud = {}
 
+local toastFunction: ((string, Color3?) -> ())? = nil
+
+-- Lets other client modules show a short toast once the HUD exists.
+function Hud.toast(text: string, color: Color3?)
+	if toastFunction then
+		toastFunction(text, color)
+	end
+end
+
 -- Notice arguments that are string keys (e.g. a charm name key) are translated before formatting.
 local function translateArgs(...: any): { any }
 	local args = { ... }
@@ -248,6 +257,8 @@ function Hud.start()
 			end)
 		end
 	end
+
+	toastFunction = showToast
 
 	local bannerToken = 0
 	local function showBanner(title: string, subtitle: string?)
