@@ -10,6 +10,7 @@ local Progression = require(Shared:WaitForChild("Progression"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
 local Audio = require(script.Parent.Audio)
+local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -20,24 +21,6 @@ local player = Players.LocalPlayer
 local colors = UiKit.colors
 
 local Menus = {}
-
-local function attr(name: string, default: any): any
-	local value = player:GetAttribute(name)
-	if value == nil then
-		return default
-	end
-	return value
-end
-
-local function csvSet(value: any): { [string]: boolean }
-	local set = {}
-	if typeof(value) == "string" then
-		for item in string.gmatch(value, "[^,]+") do
-			set[item] = true
-		end
-	end
-	return set
-end
 
 function Menus.start()
 	local gui = UiKit.create("ScreenGui", { Name = "Menus", ResetOnSpawn = false, DisplayOrder = 5 }, player:WaitForChild("PlayerGui"))
@@ -146,11 +129,11 @@ function Menus.start()
 			Size = UDim2.fromOffset(104, 52),
 			Text = "",
 		}, row, function()
-			local owned = csvSet(attr("Charms", ""))
+			local owned = Attrs.set("Charms")
 			if not owned[charmId] then
 				return
 			end
-			local equipped = attr("Charm", "") == charmId
+			local equipped = Attrs.get("Charm", "") == charmId
 			equipCharm:FireServer(if equipped then "" else charmId)
 			Audio.play("ui")
 		end)
@@ -158,10 +141,10 @@ function Menus.start()
 	end
 
 	local function refreshBag()
-		local tier = attr("StaffTier", 0)
-		staffLine.Text = Strings.get("bag_staff", tier + 1, Progression.staffDamage(tier, attr("Level", 1)))
-		local owned = csvSet(attr("Charms", ""))
-		local equipped = attr("Charm", "")
+		local tier = Attrs.get("StaffTier", 0)
+		staffLine.Text = Strings.get("bag_staff", tier + 1, Progression.staffDamage(tier, Attrs.get("Level", 1)))
+		local owned = Attrs.set("Charms")
+		local equipped = Attrs.get("Charm", "")
 		for charmId, view in charmRows do
 			local has = owned[charmId] == true
 			view.gem.BackgroundTransparency = if has then 0 else 0.7
@@ -201,8 +184,8 @@ function Menus.start()
 	end)
 
 	local function refreshShop()
-		local tier = attr("StaffTier", 0)
-		local level = attr("Level", 1)
+		local tier = Attrs.get("StaffTier", 0)
+		local level = Attrs.get("Level", 1)
 		local maxTier = Progression.maxStaffUpgrade()
 		shopTier.Text = Strings.get("shop_tier", tier + 1, maxTier + 1)
 		if tier >= maxTier then
@@ -215,7 +198,7 @@ function Menus.start()
 		shopDamage.Text = Strings.get("shop_damage", Progression.staffDamage(tier, level), Progression.staffDamage(tier + 1, level))
 		shopCost.Text = Strings.get("shop_cost", cost)
 		shopButton.Visible = true
-		local affordable = attr("Coins", 0) >= cost
+		local affordable = Attrs.get("Coins", 0) >= cost
 		shopButton.BackgroundColor3 = if affordable then colors.accent else colors.panelLight
 		shopButton.TextColor3 = if affordable then colors.panel else colors.muted
 	end
@@ -233,6 +216,7 @@ function Menus.start()
 		TextStrokeTransparency = 0.3,
 		Visible = false,
 	}, perfRegion)
+	local frames, windowStart = 0, os.clock()
 	local soundButton, perfButton
 	local function refreshSettings()
 		local on, off = Strings.get("setting_on"), Strings.get("setting_off")
@@ -245,12 +229,12 @@ function Menus.start()
 	end)
 	perfButton = UiKit.button({ Size = UDim2.fromOffset(340, 56) }, settingsBody, function()
 		perfVisible = not perfVisible
+		frames, windowStart = 0, os.clock()
 		perfLabel.Visible = perfVisible
 		refreshSettings()
 	end)
 	refreshSettings()
 
-	local frames, windowStart = 0, os.clock()
 	RunService.RenderStepped:Connect(function()
 		if not perfVisible then
 			return
@@ -343,7 +327,7 @@ function Menus.start()
 		retryLoad:FireServer()
 	end)
 	local function refreshData()
-		local state = attr("DataState", "loading")
+		local state = Attrs.get("DataState", "loading")
 		loadingLabel.Visible = state == "loading"
 		failed.Visible = state == "failed"
 		retryButton.Visible = state == "failed"

@@ -13,6 +13,7 @@ local Balance = require(Shared:WaitForChild("Balance"))
 local Progression = require(Shared:WaitForChild("Progression"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local Effects = require(script.Parent.Effects)
+local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -32,14 +33,6 @@ local mouseRayParams = RaycastParams.new()
 mouseRayParams.FilterType = Enum.RaycastFilterType.Exclude
 
 local Controls = {}
-
-local function attr(name: string, default: any): any
-	local value = player:GetAttribute(name)
-	if value == nil then
-		return default
-	end
-	return value
-end
 
 local function localRoot(): BasePart?
 	local character = player.Character
@@ -76,7 +69,15 @@ local function enemyUnderMouse(root: BasePart): Model?
 	local camera = workspace.CurrentCamera
 	local mouse = UserInputService:GetMouseLocation()
 	local ray = camera:ViewportPointToRay(mouse.X, mouse.Y)
-	mouseRayParams.FilterDescendantsInstances = { player.Character :: Instance, workspace:FindFirstChild("ClientFx") :: Instance }
+	-- Local-only parts (effects, flowers, the vine barrier) must never block aiming.
+	local ignore: { Instance } = { player.Character :: Instance }
+	for _, name in { "ClientFx", "ClientWorld" } do
+		local folder = workspace:FindFirstChild(name)
+		if folder then
+			table.insert(ignore, folder)
+		end
+	end
+	mouseRayParams.FilterDescendantsInstances = ignore
 	local hit = workspace:Raycast(ray.Origin, ray.Direction * 250, mouseRayParams)
 	local model = aliveEnemy(hit and hit.Instance)
 	if model and inRange(root, model) then
@@ -105,7 +106,7 @@ local function assistedTarget(root: BasePart): Model?
 end
 
 local function waveStats()
-	return Progression.waveStats(attr("StaffTier", 0), attr("Level", 1), attr("Charm", "") ~= "" and attr("Charm", "") or nil)
+	return Progression.waveStats(Attrs.get("StaffTier", 0), Attrs.get("Level", 1), Attrs.get("Charm", "") ~= "" and Attrs.get("Charm", "") or nil)
 end
 
 function Controls.attack(useMouse: boolean)
@@ -124,12 +125,12 @@ function Controls.attack(useMouse: boolean)
 	lastAttack = now
 	local targetPosition = (target.PrimaryPart :: BasePart).Position
 	root.CFrame = CFrame.lookAt(root.Position, Vector3.new(targetPosition.X, root.Position.Y, targetPosition.Z))
-	Effects.bolt(player, root.Position + Vector3.new(0, 1.5, 0), targetPosition, attr("StaffTier", 0))
+	Effects.bolt(player, root.Position + Vector3.new(0, 1.5, 0), targetPosition, Attrs.get("StaffTier", 0))
 	requestAttack:FireServer(target:GetAttribute("EnemyId"))
 end
 
 function Controls.wave()
-	if not Progression.waveUnlocked(attr("Level", 1)) then
+	if not Progression.waveUnlocked(Attrs.get("Level", 1)) then
 		return
 	end
 	local stats = waveStats()
@@ -142,7 +143,7 @@ function Controls.wave()
 		return
 	end
 	lastWave = now
-	Effects.wave(player, root.Position, stats.radius, attr("StaffTier", 0))
+	Effects.wave(player, root.Position, stats.radius, Attrs.get("StaffTier", 0))
 	requestWave:FireServer()
 end
 
@@ -152,6 +153,7 @@ type AbilityView = { root: GuiObject, cooldown: Frame, lock: TextLabel }
 
 local function decorate(button: GuiObject, title: string, key: string?, color: Color3): AbilityView
 	local face = UiKit.create("Frame", {
+		Name = "LvFace",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = color,
 		BorderSizePixel = 0,
@@ -200,7 +202,7 @@ end
 
 local function styleTouchButton(action: string, title: string, color: Color3): AbilityView?
 	local button = ContextActionService:GetButton(action)
-	if not button then
+	if not button or button:FindFirstChild("LvFace") then
 		return nil
 	end
 	button.ImageTransparency = 1
@@ -293,11 +295,31 @@ local function buildDesktopBar(gui: ScreenGui): (AbilityView, AbilityView)
 		decorate(waveButton, Strings.get("wave_button"), "Q", colors.xp)
 end
 
+-- True when a click lands on one of our buttons, so UI clicks never double as attacks.
+local function clickedButton(position: Vector3?): boolean
+	if not position then
+		return false
+	end
+	local playerGui = player:FindFirstChild("PlayerGui") :: PlayerGui?
+	if not playerGui then
+		return false
+	end
+	for _, object in playerGui:GetGuiObjectsAtPosition(position.X, position.Y) do
+		if object:IsA("GuiButton") and object.Visible then
+			return true
+		end
+	end
+	return false
+end
+
 local function onAttackAction(_, state, input)
 	if state ~= Enum.UserInputState.Begin then
 		return Enum.ContextActionResult.Pass
 	end
 	local isMouse = input.UserInputType == Enum.UserInputType.MouseButton1
+	if isMouse and clickedButton(input.Position) then
+		return Enum.ContextActionResult.Pass
+	end
 	Controls.attack(isMouse)
 	return if isMouse then Enum.ContextActionResult.Pass else Enum.ContextActionResult.Sink
 end
@@ -321,12 +343,29 @@ function Controls.start()
 	local views: { attack: AbilityView?, wave: AbilityView? } = {}
 	if UiKit.isTouch() then
 		-- Usable right away with CAS buttons; upgrade to the big custom buttons when possible.
+		local upgraded = false
 		bindActions(true)
-		views.attack = styleTouchButton(ATTACK_ACTION, Strings.get("attack_button"), colors.accent)
-		views.wave = styleTouchButton(WAVE_ACTION, Strings.get("wave_button"), colors.xp)
+		ContextActionService:SetTitle(ATTACK_ACTION, Strings.get("attack_button"))
+		ContextActionService:SetTitle(WAVE_ACTION, Strings.get("wave_button"))
+		task.spawn(function()
+			-- CAS creates its buttons asynchronously, so style them once they exist.
+			for _ = 1, 100 do
+				if upgraded then
+					return
+				end
+				local attackView = styleTouchButton(ATTACK_ACTION, Strings.get("attack_button"), colors.accent)
+				local waveView = styleTouchButton(WAVE_ACTION, Strings.get("wave_button"), colors.xp)
+				if attackView and waveView then
+					views.attack, views.wave = attackView, waveView
+					return
+				end
+				task.wait(0.1)
+			end
+		end)
 		task.spawn(function()
 			local attackView, waveView = buildTouchButtons()
 			if attackView and waveView then
+				upgraded = true
 				bindActions(false)
 				views.attack, views.wave = attackView, waveView
 			end
@@ -347,7 +386,7 @@ function Controls.start()
 	}, gui)
 	local attackHintDone = false
 	local function refreshHint()
-		local onFirstQuest = attr("QuestId", "") == "first_purify" and attr("QuestState", "") == "active"
+		local onFirstQuest = Attrs.get("QuestId", "") == "first_purify" and Attrs.get("QuestState", "") == "active"
 		hint.Visible = onFirstQuest and not attackHintDone
 		hint.Text = Strings.get(if UiKit.isTouch() then "hint_attack_touch" else "hint_attack_pc")
 	end
@@ -360,10 +399,13 @@ function Controls.start()
 			refreshHint()
 		end
 	end)
-	local waveWasUnlocked = Progression.waveUnlocked(attr("Level", 1))
+	-- nil until the profile has loaded, so a returning player's first sync is not an "unlock".
+	local waveWasUnlocked: boolean? = if player:GetAttribute("Level") ~= nil
+		then Progression.waveUnlocked(Attrs.get("Level", 1))
+		else nil
 	player:GetAttributeChangedSignal("Level"):Connect(function()
-		local unlocked = Progression.waveUnlocked(attr("Level", 1))
-		if unlocked and not waveWasUnlocked then
+		local unlocked = Progression.waveUnlocked(Attrs.get("Level", 1))
+		if unlocked and waveWasUnlocked == false then
 			if views.wave then
 				UiKit.pop(views.wave.root)
 			end
@@ -386,7 +428,7 @@ function Controls.start()
 		end
 		local waveView = views.wave
 		if waveView then
-			local level = attr("Level", 1)
+			local level = Attrs.get("Level", 1)
 			local unlocked = Progression.waveUnlocked(level)
 			waveView.lock.Visible = not unlocked
 			waveView.lock.Text = Strings.get("wave_locked", Balance.wave.unlockLevel)

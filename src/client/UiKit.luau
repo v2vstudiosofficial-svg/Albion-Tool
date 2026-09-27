@@ -99,7 +99,12 @@ end
 
 -- Uniform scale so layouts designed for ~1000x560 fit small landscape phones without overlap.
 local function camera(): Camera
-	return workspace.CurrentCamera or (workspace:GetPropertyChangedSignal("CurrentCamera"):Wait() and workspace.CurrentCamera)
+	local current = workspace.CurrentCamera
+	while not current do
+		workspace:GetPropertyChangedSignal("CurrentCamera"):Wait()
+		current = workspace.CurrentCamera
+	end
+	return current
 end
 
 function UiKit.screenScale(): number

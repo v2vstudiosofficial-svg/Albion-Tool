@@ -264,9 +264,18 @@ local function disc(position: Vector3, diameter: number, color: Color3, transpar
 	})
 end
 
+local activeTelegraphs: { BasePart } = {}
+
 local function onTelegraph(position: Vector3, radius: number, duration: number)
 	local outline = disc(position, radius * 2, WARN_COLOR, 0.65, 0.12)
 	local fill = disc(position, 0.5, WARN_COLOR, 0.35, 0.16)
+	for index = #activeTelegraphs, 1, -1 do
+		if activeTelegraphs[index].Parent == nil then
+			table.remove(activeTelegraphs, index)
+		end
+	end
+	table.insert(activeTelegraphs, outline)
+	table.insert(activeTelegraphs, fill)
 	UiKit.tween(fill, duration, { Size = Vector3.new(0.15, radius * 2, radius * 2) }, Enum.EasingStyle.Linear)
 	Debris:AddItem(outline, duration + 0.05)
 	Debris:AddItem(fill, duration + 0.05)
@@ -289,11 +298,29 @@ local function onSlam(position: Vector3, radius: number)
 	end
 end
 
+-- The server dropped a pending attack: clear its warnings so nothing hints at a hit that won't come.
+local function onAttackCancel(model: Model?)
+	for _, part in activeTelegraphs do
+		if part.Parent then
+			part:Destroy()
+		end
+	end
+	table.clear(activeTelegraphs)
+	if model then
+		for _, child in model:GetChildren() do
+			if child.Name == "LvWindup" then
+				child:Destroy()
+			end
+		end
+	end
+end
+
 local function onWindup(model: Model?, duration: number)
 	if not model or not model.Parent then
 		return
 	end
 	local highlight = Instance.new("Highlight")
+	highlight.Name = "LvWindup"
 	highlight.FillColor = Color3.fromRGB(255, 170, 80)
 	highlight.OutlineColor = Color3.fromRGB(255, 230, 160)
 	highlight.FillTransparency = 0.75
@@ -433,6 +460,7 @@ local handlers = {
 	telegraph = onTelegraph,
 	slam = onSlam,
 	windup = onWindup,
+	attackCancel = onAttackCancel,
 	bossPhase = onBossPhase,
 	levelUp = onLevelUp,
 	upgrade = onUpgrade,

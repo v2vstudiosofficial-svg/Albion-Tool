@@ -16,8 +16,10 @@
   bölge bazlı düşman uykusu, istemcide çizilen mermiler, sıcak ışıklandırma.
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 22/22, api ~1110 referans temiz, scene 8/8, sim 19/19, client 16/16
-  (masaüstü) + 17/17 (dokunmatik), place 37 dosya.
+- logic 22, api ~1170 referans, scene 10, sim 24, client 19 (masaüstü) + 20
+  (dokunmatik) + 20 (CAS yedeği) + 1 (geri dönen oyuncu), place 40 dosya; hepsi geçti.
+- Kod inceleme (code-review) üç tur: 30 bulgu düzeltildi, kritik olanlar testlerle
+  sabitlendi (mutasyonla doğrulandı).
 - sim: gerçek sunucu kodu + ProfileStore mock ile 6 görev, co-op ödülü, boss saldırıları,
   geçersiz istekler, çık-gir ve hızlı yeniden bağlanmada veri korunumu. Enjekte edilen
   çift ödül ve menzil hatalarını yakaladığı doğrulandı.

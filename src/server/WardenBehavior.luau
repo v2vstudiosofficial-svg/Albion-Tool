@@ -152,6 +152,7 @@ function WardenBehavior.update(enemy, ctx, dt: number, now: number)
 				enemy.stateUntil = now + stats.restTime
 				memory.slamPoints = nil
 				memory.secondRing = nil
+				ctx.fx("attackCancel", enemy.model)
 			end
 			memory.lostAt = memory.lostAt or now
 			if now - memory.lostAt >= stats.resetAfter then

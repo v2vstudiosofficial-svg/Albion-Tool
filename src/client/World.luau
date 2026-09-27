@@ -12,6 +12,7 @@ local Strings = require(Shared:WaitForChild("Strings"))
 local Audio = require(script.Parent.Audio)
 local Effects = require(script.Parent.Effects)
 local Hud = require(script.Parent.Hud)
+local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -74,16 +75,6 @@ local function pillar(parent: Instance, height: number, diameter: number, base: 
 	return localPart(spec, parent)
 end
 
-local function csvSet(value: any): { [string]: boolean }
-	local set = {}
-	if typeof(value) == "string" then
-		for item in string.gmatch(value, "[^,]+") do
-			set[item] = true
-		end
-	end
-	return set
-end
-
 -- True when questId is completed, derived from the tracked/next quest attributes.
 local function isCompleted(questId: string): boolean
 	if player:GetAttribute("QuestState") == "done" then
@@ -142,7 +133,7 @@ end
 
 local function refreshFlowers()
 	local active = isActive("lantern_flowers")
-	local found = csvSet(player:GetAttribute("QuestFound"))
+	local found = Attrs.set("QuestFound")
 	for id, position in WorldData.flowers do
 		local show = active and not found[id]
 		if show and not flowers[id] then
@@ -176,7 +167,7 @@ end
 
 local function refreshBeacons()
 	local active = isActive("forest_explore")
-	local found = csvSet(player:GetAttribute("QuestFound"))
+	local found = Attrs.set("QuestFound")
 	for id, landmark in WorldData.landmarks do
 		local show = active and not found[id]
 		if show and not beacons[id] then
@@ -214,7 +205,7 @@ end
 local function refreshVines()
 	local done = isCompleted("ruin_vines")
 	local active = isActive("ruin_vines")
-	local found = if active then csvSet(player:GetAttribute("QuestFound")) else {}
+	local found = if active then Attrs.set("QuestFound") else {}
 	local remaining = 0
 	for id, position in WorldData.vines do
 		local show = not done and not found[id]
@@ -420,10 +411,17 @@ function restorationBuilders.gardens(parent: Instance)
 		end
 	end
 	addButterflies(parent, palette)
-	for line, z in { 0, 32 } do
+	-- Bunting hangs across each row of houses, between the facing doors.
+	local rows: { [number]: number } = {}
+	for _, house in WorldData.houses do
+		rows[house[3]] = math.max(rows[house[3]] or 0, math.abs(house[1]) - 8)
+	end
+	local line = 0
+	for z, halfWidth in rows do
+		line += 1
 		for index = 0, 12 do
 			local t = index / 12
-			local x = -27 + t * 54
+			local x = -halfWidth + t * halfWidth * 2
 			local y = 11 - math.sin(t * math.pi) * 2.2
 			localPart({
 				Size = Vector3.new(1, 1, 0.1),
@@ -435,7 +433,8 @@ function restorationBuilders.gardens(parent: Instance)
 end
 
 function restorationBuilders.lanterns(parent: Instance)
-	for _, base in { Vector3.new(-35, 0, 0), Vector3.new(35, 0, 0), Vector3.new(-35, 0, 32), Vector3.new(35, 0, 32) } do
+	for _, house in WorldData.houses do
+		local base = WorldData.vector(house)
 		local facing = if base.X > 0 then -1 else 1
 		local lamp = ball(parent, 1.2, base + Vector3.new(facing * 7.9, 6.2, 2.6), WARM, true)
 		local light = Instance.new("PointLight")
@@ -490,7 +489,7 @@ function restorationBuilders.festival(parent: Instance)
 end
 
 local function refreshRestoration(celebrate: boolean)
-	local flags = csvSet(player:GetAttribute("Flags"))
+	local flags = Attrs.set("Flags")
 	for flag, builder in restorationBuilders do
 		if flags[flag] and not builtFlags[flag] then
 			builtFlags[flag] = true
@@ -525,8 +524,12 @@ function World.start()
 	for _, name in { "Coins", "StaffTier" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshMarkers)
 	end
+	-- The first Flags value after joining is saved progress, not a new unlock: no celebration.
+	local knownFlags = player:GetAttribute("Flags")
 	player:GetAttributeChangedSignal("Flags"):Connect(function()
-		refreshRestoration(true)
+		local celebrate = knownFlags ~= nil
+		knownFlags = player:GetAttribute("Flags")
+		refreshRestoration(celebrate)
 	end)
 	refreshQuestVisuals()
 	refreshRestoration(false)

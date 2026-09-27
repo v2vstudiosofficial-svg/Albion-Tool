@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local QuestData = require(Shared:WaitForChild("QuestData"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
+local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
 
 local player = Players.LocalPlayer
@@ -15,18 +16,8 @@ local HIDE_DISTANCE = 9
 
 local Waypoint = {}
 
-local function csvSet(value: any): { [string]: boolean }
-	local set = {}
-	if typeof(value) == "string" then
-		for item in string.gmatch(value, "[^,]+") do
-			set[item] = true
-		end
-	end
-	return set
-end
-
 local function nearestUnfound(ids: { string }, lookup: (string) -> { number }?, from: Vector3): Vector3?
-	local found = csvSet(player:GetAttribute("QuestFound"))
+	local found = Attrs.set("QuestFound")
 	local best, bestDistance = nil, math.huge
 	for _, id in ids do
 		local point = lookup(id)

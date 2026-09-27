@@ -342,7 +342,8 @@ local function buildVillageProps(village: Instance)
 		end
 	end
 
-	for houseIndex, base in { Vector3.new(-35, 0, 0), Vector3.new(35, 0, 0), Vector3.new(-35, 0, 32), Vector3.new(35, 0, 32) } do
+	for houseIndex, house in WorldData.houses do
+		local base = v(house)
 		local facing = if base.X > 0 then -1 else 1
 		for potIndex, z in { -2.6, 2.6 } do
 			local potBase = base + Vector3.new(facing * 8.4, 0, z)
@@ -382,10 +383,9 @@ local function buildVillage(map: Instance)
 		Material = Enum.Material.Glass,
 		Transparency = 0.2,
 	})
-	buildHouse(village, "House1", Vector3.new(-35, 0, 0))
-	buildHouse(village, "House2", Vector3.new(35, 0, 0))
-	buildHouse(village, "House3", Vector3.new(-35, 0, 32))
-	buildHouse(village, "House4", Vector3.new(35, 0, 32))
+	for index, house in WorldData.houses do
+		buildHouse(village, "House" .. index, v(house))
+	end
 	buildNpc(village, "Elder", Color3.fromRGB(95, 115, 205), Color3.fromRGB(95, 115, 205), "npc_talk_action")
 	buildNpc(village, "Demir", Color3.fromRGB(190, 115, 60), Color3.fromRGB(80, 70, 80), "npc_shop_action")
 	buildForge(village)

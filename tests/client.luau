@@ -14,6 +14,7 @@ local remotes = H.remotes
 local advance, test, eq, logCount = H.advance, H.test, H.eq, H.logCount
 
 local mode = process.args[1] or "desktop"
+local returning = mode == "returning"
 local touchMode = mode == "touch" or mode == "touch-cas"
 local withJumpButton = mode == "touch"
 
@@ -262,6 +263,37 @@ end
 
 -- Scenario ---------------------------------------------------------------------------------------
 
+if returning then
+	-- A returning level-5 player whose saved profile arrives right after joining.
+	test("returning player: saved progress is not replayed as new unlocks", function()
+		hero:SetAttribute("DataState", "loading")
+		H.task.spawn(H.run, "src/client/init.client.luau")
+		advance(1)
+		setAttributes({
+			Level = 5,
+			XP = 500,
+			Coins = 30,
+			StaffTier = 1,
+			Charm = "swift",
+			Charms = "guard,swift",
+			Flags = "gardens,lanterns",
+			QuestId = "ruin_vines",
+			QuestState = "available",
+			DataState = "ready",
+		})
+		advance(0.3)
+		for _, flag in { "gardens", "lanterns" } do
+			assert(workspace.ClientWorld:FindFirstChild("Restoration_" .. flag), "restoration " .. flag)
+		end
+		assert(not shownText(Strings.get("hint_wave_pc")), "no 'wave unlocked' hint for saved levels")
+		assert(not shownText(Strings.get("notice_wave_unlocked")), "no unlock banner for saved levels")
+		eq(#workspace.ClientFx:GetChildren(), 0, "no celebration bursts for saved restorations")
+		eq(#H.threadErrors, 0, "thread errors")
+	end)
+	H.finish("client tests (returning)")
+	return
+end
+
 local enemies = {}
 test("client boots with every module", function()
 	for index, spawn in WorldData.spawns do
@@ -366,6 +398,35 @@ test("attack picks a target with aim assist and asks the server", function()
 	advance(0.7)
 	actions.LvLightAttack("LvLightAttack", Enum.UserInputState.Begin, input)
 	eq(sent("RequestAttack"), before + 1, "no target in range, nothing sent")
+end)
+
+test("clicking a UI button never doubles as an attack", function()
+	local gloom = enemies[1]
+	teleport(H.read(gloom.Body, "Position") + Vector3.new(0, 1, 10))
+	advance(0.7)
+	local before = sent("RequestAttack")
+	H.guiAtPosition = { findButton(Strings.get("menu_bag")) }
+	actions.LvLightAttack("LvLightAttack", Enum.UserInputState.Begin, {
+		UserInputType = Enum.UserInputType.MouseButton1,
+		Position = Vector3.new(900, 30, 0),
+	})
+	H.guiAtPosition = {}
+	eq(sent("RequestAttack"), before, "no attack from a UI click")
+	teleport(vec(WorldData.spawn, 3))
+	advance(0.7)
+end)
+
+test("a cancelled boss attack clears its warning circles", function()
+	local at = vec(WorldData.areas.arena.center)
+	remotes.Fx.OnClientEvent:Fire("telegraph", at, 7, 1.4)
+	remotes.Fx.OnClientEvent:Fire("telegraph", at + Vector3.new(8, 0, 0), 7, 1.4)
+	advance(0.1)
+	local before = #workspace.ClientFx:GetChildren()
+	assert(before >= 4, "telegraph discs drawn")
+	remotes.Fx.OnClientEvent:Fire("attackCancel", enemies[#WorldData.spawns])
+	advance(0.1)
+	eq(#workspace.ClientFx:GetChildren(), before - 4, "warnings removed")
+	advance(2)
 end)
 
 test("light wave is locked until level 3", function()

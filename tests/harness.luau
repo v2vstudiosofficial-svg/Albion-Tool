@@ -174,6 +174,11 @@ roblox.implementMethod("DataStoreOptions", "SetExperimentalFeatures", function()
 roblox.implementMethod("SoundService", "PlayLocalSound", function() end)
 roblox.implementMethod("ParticleEmitter", "Emit", function() end)
 roblox.implementMethod("StarterGui", "SetCoreGuiEnabled", function() end)
+-- Tests may set Harness.guiAtPosition to simulate what sits under the pointer.
+Harness.guiAtPosition = {}
+roblox.implementMethod("PlayerGui", "GetGuiObjectsAtPosition", function()
+	return Harness.guiAtPosition
+end)
 roblox.implementMethod("Camera", "ViewportPointToRay", function(self, x: number, y: number)
 	return roblox.Ray.new(self.CFrame.Position, roblox.Vector3.new(0, 0, -1))
 end)

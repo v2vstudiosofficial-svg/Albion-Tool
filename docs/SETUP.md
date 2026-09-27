@@ -52,7 +52,7 @@ rojo serve
 - `tests/sim`: gerçek sunucu kodu + ProfileStore (mock) sahte oyuncular, sahte saat ve sahte
   remote'larla: 6 görev, co-op, boss, geçersiz istekler, çık-gir kaydı, hızlı yeniden bağlanma.
   Fizik, gerçek raycast ve istemci yok; Studio testinin yerini tutmaz.
-- `tests/client desktop|touch`: gerçek istemci kodu (HUD, kontroller, menüler, efektler,
+- `tests/client desktop|touch|touch-cas|returning`: gerçek istemci kodu (HUD, kontroller, menüler, efektler,
   dünya, hedef işaretçisi) sahte LocalPlayer ve sunucu olaylarıyla; UI kurulumu, tepkiler ve
   sunucuya giden istekler. Hiçbir şey çizilmez; yerleşim ve his Studio/telefonda denenmeli.
 - `tests/place`: tüm dosyalar derleniyor ve Rojo çıktısı doğru servislerde.
