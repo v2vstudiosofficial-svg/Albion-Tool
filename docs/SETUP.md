@@ -42,6 +42,9 @@ rojo serve
 11. Kayıt (API erişimi açık, yayınlanmış yerde): çık-gir → ilerleme korunur.
 12. Ayarlar → Performans göstergesi: FPS/Ping. Ölçümü gerçek cihazda yap; cihaz modelini,
     grafik ayarını ve oyuncu sayısını not et (emülatör gerçek telefon ölçümü sayılmaz).
+13. Dil: Roblox dili Türkçe ise Türkçe, diğer dillerde İngilizce görünür. Studio'da
+    File → Studio Settings → Studio → Language ya da Test sekmesindeki Locale ile İngilizceyi dene;
+    uzun İngilizce metinlerin butonlara ve panellere sığdığını kontrol et.
 
 ## Otomatik kontroller (Roblox gerektirmez; Lune 0.10 + Rojo 7.x)
 `lune run tests/all` hepsini çalıştırır:

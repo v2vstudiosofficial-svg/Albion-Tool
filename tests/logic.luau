@@ -529,6 +529,33 @@ test("every literal string key used in source exists", function()
 	eq(#missing, 0, "missing keys: " .. table.concat(missing, ", "))
 end)
 
+test("every language has every key with the same format specifiers", function()
+	local function specs(text: string): string
+		local list = {}
+		for spec in string.gmatch(text, "%%[%d%$]*[%a%%]") do
+			assert(not string.find(spec, "%$"), "positional format is not supported: " .. text)
+			table.insert(list, spec)
+		end
+		return table.concat(list, " ")
+	end
+	local base = Strings.tables[Strings.fallback]
+	for language, entries in Strings.tables do
+		for key, text in base do
+			assert(entries[key], language .. " is missing " .. key)
+			eq(specs(entries[key]), specs(text), language .. " format of " .. key)
+		end
+		for key in entries do
+			assert(base[key], language .. " has unknown key " .. key)
+		end
+	end
+	eq(Strings.languageFor("tr-tr"), "tr", "turkish locale")
+	eq(Strings.languageFor("en-us"), "en", "english locale")
+	eq(Strings.languageFor("de-de"), "en", "untranslated locale falls back to english")
+	eq(Strings.languageFor(nil), "en", "missing locale")
+	eq(Strings.getIn("en", "hud_level", 3), "Lv 3", "english lookup")
+	eq(Strings.getIn("tr", "hud_level", 3), "Sv 3", "turkish lookup")
+end)
+
 print(`logic tests: {passed} passed, {failed} failed`)
 if failed > 0 then
 	error("logic tests failed")

@@ -1,6 +1,6 @@
 # Durum
 
-## Aşama: M2–M4 kodu yazıldı (kullanıcı isteğiyle hızlı geliştirme; Studio testi bekliyor)
+## Aşama: M5 yayına hazırlık (M2–M4 kodu yazıldı; Studio testi bekliyor)
 
 ## Tamamlananlar
 - M2: Seviye 1–10, Işık Dalgası (Sv3), 3 kademeli asa yükseltmesi, 3 tılsım + çanta;
@@ -14,18 +14,18 @@
   seviye/görev afişleri, kamera sarsıntısı), NPC ünlemleri, hedef işaretçisi, bekleme
   göstergeli yetenek tuşları, ekran boyutuna göre ölçeklenen HUD, FPS/ping göstergesi,
   bölge bazlı düşman uykusu, istemcide çizilen mermiler, sıcak ışıklandırma.
+- M5 (başladı): İngilizce dil desteği (oyuncunun Roblox diline göre; Türkçe dışı → İngilizce),
+  NPC isimleri/istemleri ve atılma mesajı da yerelleşir. luau-lsp tip taraması: gerçek hata yok.
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 22, api ~1170 referans, scene 10, sim 24, client 19 (masaüstü) + 20
-  (dokunmatik) + 20 (CAS yedeği) + 1 (geri dönen oyuncu), place 40 dosya; hepsi geçti.
-- Kod inceleme (code-review) üç tur: 30 bulgu düzeltildi, kritik olanlar testlerle
-  sabitlendi (mutasyonla doğrulandı).
+- logic 24, api ~1170 referans, scene 10, sim 24, client 20 (masaüstü, Türkçe) + 21
+  (dokunmatik, İngilizce) + 21 (CAS yedeği) + 1 (geri dönen oyuncu), place 42 dosya; hepsi geçti.
+- Kod inceleme: 39 bulgu düzeltildi, kritik olanlar testlerle (mutasyonla) sabitlendi.
 - sim: gerçek sunucu kodu + ProfileStore mock ile 6 görev, co-op ödülü, boss saldırıları,
   geçersiz istekler, çık-gir ve hızlı yeniden bağlanmada veri korunumu. Enjekte edilen
   çift ödül ve menzil hatalarını yakaladığı doğrulandı.
-- client: gerçek istemci modülleri sahte oyuncu/olaylarla çalıştırıldı (çizim yok).
-- Roblox Studio'da HİÇ ÇALIŞTIRILMADI: görsel yerleşim, fizik, gerçek DataStore,
-  çok istemcili ağ ve performans ölçülmedi.
+- client: gerçek istemci modülleri sahte oyuncu/olaylarla (çizim yok). Roblox Studio'da HİÇ
+  ÇALIŞTIRILMADI: görsel yerleşim, fizik, gerçek DataStore, ağ ve performans ölçülmedi.
 
 ## Bilinen riskler
 - Tip denetimi (luau-lsp) yok; simülasyonların taklit ettiği motor davranışları

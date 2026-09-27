@@ -24,6 +24,9 @@ local Players = { list = {} }
 local hero = H.newPlayer("Hero", 1, Players)
 local friend = H.newPlayer("Friend", 2, Players)
 Players.LocalPlayer = hero
+-- Desktop runs in Turkish, touch modes in English, so both languages go through the real UI.
+local expectedLanguage = if touchMode then "en" else "tr"
+hero.LocaleId = if touchMode then "en-us" else "tr-tr"
 Players.list = { hero, friend }
 function Players:GetPlayers()
 	return table.clone(self.list)
@@ -331,6 +334,11 @@ test("data ready: HUD, quest panel, Elder marker, waypoint", function()
 	assert(not shownText(Strings.get("data_loading")), "loading hidden")
 	assert(shownText(Strings.get("quest_talk_to_elder")), "quest hint")
 	assert(shownText(Strings.get("hud_level", 1)), "level badge")
+	eq(Strings.language, expectedLanguage, "language follows the player's locale")
+	local elderBody = workspace.LanternValleyMap.Village.Elder.Body
+	eq(elderBody.TalkPrompt.ObjectText, Strings.getIn(expectedLanguage, "npc_elder_name"), "localized NPC prompt")
+	eq(elderBody.TalkPrompt.ActionText, Strings.getIn(expectedLanguage, "npc_talk_action"), "localized NPC action")
+	eq(elderBody.NameTag.Label.Text, Strings.getIn(expectedLanguage, "npc_elder_name"), "localized NPC name tag")
 	local elderMarker = false
 	for _, child in playerGui:GetChildren() do
 		if child:IsA("BillboardGui") and child.Enabled and child.Adornee == workspace.LanternValleyMap.Village.Elder.Body then

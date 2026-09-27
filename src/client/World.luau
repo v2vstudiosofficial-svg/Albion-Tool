@@ -235,7 +235,21 @@ end
 
 -- NPC markers -----------------------------------------------------------------------------------
 
-local markers: { [string]: BillboardGui } = {}
+local markers: { [string]: BillboardGui? } = {}
+
+-- The server writes Turkish texts plus their keys; show them in this player's language.
+local function localizeNpc(body: Instance)
+	local prompt = body:WaitForChild("TalkPrompt", 5) :: ProximityPrompt?
+	if prompt then
+		prompt.ObjectText = Strings.get(prompt:GetAttribute("NameKey") or "")
+		prompt.ActionText = Strings.get(prompt:GetAttribute("ActionKey") or "")
+	end
+	local tag = body:WaitForChild("NameTag", 5)
+	local label = tag and tag:WaitForChild("Label", 5) :: TextLabel?
+	if label then
+		label.Text = Strings.get(label:GetAttribute("NameKey") or "")
+	end
+end
 
 local function buildMarker(npcName: string): BillboardGui?
 	local map = workspace:WaitForChild("LanternValleyMap", 10)
@@ -244,6 +258,7 @@ local function buildMarker(npcName: string): BillboardGui?
 	if not body then
 		return nil
 	end
+	localizeNpc(body)
 	local gui = UiKit.create("BillboardGui", {
 		Size = UDim2.fromOffset(60, 70),
 		StudsOffset = Vector3.new(0, 6.2, 0),
