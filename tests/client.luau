@@ -13,7 +13,9 @@ local workspace = H.workspace
 local remotes = H.remotes
 local advance, test, eq, logCount = H.advance, H.test, H.eq, H.logCount
 
-local touchMode = process.args[1] == "touch"
+local mode = process.args[1] or "desktop"
+local touchMode = mode == "touch" or mode == "touch-cas"
+local withJumpButton = mode == "touch"
 
 -- Client-side fake services -----------------------------------------------------------------
 
@@ -32,6 +34,23 @@ function hero:WaitForChild(name: string)
 	return playerGui
 end
 hero.FindFirstChild = hero.WaitForChild
+
+-- Roblox's touch controls: a jump button in the bottom-right corner of a 640x360 phone screen.
+local JUMP_POSITION, JUMP_SIZE = Vector2.new(540, 250), Vector2.new(70, 70)
+if withJumpButton then
+	local touchGui = Instance.new("ScreenGui")
+	touchGui.Name = "TouchGui"
+	touchGui.IgnoreGuiInset = true
+	local frame = Instance.new("Frame")
+	frame.Name = "TouchControlFrame"
+	frame.Parent = touchGui
+	local jump = Instance.new("ImageButton")
+	jump.Name = "JumpButton"
+	jump.AbsolutePosition = JUMP_POSITION
+	jump.AbsoluteSize = JUMP_SIZE
+	jump.Parent = frame
+	touchGui.Parent = playerGui
+end
 
 local camera = Instance.new("Camera")
 camera.ViewportSize = if touchMode then Vector2.new(640, 360) else Vector2.new(1280, 720)
@@ -515,8 +534,49 @@ test("save failure shows the protective retry screen", function()
 	eq(sent("RetryLoad"), 1, "retry requested")
 end)
 
-if touchMode then
-	test("touch: ability buttons are the decorated CAS buttons", function()
+if withJumpButton then
+	test("touch: big ability buttons sit beside the jump button without overlapping", function()
+		local abilities = playerGui:FindFirstChild("TouchAbilities")
+		assert(abilities, "touch ability gui")
+		eq(casButtons.LvLightAttack, nil, "no CAS touch buttons when custom ones exist")
+		local buttons = {}
+		for _, child in abilities:GetChildren() do
+			if child:IsA("TextButton") then
+				table.insert(buttons, child)
+			end
+		end
+		eq(#buttons, 2, "two buttons")
+		local function rect(position, size)
+			return { position.X, position.Y, position.X + size.X, position.Y + size.Y }
+		end
+		local function overlaps(a, b)
+			return a[1] < b[3] and b[1] < a[3] and a[2] < b[4] and b[2] < a[4]
+		end
+		local jumpRect = rect(JUMP_POSITION, JUMP_SIZE)
+		local rects = {}
+		for _, button in buttons do
+			local size = Vector2.new(button.Size.X.Offset, button.Size.Y.Offset)
+			local r = rect(Vector2.new(button.Position.X.Offset, button.Position.Y.Offset), size)
+			assert(size.X >= JUMP_SIZE.X * 0.9, "button at least about jump-button size")
+			assert(not overlaps(r, jumpRect), "overlaps the jump button")
+			assert(r[1] >= 0 and r[2] >= 0 and r[3] <= 640 and r[4] <= 360, "inside the screen")
+			assert(button:FindFirstChildWhichIsA("Frame"), "decorated face")
+			table.insert(rects, r)
+		end
+		assert(not overlaps(rects[1], rects[2]), "buttons overlap each other")
+
+		local gloom = enemiesFolder:FindFirstChildWhichIsA("Model")
+		teleport(H.read(gloom.Body, "Position") + Vector3.new(0, 1, 10))
+		advance(0.7)
+		local before = sent("RequestAttack")
+		for _, button in buttons do
+			button.MouseButton1Down:Fire()
+		end
+		advance(0.1)
+		assert(sent("RequestAttack") > before, "pressing a touch button attacks")
+	end)
+elseif touchMode then
+	test("touch without a jump button: falls back to decorated CAS buttons", function()
 		for _, name in { "LvLightAttack", "LvLightWave" } do
 			local button = casButtons[name]
 			assert(button, name .. " touch button")
@@ -534,4 +594,4 @@ test("no client thread errors or warnings", function()
 	eq(#H.warnings, 0, "warnings")
 end)
 
-H.finish(`client tests ({if touchMode then "touch" else "desktop"})`)
+H.finish(`client tests ({mode})`)

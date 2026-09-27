@@ -206,6 +206,50 @@ local function styleTouchButton(action: string, title: string, color: Color3): A
 	return decorate(button, title, nil, color)
 end
 
+-- Big touch buttons laid out around Roblox's own jump button so they never overlap it.
+-- Returns nil when the jump button cannot be found; callers then fall back to CAS buttons.
+local function buildTouchButtons(): (AbilityView?, AbilityView?)
+	local playerGui = player:WaitForChild("PlayerGui")
+	local touchGui = playerGui:WaitForChild("TouchGui", 5)
+	local frame = touchGui and touchGui:WaitForChild("TouchControlFrame", 5)
+	local jump = frame and frame:WaitForChild("JumpButton", 5) :: GuiObject?
+	if not touchGui or not jump then
+		return nil, nil
+	end
+	-- Same inset setting as TouchGui keeps both absolute coordinate spaces identical.
+	local gui = UiKit.create("ScreenGui", {
+		Name = "TouchAbilities",
+		ResetOnSpawn = false,
+		IgnoreGuiInset = (touchGui :: ScreenGui).IgnoreGuiInset,
+	}, playerGui)
+	local function makeButton(onPress: () -> ()): TextButton
+		local button = UiKit.create("TextButton", { BackgroundTransparency = 1, Text = "", AutoButtonColor = false }, gui)
+		button.MouseButton1Down:Connect(onPress)
+		return button
+	end
+	local attackButton = makeButton(function()
+		Controls.attack(false)
+	end)
+	local waveButton = makeButton(Controls.wave)
+
+	local function layout()
+		local position = jump.AbsolutePosition
+		local size = jump.AbsoluteSize
+		local big = math.max(size.X * 1.1, 76)
+		local small = big * 0.85
+		attackButton.Size = UDim2.fromOffset(big, big)
+		attackButton.Position = UDim2.fromOffset(position.X - big - 14, position.Y + size.Y - big)
+		waveButton.Size = UDim2.fromOffset(small, small)
+		waveButton.Position = UDim2.fromOffset(position.X + (size.X - small) / 2, position.Y - small - 14)
+	end
+	jump:GetPropertyChangedSignal("AbsolutePosition"):Connect(layout)
+	jump:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	layout()
+
+	return decorate(attackButton, Strings.get("attack_button"), nil, colors.accent),
+		decorate(waveButton, Strings.get("wave_button"), nil, colors.xp)
+end
+
 local function buildDesktopBar(gui: ScreenGui): (AbilityView, AbilityView)
 	local bar = UiKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -228,29 +272,42 @@ local function buildDesktopBar(gui: ScreenGui): (AbilityView, AbilityView)
 		decorate(waveButton, Strings.get("wave_button"), "Q", colors.xp)
 end
 
+local function onAttackAction(_, state, input)
+	if state ~= Enum.UserInputState.Begin then
+		return Enum.ContextActionResult.Pass
+	end
+	local isMouse = input.UserInputType == Enum.UserInputType.MouseButton1
+	Controls.attack(isMouse)
+	return if isMouse then Enum.ContextActionResult.Pass else Enum.ContextActionResult.Sink
+end
+
+local function onWaveAction(_, state)
+	if state == Enum.UserInputState.Begin then
+		Controls.wave()
+		return Enum.ContextActionResult.Sink
+	end
+	return Enum.ContextActionResult.Pass
+end
+
+local function bindActions(touchButtons: boolean)
+	ContextActionService:BindAction(ATTACK_ACTION, onAttackAction, touchButtons, Enum.UserInputType.MouseButton1, Enum.KeyCode.F, Enum.KeyCode.ButtonR2)
+	ContextActionService:BindAction(WAVE_ACTION, onWaveAction, touchButtons, Enum.KeyCode.Q, Enum.KeyCode.ButtonL2)
+end
+
 function Controls.start()
 	local gui = UiKit.create("ScreenGui", { Name = "Controls", ResetOnSpawn = false }, player:WaitForChild("PlayerGui"))
 
-	ContextActionService:BindAction(ATTACK_ACTION, function(_, state, input)
-		if state ~= Enum.UserInputState.Begin then
-			return Enum.ContextActionResult.Pass
-		end
-		local isMouse = input.UserInputType == Enum.UserInputType.MouseButton1
-		Controls.attack(isMouse)
-		return if isMouse then Enum.ContextActionResult.Pass else Enum.ContextActionResult.Sink
-	end, true, Enum.UserInputType.MouseButton1, Enum.KeyCode.F, Enum.KeyCode.ButtonR2)
-	ContextActionService:BindAction(WAVE_ACTION, function(_, state)
-		if state == Enum.UserInputState.Begin then
-			Controls.wave()
-			return Enum.ContextActionResult.Sink
-		end
-		return Enum.ContextActionResult.Pass
-	end, true, Enum.KeyCode.Q, Enum.KeyCode.ButtonL2)
-
 	local views: { attack: AbilityView?, wave: AbilityView? } = {}
+	bindActions(false)
 	if UiKit.isTouch() then
-		views.attack = styleTouchButton(ATTACK_ACTION, Strings.get("attack_button"), colors.accent)
-		views.wave = styleTouchButton(WAVE_ACTION, Strings.get("wave_button"), colors.xp)
+		task.spawn(function()
+			views.attack, views.wave = buildTouchButtons()
+			if not views.attack then
+				bindActions(true)
+				views.attack = styleTouchButton(ATTACK_ACTION, Strings.get("attack_button"), colors.accent)
+				views.wave = styleTouchButton(WAVE_ACTION, Strings.get("wave_button"), colors.xp)
+			end
+		end)
 	else
 		views.attack, views.wave = buildDesktopBar(gui)
 	end

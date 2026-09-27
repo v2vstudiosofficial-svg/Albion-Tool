@@ -14,6 +14,7 @@ local steps = {
 	{ "lune", { "run", "tests/sim" } },
 	{ "lune", { "run", "tests/client", "desktop" } },
 	{ "lune", { "run", "tests/client", "touch" } },
+	{ "lune", { "run", "tests/client", "touch-cas" } },
 	{ "rojo", { "build", "default.project.json", "-o", "build/test.rbxlx" } },
 	{ "lune", { "run", "tests/place", "build/test.rbxlx" } },
 }
