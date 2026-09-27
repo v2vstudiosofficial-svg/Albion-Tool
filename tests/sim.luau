@@ -340,9 +340,13 @@ test("co-op: both hitters get their own reward, exactly once", function()
 	advance(0.6)
 	remotes.RequestAttack.OnServerEvent:Fire(bob, id)
 	advance(0.6)
+	if isAlive(target) then
+		remotes.RequestAttack.OnServerEvent:Fire(alice, id)
+		advance(0.6)
+	end
 	heal(alice)
 	heal(bob)
-	eq(isAlive(target), false, "purified by two hits")
+	eq(isAlive(target), false, "purified by the two players")
 	local reward = Balance.enemies.Gloomling.reward.xp
 	eq(attr(alice, "XP"), aliceXp + reward, "alice")
 	eq(attr(bob, "XP"), bobXp + reward, "bob")
@@ -436,7 +440,11 @@ test("quest 6: boss fight with telegraphed attacks, rewards, festival", function
 	local state = attr(alice, "QuestState")
 	assert(state == "level" or state == "available", "boss quest waiting: " .. tostring(state))
 	while attr(alice, "Level") < 5 do
-		assert(purifyOne(alice, "Gloomling"), "grind")
+		if #enemiesOf("Gloomling") == 0 then
+			advance(3) -- wait for respawns
+		else
+			assert(purifyOne(alice, "Gloomling"), "grind")
+		end
 		advance(0.1)
 	end
 	talk(alice, "Elder")

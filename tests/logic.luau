@@ -157,15 +157,16 @@ end)
 -- Progression -----------------------------------------------------------------------------------
 
 test("levels follow the thresholds and cap at max", function()
+	local thresholds = Balance.levels.xpThresholds
 	eq(Progression.levelForXp(0), 1)
-	eq(Progression.levelForXp(59), 1)
-	eq(Progression.levelForXp(60), 2)
+	eq(Progression.levelForXp(thresholds[2] - 1), 1)
+	eq(Progression.levelForXp(thresholds[2]), 2)
 	eq(Progression.levelForXp(10 ^ 7), Progression.MAX_LEVEL)
 	eq(Progression.MAX_LEVEL, 10)
-	local lvl, into, span = Progression.levelProgress(200)
+	local lvl, into, span = Progression.levelProgress(thresholds[3] + 50)
 	eq(lvl, 3)
 	eq(into, 50)
-	eq(span, 130)
+	eq(span, thresholds[4] - thresholds[3])
 	local _, _, maxSpan = Progression.levelProgress(10 ^ 7)
 	eq(maxSpan, nil, "no span at max level")
 	local previous = -1
@@ -264,7 +265,7 @@ test("upgrade quest counts an upgrade bought before the quest started", function
 	eq(completed[1], "first_upgrade")
 end)
 
-test("full chain is completable with only the required fights, paying each reward once", function()
+test("full chain is completable with a short grind at most, paying each reward once", function()
 	local p = Profile.new()
 	local function start(questId: string)
 		local ok, reason = QuestLogic.start(p, QuestData, questId, level(p))
@@ -298,6 +299,13 @@ test("full chain is completable with only the required fights, paying each rewar
 	for _, id in QuestData.quests.ruin_vines.objective.ids do
 		event({ kind = "vine", id = id })
 	end
+	-- The boss quest is level-gated; a player may need a few extra fights on the way.
+	local extraFights = 0
+	while not QuestLogic.canStart(p, QuestData, "warden", level(p)) do
+		purify("Gloomling")
+		extraFights += 1
+	end
+	assert(extraFights <= 15, "grind before the boss stays short: " .. extraFights .. " Gloomlings")
 	start("warden")
 	purify("Warden")
 	purify("Warden")
@@ -316,7 +324,7 @@ test("full chain is completable with only the required fights, paying each rewar
 		expectedCoins += reward.coins or 0
 	end
 	local fights = { "Warden", "Warden" }
-	for _ = 1, QuestData.quests.first_purify.objective.count do
+	for _ = 1, QuestData.quests.first_purify.objective.count + extraFights do
 		table.insert(fights, "Gloomling")
 	end
 	for _, kind in fights do
@@ -326,6 +334,9 @@ test("full chain is completable with only the required fights, paying each rewar
 	eq(p.xp, expectedXp, "xp")
 	eq(p.coins, expectedCoins, "coins")
 	assert(level(p) >= 5, "reaches a satisfying level by the end of the chain")
+	assert(level(p) < Progression.MAX_LEVEL, "the level cap stays a post-game goal")
+	local topTiers = Balance.staff.tiers[3].cost + Balance.staff.tiers[4].cost
+	assert(p.coins < topTiers, "the last staff tiers stay a post-game goal")
 end)
 
 -- Enemies ---------------------------------------------------------------------------------------

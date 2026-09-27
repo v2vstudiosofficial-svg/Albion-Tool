@@ -56,6 +56,8 @@ rojo serve
   dünya, hedef işaretçisi) sahte LocalPlayer ve sunucu olaylarıyla; UI kurulumu, tepkiler ve
   sunucuya giden istekler. Hiçbir şey çizilmez; yerleşim ve his Studio/telefonda denenmeli.
 - `tests/place`: tüm dosyalar derleniyor ve Rojo çıktısı doğru servislerde.
+- Denge aracı (pakete dahil değil): `lune run tests/playtime` — bot tüm zinciri gerçek
+  sunucu koduyla yürüyerek oynar; görev başına süre, seviye, sikke, yenilgi yazar.
 - Altyapı: `tests/harness.luau` (sahte saat/zamanlayıcı, sinyaller, remote'lar, yükleyici).
 
 ## Sesler

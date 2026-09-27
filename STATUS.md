@@ -31,8 +31,9 @@
 - Tip denetimi (luau-lsp) yok; simülasyonların taklit ettiği motor davranışları
   (fizik, raycast, tween, giriş) Studio'da farklı sonuç verebilir.
 - Ses kimlikleri çoğunlukla boş; müzik yok. Animasyonlar prosedürel (asset yok).
-- Denge tahmini: ana zincir ~15–20 dk, Sv10 + asa kademe 3 hedefleriyle ~45 dk;
-  gerçek oyun testleriyle ayarlanmalı.
+- Denge (`lune run tests/playtime` botu): zincir 3,3 bot-dk, Sv6'da biter, boss'ta
+  1 yenilgi; Sv10 (≈1640 XP) ve asa kademe 3 hikâye sonrası hedef. Çocuk için tahmin
+  ~15 dk hikâye + ~20–30 dk hedefler; gerçek oyun testleriyle doğrulanmalı.
 - Yayın hazırlığı taslağı `docs/RELEASE.md`; herkese açık yayın talimat bekler.
 
 ## Sonraki adım (tek)

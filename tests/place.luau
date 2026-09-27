@@ -88,7 +88,7 @@ expectClass(client, "LocalScript", "StarterPlayerScripts.Client")
 local packages = server and server:FindFirstChild("Packages")
 expectClass(packages, "Folder", "Server.Packages")
 expectClass(packages and packages:FindFirstChild("ProfileStore"), "ModuleScript", "Packages.ProfileStore")
-for _, name in { "UiKit", "Audio", "Effects", "World", "Hud", "Controls", "Menus", "Waypoint" } do
+for _, name in { "UiKit", "Attrs", "Audio", "Effects", "World", "Hud", "Controls", "Menus", "Waypoint" } do
 	expectClass(client and client:FindFirstChild(name), "ModuleScript", "Client." .. name)
 end
 

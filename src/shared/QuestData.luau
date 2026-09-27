@@ -58,7 +58,7 @@ return {
 			objectiveKey = "quest_warden_objective",
 			minLevel = 5,
 			objective = { kind = "purify", enemyType = "Warden", count = 1, area = "arena" },
-			reward = { xp = 400, coins = 200, flag = "festival" },
+			reward = { xp = 300, coins = 120, flag = "festival" },
 		},
 	},
 }
