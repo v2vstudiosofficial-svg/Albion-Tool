@@ -421,6 +421,17 @@ test("exploration beacons, vine barrier and restoration follow progress", functi
 	for _, flag in { "gardens", "lanterns", "festival" } do
 		assert(workspace.ClientWorld:FindFirstChild("Restoration_" .. flag), "restoration " .. flag)
 	end
+	teleport(vec(WorldData.spawn, 3))
+	local wing = nil
+	for _, child in workspace.ClientWorld.Restoration_gardens:GetChildren() do
+		if child:IsA("BasePart") and child.Material == Enum.Material.Neon and child.Size.X < 1 then
+			wing = child
+		end
+	end
+	assert(wing, "butterflies with the gardens")
+	local before = wing.CFrame
+	advance(0.3)
+	assert(wing.CFrame ~= before, "butterflies flutter near the village")
 end)
 
 test("upgrade nudge and Demir marker appear when coins suffice", function()

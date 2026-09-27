@@ -353,6 +353,47 @@ end
 local builtFlags: { [string]: boolean } = {}
 local restorationBuilders = {}
 
+-- Butterflies arrive with the gardens; animated only while the player is near the village.
+type Butterfly = { left: BasePart, right: BasePart, center: Vector3, phase: number, radius: number }
+local butterflies: { Butterfly } = {}
+local BUTTERFLY_RANGE = 160
+
+local function addButterflies(parent: Instance, palette: { Color3 })
+	for index = 1, 7 do
+		local angle = index / 7 * math.pi * 2
+		local color = palette[index % #palette + 1]
+		local wing = { Size = Vector3.new(0.55, 0.05, 0.45), Color = color, Material = Enum.Material.Neon }
+		table.insert(butterflies, {
+			left = localPart(table.clone(wing), parent),
+			right = localPart(table.clone(wing), parent),
+			center = PLAZA + Vector3.new(math.cos(angle) * 19, 2.6, math.sin(angle) * 19),
+			phase = index * 1.37,
+			radius = 2.5 + index % 3,
+		})
+	end
+end
+
+local function animateButterflies()
+	if #butterflies == 0 then
+		return
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root or (root.Position - PLAZA).Magnitude > BUTTERFLY_RANGE then
+		return
+	end
+	local now = os.clock()
+	for _, fly in butterflies do
+		local t = now * 0.8 + fly.phase
+		local position = fly.center + Vector3.new(math.cos(t) * fly.radius, math.sin(t * 2.3) * 0.7, math.sin(t * 1.3) * fly.radius)
+		local ahead = fly.center + Vector3.new(math.cos(t + 0.1) * fly.radius, math.sin((t + 0.1) * 2.3) * 0.7, math.sin((t + 0.1) * 1.3) * fly.radius)
+		local body = CFrame.lookAt(position, ahead)
+		local flap = math.sin(now * 18 + fly.phase) * 0.9
+		fly.left.CFrame = body * CFrame.Angles(0, 0, flap) * CFrame.new(-0.25, 0, 0)
+		fly.right.CFrame = body * CFrame.Angles(0, 0, -flap) * CFrame.new(0.25, 0, 0)
+	end
+end
+
 function restorationBuilders.gardens(parent: Instance)
 	local palette = {
 		Color3.fromRGB(255, 130, 170),
@@ -376,6 +417,7 @@ function restorationBuilders.gardens(parent: Instance)
 			ball(parent, 0.9, center + Vector3.new(math.cos(a) * r, 0.8, math.sin(a) * r), palette[(bed + index) % #palette + 1])
 		end
 	end
+	addButterflies(parent, palette)
 	for line, z in { 0, 32 } do
 		for index = 0, 12 do
 			local t = index / 12
@@ -512,6 +554,7 @@ function World.start()
 		refreshMarkers()
 	end)
 	task.spawn(animateNpcs)
+	RunService.RenderStepped:Connect(animateButterflies)
 end
 
 return World
