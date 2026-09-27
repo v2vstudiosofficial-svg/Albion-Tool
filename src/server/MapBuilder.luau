@@ -297,7 +297,8 @@ end
 local function buildVillageProps(village: Instance)
 	local props = ensure(village, "Props", "Folder")
 
-	local well = Vector3.new(-14, 0, 24)
+	local plaza = v(WorldData.plaza)
+	local well = plaza + Vector3.new(-14, 0, 12)
 	for index = 1, 8 do
 		local angle = index / 8 * math.pi * 2
 		part(props, "WellStone" .. index, {
@@ -317,8 +318,8 @@ local function buildVillageProps(village: Instance)
 		Color = COLOR.roof,
 	})
 
-	local plaza = v(WorldData.plaza)
-	for index, position in { Vector3.new(-20, 0, 6), Vector3.new(20, 0, 6) } do
+	for index, offset in { Vector3.new(-20, 0, -6), Vector3.new(20, 0, -6) } do
+		local position = plaza + offset
 		local facing = CFrame.lookAt(position, Vector3.new(plaza.X, 0, plaza.Z))
 		part(props, "BenchSeat" .. index, {
 			Size = Vector3.new(4.5, 0.5, 1.5),

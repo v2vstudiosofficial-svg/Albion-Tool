@@ -359,11 +359,13 @@ function EnemyService.connectPurified(listener: (string, any, { Player }) -> ())
 	table.insert(purifiedListeners, listener)
 end
 
+-- Moves the enemy away from a point and places it immediately, so effects use the new spot.
 local function pushAway(enemy: Enemy, from: Vector3, distance: number)
 	local away = flat(enemy.position - from)
 	if away.Magnitude > 0.01 then
 		enemy.position += away.Unit * distance
 		ctx.clampToLeash(enemy)
+		place(enemy, os.clock())
 	end
 end
 
@@ -374,12 +376,10 @@ function EnemyService.damage(id: number, player: Player, amount: number, pushFro
 	if not enemy or not enemy.logic.alive then
 		return false
 	end
-	local now = os.clock()
 	if pushFrom and not enemy.stats.isBoss then
 		pushAway(enemy, pushFrom, Balance.hitPush)
-		place(enemy, now)
 	end
-	local purified = EnemyLogic.applyHit(enemy.logic, player, amount, now)
+	local purified = EnemyLogic.applyHit(enemy.logic, player, amount, os.clock())
 	publishHp(enemy)
 	fx:FireAllClients("hit", enemy.model, enemy.body.Position, amount)
 	if purified then
@@ -397,12 +397,23 @@ function EnemyService.damageInRadius(center: Vector3, radius: number, player: Pl
 			if not enemy.stats.isBoss and knockback > 0 then
 				pushAway(enemy, center, knockback)
 				enemy.state = "recover"
-				enemy.stateUntil = os.clock() + 0.5
+				enemy.stateUntil = os.clock() + Balance.wave.stagger
 			end
 			EnemyService.damage(id, player, amount)
 		end
 	end
 	return hits
+end
+
+-- A sleeping enemy drops any in-progress attack and its "noticed" flag, so it wakes up calm.
+local function settle(enemy: Enemy)
+	if enemy.state ~= "idle" then
+		enemy.state = "idle"
+	end
+	if enemy.memory.aggro then
+		enemy.memory.aggro = false
+		enemy.model:SetAttribute("Aggro", false)
+	end
 end
 
 local function isAwake(enemy: Enemy): boolean
@@ -437,12 +448,15 @@ function EnemyService.start()
 
 	RunService.Heartbeat:Connect(function(dt)
 		local now = os.clock()
-		ctx.targets = Targets.get(now)
+		ctx.targets = Targets.get()
 		for _, enemy in enemies do
-			if isAwake(enemy) then
+			-- The boss always updates so its reset timer runs even when nobody is nearby.
+			if enemy.stats.isBoss or isAwake(enemy) then
 				behaviors[enemy.stats.behavior](enemy, dt, now)
 				updateAggro(enemy)
 				place(enemy, now)
+			else
+				settle(enemy)
 			end
 		end
 	end)

@@ -50,7 +50,7 @@ local function step(dt: number)
 		return
 	end
 	local now = os.clock()
-	local targets = Targets.get(now)
+	local targets = Targets.get()
 	for index = #active, 1, -1 do
 		local projectile = active[index]
 		projectile.position += projectile.velocity * dt

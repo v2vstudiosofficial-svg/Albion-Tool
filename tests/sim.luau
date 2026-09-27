@@ -467,6 +467,66 @@ test("quest 6: boss fight with telegraphed attacks, rewards, festival", function
 	eq(attr(alice, "Flags"), "festival,gardens,lanterns")
 end)
 
+test("a defeated character is not revived by a level-up", function()
+	local CharacterService = H.loadModule("src/server/CharacterService.luau")
+	humanoid(alice).Health = 0
+	CharacterService.onLevelUp(alice)
+	advance(0.1)
+	eq(humanoid(alice).Health, 0, "stays defeated until respawn")
+	heal(alice)
+	toVillage(alice)
+end)
+
+test("the boss cancels a pending attack when everyone leaves the arena", function()
+	advance(Balance.enemies.Warden.respawnDelay + 1)
+	local boss = enemiesOf("Warden")[1]
+	assert(boss, "boss respawned")
+	local arena = vec(WorldData.areas.arena.center, 3)
+	local function countFx(kind)
+		return logCount("Fx", function(e)
+			return e.args[1] == kind
+		end)
+	end
+	local telegraphs = countFx("telegraph")
+	teleport(alice, arena + Vector3.new(0, 0, 14))
+	local waited = 0
+	while countFx("telegraph") == telegraphs and waited < 20 do
+		advance(0.1)
+		heal(alice)
+		waited += 0.1
+	end
+	assert(countFx("telegraph") > telegraphs, "boss telegraphed a slam")
+	local slams = countFx("slam")
+	toVillage(alice)
+	advance(Balance.enemies.Warden.slamWarn + 0.6) -- longer than the warning, shorter than a reset
+	teleport(alice, arena + Vector3.new(0, 0, 14))
+	advance(0.2)
+	eq(countFx("slam"), slams, "no untelegraphed slam on return")
+	toVillage(alice)
+	advance(Balance.enemies.Warden.resetAfter + 1)
+end)
+
+test("enemies drop their alert state when they fall asleep", function()
+	teleport(bob, vec(WorldData.areas.hollow.center, 3))
+	local alerted = nil
+	for _ = 1, 40 do
+		advance(0.1)
+		heal(bob)
+		for _, model in workspace.Enemies:GetChildren() do
+			if model:GetAttribute("Aggro") then
+				alerted = model
+			end
+		end
+		if alerted then
+			break
+		end
+	end
+	assert(alerted, "an enemy noticed bob")
+	toVillage(bob)
+	advance(0.2)
+	eq(alerted:GetAttribute("Aggro"), false, "calm after everyone left")
+end)
+
 test("other enemy behaviors run (shooter, charger) and hurt players", function()
 	teleport(bob, vec(WorldData.areas.grove.center, 3))
 	local hurt = false

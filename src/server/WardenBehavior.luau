@@ -146,6 +146,13 @@ function WardenBehavior.update(enemy, ctx, dt: number, now: number)
 
 	if #list == 0 then
 		if memory.engaged then
+			-- Cancel any pending slam/orbs so nothing lands untelegraphed when players return.
+			if enemy.state ~= "rest" then
+				enemy.state = "rest"
+				enemy.stateUntil = now + stats.restTime
+				memory.slamPoints = nil
+				memory.secondRing = nil
+			end
 			memory.lostAt = memory.lostAt or now
 			if now - memory.lostAt >= stats.resetAfter then
 				reset(enemy, ctx)

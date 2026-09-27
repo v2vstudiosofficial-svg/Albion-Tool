@@ -91,8 +91,9 @@ local function onTalkElder(player: Player, elderBody: BasePart)
 	if ok then
 		npcSay:FireClient(player, "Elder", QuestData.quests[nextId].offerKey)
 		-- Progress that already happened (e.g. an early staff upgrade) counts right away.
-		record(player, { kind = "upgrade", value = profile.staffUpgrade })
-		PlayerProfiles.sync(player)
+		if not record(player, { kind = "upgrade", value = profile.staffUpgrade }) then
+			PlayerProfiles.sync(player)
+		end
 	elseif reason == "level" then
 		npcSay:FireClient(player, "Elder", "elder_need_level", QuestData.quests[nextId].minLevel)
 	end

@@ -7,6 +7,7 @@ local Progression = require(Shared.Progression)
 local Balance = require(Shared.Balance)
 local WorldData = require(Shared.WorldData)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
+local Targets = require(script.Parent.Targets)
 
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90))
 local SHAFT_COLOR = Color3.fromRGB(150, 105, 70)
@@ -95,7 +96,8 @@ local function applyStats(player: Player, fullHeal: boolean)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local profile = PlayerProfiles.get(player)
-	if not humanoid or not profile then
+	-- A defeated character must stay defeated until respawn (no healing a corpse on level-up).
+	if not humanoid or not profile or humanoid.Health <= 0 then
 		return
 	end
 	local level = Progression.levelForXp(profile.xp)
@@ -156,15 +158,11 @@ local PLAZA = WorldData.vector(WorldData.plaza)
 
 local function healInVillage(dt: number)
 	local village = Balance.village
-	for _, player in Players:GetPlayers() do
-		local character = player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if humanoid and root and humanoid.Health > 0 and humanoid.Health < humanoid.MaxHealth then
-			local offset = root.Position - PLAZA
-			if Vector3.new(offset.X, 0, offset.Z).Magnitude <= village.radius then
-				humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + village.healPerSecond * dt)
-			end
+	for _, target in Targets.get() do
+		local humanoid = target.humanoid
+		local offset = target.root.Position - PLAZA
+		if humanoid.Health < humanoid.MaxHealth and Vector3.new(offset.X, 0, offset.Z).Magnitude <= village.radius then
+			humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + village.healPerSecond * dt)
 		end
 	end
 end

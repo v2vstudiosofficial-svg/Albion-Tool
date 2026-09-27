@@ -31,6 +31,7 @@ return {
 		radius = 14,
 		cooldown = 8,
 		knockback = 7,
+		stagger = 0.5,
 	},
 
 	charmOrder = { "swift", "guard", "glow" },

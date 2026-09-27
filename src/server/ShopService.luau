@@ -19,17 +19,20 @@ local fx = Remotes.Fx :: RemoteEvent
 
 local REQUEST_COOLDOWN = 0.4
 
-local lastRequest: { [Player]: number } = {}
+local lastRequest: { [Player]: { [string]: number } } = {}
 local demirBody: BasePart
 
 local ShopService = {}
 
-local function throttled(player: Player): boolean
+-- Each request kind has its own cooldown, so upgrading never swallows a charm change.
+local function throttled(player: Player, kind: string): boolean
 	local now = os.clock()
-	if lastRequest[player] and now - lastRequest[player] < REQUEST_COOLDOWN then
+	local times = lastRequest[player] or {}
+	lastRequest[player] = times
+	if times[kind] and now - times[kind] < REQUEST_COOLDOWN then
 		return true
 	end
-	lastRequest[player] = now
+	times[kind] = now
 	return false
 end
 
@@ -39,7 +42,7 @@ local function nearDemir(player: Player): boolean
 end
 
 local function onUpgrade(player: Player)
-	if throttled(player) or not nearDemir(player) then
+	if throttled(player, "upgrade") or not nearDemir(player) then
 		return
 	end
 	local profile = PlayerProfiles.get(player)
@@ -60,7 +63,7 @@ local function onUpgrade(player: Player)
 end
 
 local function onEquip(player: Player, charmId: unknown)
-	if throttled(player) or typeof(charmId) ~= "string" or #charmId > 32 then
+	if throttled(player, "equip") or typeof(charmId) ~= "string" or #charmId > 32 then
 		return
 	end
 	local profile = PlayerProfiles.get(player)
