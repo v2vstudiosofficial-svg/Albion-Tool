@@ -247,11 +247,38 @@ local function toVillage(player)
 	heal(player)
 end
 
+test("the village heals players", function()
+	toVillage(alice)
+	humanoid(alice).Health = 20
+	advance(2)
+	assert(humanoid(alice).Health > 40, "healed in the village: " .. humanoid(alice).Health)
+	teleport(alice, vec(WorldData.areas.hollow.center, 3) + Vector3.new(0, 0, 60))
+	humanoid(alice).Health = 20
+	advance(2)
+	assert(humanoid(alice).Health < 40, "no fast heal in the forest")
+	toVillage(alice)
+end)
+
 test("purified enemies respawn", function()
 	toVillage(alice)
 	toVillage(bob)
 	advance(16)
 	eq(#workspace.Enemies:GetChildren(), #WorldData.spawns, "respawned")
+end)
+
+test("hits nudge regular enemies away from the attacker", function()
+	local target = nearestEnemy("Gloomling", vec(WorldData.areas.glade.center))
+	local body = positionOf(target.Body)
+	heal(alice)
+	teleport(alice, body + Vector3.new(0, 1, 10))
+	advance(0.7)
+	local before = positionOf(target.Body)
+	remotes.RequestAttack.OnServerEvent:Fire(alice, target:GetAttribute("EnemyId"))
+	advance(1 / 30)
+	local after = positionOf(target.Body)
+	assert((after - positionOf(alice.Character.HumanoidRootPart)).Magnitude > (before - positionOf(alice.Character.HumanoidRootPart)).Magnitude - 0.5, "not pulled toward the attacker")
+	toVillage(alice)
+	advance(0.6)
 end)
 
 test("invalid client payloads are ignored safely", function()

@@ -360,10 +360,18 @@ function EnemyService.connectPurified(listener: (string, any, { Player }) -> ())
 end
 
 -- Server-validated damage entry point; returns true when the hit was applied.
-function EnemyService.damage(id: number, player: Player, amount: number): boolean
+-- pushFrom (optional) nudges regular enemies away from the attacker for a punchier hit.
+function EnemyService.damage(id: number, player: Player, amount: number, pushFrom: Vector3?): boolean
 	local enemy = enemies[id]
 	if not enemy or not enemy.logic.alive then
 		return false
+	end
+	if pushFrom and not enemy.stats.isBoss then
+		local away = flat(enemy.position - pushFrom)
+		if away.Magnitude > 0.01 then
+			enemy.position += away.Unit * Balance.hitPush
+			ctx.clampToLeash(enemy)
+		end
 	end
 	local purified = EnemyLogic.applyHit(enemy.logic, player, amount, os.clock())
 	publishHp(enemy)

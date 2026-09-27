@@ -150,8 +150,32 @@ local function onCharacterAdded(player: Player, character: Model)
 	applyStats(player, true)
 end
 
+local HEAL_INTERVAL = 0.5
+
+local function healInVillage()
+	local village = Balance.village
+	local center = Vector3.new(village.center[1], village.center[2], village.center[3])
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if humanoid and root and humanoid.Health > 0 and humanoid.Health < humanoid.MaxHealth then
+			local offset = root.Position - center
+			if Vector3.new(offset.X, 0, offset.Z).Magnitude <= village.radius then
+				humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + village.healPerSecond * HEAL_INTERVAL)
+			end
+		end
+	end
+end
+
 function CharacterService.start()
 	Players.RespawnTime = Balance.player.respawnTime
+	task.spawn(function()
+		while true do
+			task.wait(HEAL_INTERVAL)
+			healInVillage()
+		end
+	end)
 	local function watch(player: Player)
 		player.CharacterAdded:Connect(function(character)
 			onCharacterAdded(player, character)

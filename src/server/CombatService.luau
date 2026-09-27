@@ -69,7 +69,7 @@ local function onRequestAttack(player: Player, enemyId: unknown)
 
 	local level = Progression.levelForXp(profile.xp)
 	fx:FireAllClients("bolt", player, origin, targetPosition, profile.staffUpgrade)
-	EnemyService.damage(enemy.id, player, Progression.staffDamage(profile.staffUpgrade, level))
+	EnemyService.damage(enemy.id, player, Progression.staffDamage(profile.staffUpgrade, level), origin)
 end
 
 local function onRequestWave(player: Player)
