@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local Progression = require(Shared.Progression)
 local Balance = require(Shared.Balance)
+local WorldData = require(Shared.WorldData)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
 
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90))
@@ -151,18 +152,18 @@ local function onCharacterAdded(player: Player, character: Model)
 end
 
 local HEAL_INTERVAL = 0.5
+local PLAZA = WorldData.vector(WorldData.plaza)
 
-local function healInVillage()
+local function healInVillage(dt: number)
 	local village = Balance.village
-	local center = Vector3.new(village.center[1], village.center[2], village.center[3])
 	for _, player in Players:GetPlayers() do
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if humanoid and root and humanoid.Health > 0 and humanoid.Health < humanoid.MaxHealth then
-			local offset = root.Position - center
+			local offset = root.Position - PLAZA
 			if Vector3.new(offset.X, 0, offset.Z).Magnitude <= village.radius then
-				humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + village.healPerSecond * HEAL_INTERVAL)
+				humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + village.healPerSecond * dt)
 			end
 		end
 	end
@@ -172,8 +173,7 @@ function CharacterService.start()
 	Players.RespawnTime = Balance.player.respawnTime
 	task.spawn(function()
 		while true do
-			task.wait(HEAL_INTERVAL)
-			healInVillage()
+			healInVillage(task.wait(HEAL_INTERVAL))
 		end
 	end)
 	local function watch(player: Player)

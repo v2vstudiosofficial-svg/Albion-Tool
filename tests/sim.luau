@@ -272,11 +272,14 @@ test("hits nudge regular enemies away from the attacker", function()
 	heal(alice)
 	teleport(alice, body + Vector3.new(0, 1, 10))
 	advance(0.7)
-	local before = positionOf(target.Body)
+	local rootPosition = positionOf(alice.Character.HumanoidRootPart)
+	local function flatDistance(a, b)
+		return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
+	end
+	local before = flatDistance(positionOf(target.Body), rootPosition)
 	remotes.RequestAttack.OnServerEvent:Fire(alice, target:GetAttribute("EnemyId"))
-	advance(1 / 30)
-	local after = positionOf(target.Body)
-	assert((after - positionOf(alice.Character.HumanoidRootPart)).Magnitude > (before - positionOf(alice.Character.HumanoidRootPart)).Magnitude - 0.5, "not pulled toward the attacker")
+	local after = flatDistance(positionOf(target.Body), rootPosition)
+	assert(after - before >= Balance.hitPush * 0.8, `pushed away: {before} -> {after}`)
 	toVillage(alice)
 	advance(0.6)
 end)
@@ -318,7 +321,14 @@ test("attacks from beyond staff range are rejected", function()
 end)
 
 test("co-op: both hitters get their own reward, exactly once", function()
-	local target = nearestEnemy("Gloomling", vec(WorldData.areas.glade.center))
+	local target = nil
+	for _, model in enemiesOf("Gloomling") do
+		if model:GetAttribute("Hp") == model:GetAttribute("MaxHp") then
+			target = model
+			break
+		end
+	end
+	assert(target, "an untouched Gloomling")
 	local id = target:GetAttribute("EnemyId")
 	local body = positionOf(target.Body)
 	local aliceXp, bobXp = attr(alice, "XP"), attr(bob, "XP")

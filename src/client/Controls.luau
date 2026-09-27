@@ -1,6 +1,7 @@
 -- Attack and light-wave input with light aim assist, local prediction and cooldown display.
--- Touch uses ContextActionService buttons (Roblox places them around the jump button, so they
--- never overlap it); keyboard/mouse gets an on-screen ability bar. The server re-validates everything.
+-- Touch: ContextActionService buttons appear immediately; once Roblox's jump button exists, big
+-- custom buttons laid out beside it replace them (and follow it if it is rebuilt on resize).
+-- Keyboard/mouse gets an on-screen ability bar. The server re-validates everything.
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -207,13 +208,17 @@ local function styleTouchButton(action: string, title: string, color: Color3): A
 end
 
 -- Big touch buttons laid out around Roblox's own jump button so they never overlap it.
--- Returns nil when the jump button cannot be found; callers then fall back to CAS buttons.
+-- Waits in the background (the CAS fallback is already usable) and returns nil if the jump
+-- button never appears. Roblox rebuilds JumpButton when the screen size changes, so the layout
+-- re-hooks to whichever JumpButton currently exists.
+local JUMP_WAIT = 60
+
 local function buildTouchButtons(): (AbilityView?, AbilityView?)
 	local playerGui = player:WaitForChild("PlayerGui")
-	local touchGui = playerGui:WaitForChild("TouchGui", 5)
-	local frame = touchGui and touchGui:WaitForChild("TouchControlFrame", 5)
-	local jump = frame and frame:WaitForChild("JumpButton", 5) :: GuiObject?
-	if not touchGui or not jump then
+	local touchGui = playerGui:WaitForChild("TouchGui", JUMP_WAIT)
+	local frame = touchGui and touchGui:WaitForChild("TouchControlFrame", JUMP_WAIT)
+	local firstJump = frame and frame:WaitForChild("JumpButton", JUMP_WAIT)
+	if not touchGui or not frame or not firstJump then
 		return nil, nil
 	end
 	-- Same inset setting as TouchGui keeps both absolute coordinate spaces identical.
@@ -232,6 +237,7 @@ local function buildTouchButtons(): (AbilityView?, AbilityView?)
 	end)
 	local waveButton = makeButton(Controls.wave)
 
+	local jump: GuiObject = firstJump :: GuiObject
 	local function layout()
 		local position = jump.AbsolutePosition
 		local size = jump.AbsoluteSize
@@ -242,9 +248,24 @@ local function buildTouchButtons(): (AbilityView?, AbilityView?)
 		waveButton.Size = UDim2.fromOffset(small, small)
 		waveButton.Position = UDim2.fromOffset(position.X + (size.X - small) / 2, position.Y - small - 14)
 	end
-	jump:GetPropertyChangedSignal("AbsolutePosition"):Connect(layout)
-	jump:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
-	layout()
+	local connections: { RBXScriptConnection } = {}
+	local function hook(newJump: GuiObject)
+		for _, connection in connections do
+			connection:Disconnect()
+		end
+		jump = newJump
+		connections = {
+			jump:GetPropertyChangedSignal("AbsolutePosition"):Connect(layout),
+			jump:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout),
+		}
+		layout()
+	end
+	frame.ChildAdded:Connect(function(child)
+		if child.Name == "JumpButton" and child:IsA("GuiObject") then
+			hook(child)
+		end
+	end)
+	hook(jump)
 
 	return decorate(attackButton, Strings.get("attack_button"), nil, colors.accent),
 		decorate(waveButton, Strings.get("wave_button"), nil, colors.xp)
@@ -298,17 +319,20 @@ function Controls.start()
 	local gui = UiKit.create("ScreenGui", { Name = "Controls", ResetOnSpawn = false }, player:WaitForChild("PlayerGui"))
 
 	local views: { attack: AbilityView?, wave: AbilityView? } = {}
-	bindActions(false)
 	if UiKit.isTouch() then
+		-- Usable right away with CAS buttons; upgrade to the big custom buttons when possible.
+		bindActions(true)
+		views.attack = styleTouchButton(ATTACK_ACTION, Strings.get("attack_button"), colors.accent)
+		views.wave = styleTouchButton(WAVE_ACTION, Strings.get("wave_button"), colors.xp)
 		task.spawn(function()
-			views.attack, views.wave = buildTouchButtons()
-			if not views.attack then
-				bindActions(true)
-				views.attack = styleTouchButton(ATTACK_ACTION, Strings.get("attack_button"), colors.accent)
-				views.wave = styleTouchButton(WAVE_ACTION, Strings.get("wave_button"), colors.xp)
+			local attackView, waveView = buildTouchButtons()
+			if attackView and waveView then
+				bindActions(false)
+				views.attack, views.wave = attackView, waveView
 			end
 		end)
 	else
+		bindActions(false)
 		views.attack, views.wave = buildDesktopBar(gui)
 	end
 

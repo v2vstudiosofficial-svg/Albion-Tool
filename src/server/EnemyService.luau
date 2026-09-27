@@ -359,6 +359,14 @@ function EnemyService.connectPurified(listener: (string, any, { Player }) -> ())
 	table.insert(purifiedListeners, listener)
 end
 
+local function pushAway(enemy: Enemy, from: Vector3, distance: number)
+	local away = flat(enemy.position - from)
+	if away.Magnitude > 0.01 then
+		enemy.position += away.Unit * distance
+		ctx.clampToLeash(enemy)
+	end
+end
+
 -- Server-validated damage entry point; returns true when the hit was applied.
 -- pushFrom (optional) nudges regular enemies away from the attacker for a punchier hit.
 function EnemyService.damage(id: number, player: Player, amount: number, pushFrom: Vector3?): boolean
@@ -366,14 +374,12 @@ function EnemyService.damage(id: number, player: Player, amount: number, pushFro
 	if not enemy or not enemy.logic.alive then
 		return false
 	end
+	local now = os.clock()
 	if pushFrom and not enemy.stats.isBoss then
-		local away = flat(enemy.position - pushFrom)
-		if away.Magnitude > 0.01 then
-			enemy.position += away.Unit * Balance.hitPush
-			ctx.clampToLeash(enemy)
-		end
+		pushAway(enemy, pushFrom, Balance.hitPush)
+		place(enemy, now)
 	end
-	local purified = EnemyLogic.applyHit(enemy.logic, player, amount, os.clock())
+	local purified = EnemyLogic.applyHit(enemy.logic, player, amount, now)
 	publishHp(enemy)
 	fx:FireAllClients("hit", enemy.model, enemy.body.Position, amount)
 	if purified then
@@ -389,11 +395,7 @@ function EnemyService.damageInRadius(center: Vector3, radius: number, player: Pl
 		if enemy.logic.alive and flatDistance(enemy.position, center) <= radius + enemy.stats.size * 0.5 then
 			hits += 1
 			if not enemy.stats.isBoss and knockback > 0 then
-				local away = flat(enemy.position - center)
-				if away.Magnitude > 0.01 then
-					enemy.position += away.Unit * knockback
-					ctx.clampToLeash(enemy)
-				end
+				pushAway(enemy, center, knockback)
 				enemy.state = "recover"
 				enemy.stateUntil = os.clock() + 0.5
 			end

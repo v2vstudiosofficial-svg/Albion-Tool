@@ -21,7 +21,7 @@ local fxRemote = Remotes:WaitForChild("Fx") :: RemoteEvent
 local player = Players.LocalPlayer
 
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90))
-local PLAZA = Vector3.new(0, 0, 12)
+local PLAZA = WorldData.vector(WorldData.plaza)
 local WARM = Color3.fromRGB(255, 200, 110)
 local PINK = Color3.fromRGB(255, 150, 210)
 local GOLD = Color3.fromRGB(255, 220, 120)
@@ -373,6 +373,10 @@ local function addButterflies(parent: Instance, palette: { Color3 })
 	end
 end
 
+local function butterflyPath(fly: Butterfly, t: number): Vector3
+	return fly.center + Vector3.new(math.cos(t) * fly.radius, math.sin(t * 2.3) * 0.7, math.sin(t * 1.3) * fly.radius)
+end
+
 local function animateButterflies()
 	if #butterflies == 0 then
 		return
@@ -385,9 +389,7 @@ local function animateButterflies()
 	local now = os.clock()
 	for _, fly in butterflies do
 		local t = now * 0.8 + fly.phase
-		local position = fly.center + Vector3.new(math.cos(t) * fly.radius, math.sin(t * 2.3) * 0.7, math.sin(t * 1.3) * fly.radius)
-		local ahead = fly.center + Vector3.new(math.cos(t + 0.1) * fly.radius, math.sin((t + 0.1) * 2.3) * 0.7, math.sin((t + 0.1) * 1.3) * fly.radius)
-		local body = CFrame.lookAt(position, ahead)
+		local body = CFrame.lookAt(butterflyPath(fly, t), butterflyPath(fly, t + 0.1))
 		local flap = math.sin(now * 18 + fly.phase) * 0.9
 		fly.left.CFrame = body * CFrame.Angles(0, 0, flap) * CFrame.new(-0.25, 0, 0)
 		fly.right.CFrame = body * CFrame.Angles(0, 0, -flap) * CFrame.new(0.25, 0, 0)

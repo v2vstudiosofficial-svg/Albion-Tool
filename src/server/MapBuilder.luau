@@ -317,7 +317,7 @@ local function buildVillageProps(village: Instance)
 		Color = COLOR.roof,
 	})
 
-	local plaza = Vector3.new(0, 0, 12)
+	local plaza = v(WorldData.plaza)
 	for index, position in { Vector3.new(-20, 0, 6), Vector3.new(20, 0, 6) } do
 		local facing = CFrame.lookAt(position, Vector3.new(plaza.X, 0, plaza.Z))
 		part(props, "BenchSeat" .. index, {
@@ -374,9 +374,10 @@ local function buildVillage(map: Instance)
 		Color = COLOR.plaza,
 		Neutral = true,
 	})
-	disc(village, "Plaza", 30, Vector3.new(0, 0, 12), COLOR.plaza, Enum.Material.Slate)
-	cylinder(village, "LanternPost", 10, 1, Vector3.new(0, 0, 12), COLOR.trunk)
-	ballPart(village, "LanternLamp", 2.5, Vector3.new(0, 10.8, 12), COLOR.lanternOff, {
+	local plaza = v(WorldData.plaza)
+	disc(village, "Plaza", 30, plaza, COLOR.plaza, Enum.Material.Slate)
+	cylinder(village, "LanternPost", 10, 1, plaza, COLOR.trunk)
+	ballPart(village, "LanternLamp", 2.5, plaza + Vector3.new(0, 10.8, 0), COLOR.lanternOff, {
 		Material = Enum.Material.Glass,
 		Transparency = 0.2,
 	})

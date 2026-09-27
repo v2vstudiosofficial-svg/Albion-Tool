@@ -3,6 +3,8 @@
 local WorldData = {}
 
 WorldData.spawn = { 0, 0.5, 40 }
+-- Village plaza center: lantern, decorations and the safe healing area are placed around it.
+WorldData.plaza = { 0, 0, 12 }
 
 WorldData.npcs = {
 	Elder = { nameKey = "npc_elder_name", position = { 8, 1.6, 28 }, lookAt = { 0, 1.6, 40 } },

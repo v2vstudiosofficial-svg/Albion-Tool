@@ -85,7 +85,12 @@ local casButtons = {}
 local ContextActionService = {}
 function ContextActionService:BindAction(name: string, handler, createTouchButton: boolean)
 	actions[name] = handler
-	if createTouchButton and touchMode then
+	if casButtons[name] and not createTouchButton then
+		-- Rebinding without a touch button removes the old one, as in Roblox.
+		casButtons[name]:Destroy()
+		casButtons[name] = nil
+	end
+	if createTouchButton and touchMode and not casButtons[name] then
 		local holder = playerGui:FindFirstChild("ContextActionGui") or Instance.new("ScreenGui")
 		holder.Name = "ContextActionGui"
 		holder.Parent = playerGui
@@ -575,6 +580,22 @@ if withJumpButton then
 			table.insert(rects, r)
 		end
 		assert(not overlaps(rects[1], rects[2]), "buttons overlap each other")
+
+		-- Roblox rebuilds the jump button when the screen size changes; the layout must follow.
+		local frame = playerGui.TouchGui.TouchControlFrame
+		local newJump = Instance.new("ImageButton")
+		newJump.Name = "JumpButton"
+		newJump.AbsolutePosition = Vector2.new(400, 200)
+		newJump.AbsoluteSize = Vector2.new(90, 90)
+		frame.JumpButton:Destroy()
+		H.addChild(frame, newJump)
+		advance(0.1)
+		local newJumpRect = rect(Vector2.new(400, 200), Vector2.new(90, 90))
+		for _, button in buttons do
+			local r = rect(Vector2.new(button.Position.X.Offset, button.Position.Y.Offset), Vector2.new(button.Size.X.Offset, button.Size.Y.Offset))
+			assert(not overlaps(r, newJumpRect), "follows the rebuilt jump button")
+			assert(button.Size.X.Offset >= 90 * 0.9, "resized with the new jump button")
+		end
 
 		local gloom = enemiesFolder:FindFirstChildWhichIsA("Model")
 		teleport(H.read(gloom.Body, "Position") + Vector3.new(0, 1, 10))

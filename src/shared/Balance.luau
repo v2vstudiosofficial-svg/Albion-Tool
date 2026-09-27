@@ -165,8 +165,8 @@ return {
 	participationWindow = 30,
 	npcTalkDistance = 14,
 	hitPush = 1.2,
-	-- The village is a safe place: players near the plaza heal quickly.
-	village = { center = { 0, 0, 12 }, radius = 50, healPerSecond = 12 },
+	-- The village is a safe place: players within this radius of WorldData.plaza heal quickly.
+	village = { radius = 50, healPerSecond = 12 },
 	shopDistance = 18,
 	interactDistance = 12,
 	discoverRadius = 12,
