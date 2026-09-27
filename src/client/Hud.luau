@@ -207,8 +207,10 @@ function Hud.start()
 		elseif state == "done" then
 			local goal = Goals.next(player:GetAttribute("XP") or 0, player:GetAttribute("Coins") or 0, player:GetAttribute("StaffTier") or 0)
 			title = Strings.get("goal_title")
-			if goal.kind == "staff" then
-				text = Strings.get("goal_staff", goal.target, goal.current)
+			if goal.kind == "staff" and goal.affordable then
+				text = Strings.get("goal_staff_ready", goal.target + 1)
+			elseif goal.kind == "staff" then
+				text = Strings.get("goal_staff_coins", goal.target + 1, goal.missing)
 			elseif goal.kind == "level" then
 				text = Strings.get("goal_level", goal.target, goal.current)
 			else
@@ -217,7 +219,8 @@ function Hud.start()
 		end
 		questTitle.Text = title
 		questLabel.Text = text
-		if text ~= lastQuestText and lastQuestText ~= "" then
+		-- Post-story goal numbers tick with every kill; only quest changes deserve the pop.
+		if text ~= lastQuestText and lastQuestText ~= "" and state ~= "done" then
 			UiKit.pop(quest)
 		end
 		lastQuestText = text
@@ -318,8 +321,16 @@ function Hud.start()
 	for _, name in { "XP", "Coins" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshStats)
 	end
-	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState", "XP", "Coins", "StaffTier" } do
+	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshQuest)
+	end
+	-- Progress numbers only matter for the post-story goal line.
+	for _, name in { "XP", "Coins", "StaffTier" } do
+		player:GetAttributeChangedSignal(name):Connect(function()
+			if player:GetAttribute("QuestState") == "done" then
+				refreshQuest()
+			end
+		end)
 	end
 	player:GetAttributeChangedSignal("Level"):Connect(onLevelChanged)
 	refreshStats()

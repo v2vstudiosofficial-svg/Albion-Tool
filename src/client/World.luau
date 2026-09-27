@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local QuestData = require(Shared:WaitForChild("QuestData"))
-local Balance = require(Shared:WaitForChild("Balance"))
+local Progression = require(Shared:WaitForChild("Progression"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local Audio = require(script.Parent.Audio)
@@ -272,9 +272,8 @@ end
 -- True when the next staff tier is affordable; used to nudge players toward Usta Demir early,
 -- so the quest -> reward -> upgrade loop is visible within the first minutes.
 local function canAffordUpgrade(): boolean
-	local tier = player:GetAttribute("StaffTier") or 0
-	local nextTier = Balance.staff.tiers[tier + 2]
-	return nextTier ~= nil and (player:GetAttribute("Coins") or 0) >= nextTier.cost
+	local cost = Progression.nextStaffCost(Attrs.get("StaffTier", 0))
+	return cost ~= nil and Attrs.get("Coins", 0) >= cost
 end
 
 local nudgedTier: number? = nil

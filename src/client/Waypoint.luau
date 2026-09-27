@@ -33,6 +33,19 @@ local function nearestUnfound(ids: { string }, lookup: (string) -> { number }?, 
 	return best
 end
 
+local function nearestCreatureZone(from: Vector3): (Vector3?, number)
+	local best, bestDistance, bestRadius = nil, math.huge, 0
+	for _, name in { "glade", "grove", "hollow" } do
+		local area = WorldData.areas[name]
+		local center = WorldData.vector(area.center)
+		local distance = (center - from).Magnitude
+		if distance < bestDistance then
+			best, bestDistance, bestRadius = center, distance, area.radius
+		end
+	end
+	return best, bestRadius
+end
+
 -- Returns the world point to guide to and how close counts as "arrived".
 local function currentGoal(from: Vector3): (Vector3?, number)
 	local state = player:GetAttribute("QuestState")
@@ -40,24 +53,14 @@ local function currentGoal(from: Vector3): (Vector3?, number)
 		return WorldData.vector(WorldData.npcs.Elder.position), HIDE_DISTANCE
 	elseif state == "level" then
 		-- Guide to the nearest creature zone so players know where to grow stronger.
-		local best, bestDistance, bestRadius = nil, math.huge, 0
-		for _, name in { "glade", "grove", "hollow" } do
-			local area = WorldData.areas[name]
-			local center = WorldData.vector(area.center)
-			local distance = (center - from).Magnitude
-			if distance < bestDistance then
-				best, bestDistance, bestRadius = center, distance, area.radius
-			end
-		end
-		return best, bestRadius
+		return nearestCreatureZone(from)
 	elseif state == "done" then
-		-- After the story: an affordable upgrade at Demir first, otherwise the boss for big XP.
+		-- After the story: an affordable upgrade at Demir, otherwise creatures for XP and coins.
 		local goal = Goals.next(Attrs.get("XP", 0), Attrs.get("Coins", 0), Attrs.get("StaffTier", 0))
 		if goal.kind == "staff" and goal.affordable then
 			return WorldData.vector(WorldData.npcs.Demir.position), HIDE_DISTANCE
-		elseif goal.kind == "level" then
-			local arena = WorldData.areas.arena
-			return WorldData.vector(arena.center), arena.radius
+		elseif goal.kind ~= "done" then
+			return nearestCreatureZone(from)
 		end
 		return nil, 0
 	elseif state ~= "active" then

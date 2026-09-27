@@ -204,7 +204,13 @@ test("post-story goals: affordable upgrade, then level cap, then remaining tiers
 	local staffOnly = Goals.next(maxXp, 0, lastTier - 1)
 	eq(staffOnly.kind, "staff", "at max level, remaining tiers")
 	eq(staffOnly.affordable, false)
+	eq(staffOnly.missing, tiers[lastTier + 1].cost, "missing coins")
 	eq(Goals.next(maxXp, 0, lastTier).kind, "done")
+	eq(Goals.next(maxXp, 10 ^ 6, lastTier).kind, "done", "max tier with lots of coins")
+	local capped = Goals.next(maxXp, tiers[2].cost, 0)
+	eq(capped.kind, "staff", "affordable tier at the level cap")
+	eq(capped.affordable, true)
+	eq(capped.target, 1, "tier index, not display number")
 end)
 
 -- Quests ----------------------------------------------------------------------------------------

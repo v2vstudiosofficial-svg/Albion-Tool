@@ -194,7 +194,7 @@ function Menus.start()
 			shopButton.Visible = false
 			return
 		end
-		local cost = Balance.staff.tiers[tier + 2].cost
+		local cost = Progression.nextStaffCost(tier) :: number
 		shopDamage.Text = Strings.get("shop_damage", Progression.staffDamage(tier, level), Progression.staffDamage(tier + 1, level))
 		shopCost.Text = Strings.get("shop_cost", cost)
 		shopButton.Visible = true

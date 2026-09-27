@@ -41,6 +41,12 @@ function Progression.maxStaffUpgrade(): number
 	return #Balance.staff.tiers - 1
 end
 
+-- Coins needed for the next staff tier, or nil when the staff is already at its best.
+function Progression.nextStaffCost(staffUpgrade: number): number?
+	local nextTier = Balance.staff.tiers[staffUpgrade + 2]
+	return nextTier and nextTier.cost
+end
+
 function Progression.staffDamage(staffUpgrade: number, level: number): number
 	local tier = Progression.staffTier(staffUpgrade)
 	return math.floor(tier.damage * (1 + Balance.levels.damageBonusPerLevel * (level - 1)) + 0.5)

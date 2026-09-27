@@ -596,9 +596,31 @@ test("after the story the panel and waypoint show the next personal goal", funct
 	advance(0.5)
 	local Progression = H.loadModule("src/shared/Progression.luau")
 	assert(shownText(Strings.get("goal_level", Progression.MAX_LEVEL, Progression.levelForXp(1000))), "level goal shown")
+	local function waypointAt(): any
+		for _, child in playerGui:GetChildren() do
+			if child:IsA("BillboardGui") and child.Enabled and child.Adornee and child.Adornee.Name == "WaypointAnchor" then
+				return H.read(child.Adornee, "Position")
+			end
+		end
+		return nil
+	end
+	local function near(point, p)
+		return point ~= nil and (point - vec(p)).Magnitude < 1
+	end
+	local zones = WorldData.areas
+	local at = waypointAt()
+	assert(near(at, zones.glade.center) or near(at, zones.grove.center) or near(at, zones.hollow.center), "level goal guides to a creature zone")
+
 	setAttributes({ Coins = Balance.staff.tiers[3].cost })
 	advance(0.5)
-	assert(shownText(Strings.get("goal_staff", 3, 2)), "affordable staff goal shown")
+	assert(shownText(Strings.get("goal_staff_ready", 3)), "affordable staff goal shown")
+	assert(near(waypointAt(), WorldData.npcs.Demir.position), "affordable upgrade guides to Demir")
+
+	setAttributes({ XP = 10 ^ 6, Coins = 0 })
+	advance(0.5)
+	assert(shownText(Strings.get("goal_staff_coins", 3, Balance.staff.tiers[3].cost)), "coins still needed")
+	local farm = waypointAt()
+	assert(near(farm, zones.glade.center) or near(farm, zones.grove.center) or near(farm, zones.hollow.center), "coin goal guides to creatures")
 end)
 
 test("level-gated quest points to a creature zone and explains why", function()
