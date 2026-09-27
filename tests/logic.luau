@@ -10,6 +10,7 @@ local Strings = require("../src/shared/Strings")
 local WorldData = require("../src/shared/WorldData")
 local Progression = require("../src/shared/Progression")
 local Sounds = require("../src/shared/Sounds")
+local Goals = require("../src/shared/Goals")
 
 local passed, failed = 0, 0
 
@@ -190,6 +191,20 @@ test("derived stats: health, damage, wave, charms", function()
 	assert(Progression.damageTaken(20, "guard") < 20, "guard reduces damage")
 	eq(Progression.damageTaken(1, "guard"), 1, "never below 1")
 	assert(Progression.walkSpeed("swift") > Progression.walkSpeed(nil), "swift is faster")
+end)
+
+test("post-story goals: affordable upgrade, then level cap, then remaining tiers, then done", function()
+	local tiers = Balance.staff.tiers
+	local maxXp = Balance.levels.xpThresholds[Progression.MAX_LEVEL]
+	local g = Goals.next(0, tiers[2].cost, 0)
+	eq(g.kind, "staff", "affordable upgrade first")
+	eq(g.affordable, true)
+	eq(Goals.next(0, 0, 0).kind, "level", "otherwise level up")
+	local lastTier = Progression.maxStaffUpgrade()
+	local staffOnly = Goals.next(maxXp, 0, lastTier - 1)
+	eq(staffOnly.kind, "staff", "at max level, remaining tiers")
+	eq(staffOnly.affordable, false)
+	eq(Goals.next(maxXp, 0, lastTier).kind, "done")
 end)
 
 -- Quests ----------------------------------------------------------------------------------------

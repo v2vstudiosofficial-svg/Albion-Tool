@@ -7,6 +7,7 @@ local QuestData = require(Shared:WaitForChild("QuestData"))
 local Balance = require(Shared:WaitForChild("Balance"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
 local Progression = require(Shared:WaitForChild("Progression"))
+local Goals = require(Shared:WaitForChild("Goals"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 
@@ -204,7 +205,15 @@ function Hud.start()
 			title = if def then Strings.get(def.titleKey) else ""
 			text = Strings.get("quest_need_level", player:GetAttribute("QuestNeedLevel") or 0)
 		elseif state == "done" then
-			text = Strings.get("quest_all_done")
+			local goal = Goals.next(player:GetAttribute("XP") or 0, player:GetAttribute("Coins") or 0, player:GetAttribute("StaffTier") or 0)
+			title = Strings.get("goal_title")
+			if goal.kind == "staff" then
+				text = Strings.get("goal_staff", goal.target, goal.current)
+			elseif goal.kind == "level" then
+				text = Strings.get("goal_level", goal.target, goal.current)
+			else
+				text = Strings.get("goal_all")
+			end
 		end
 		questTitle.Text = title
 		questLabel.Text = text
@@ -309,7 +318,7 @@ function Hud.start()
 	for _, name in { "XP", "Coins" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshStats)
 	end
-	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState" } do
+	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState", "XP", "Coins", "StaffTier" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshQuest)
 	end
 	player:GetAttributeChangedSignal("Level"):Connect(onLevelChanged)

@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local QuestData = require(Shared:WaitForChild("QuestData"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
+local Goals = require(Shared:WaitForChild("Goals"))
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
 
@@ -49,6 +50,16 @@ local function currentGoal(from: Vector3): (Vector3?, number)
 			end
 		end
 		return best, bestRadius
+	elseif state == "done" then
+		-- After the story: an affordable upgrade at Demir first, otherwise the boss for big XP.
+		local goal = Goals.next(Attrs.get("XP", 0), Attrs.get("Coins", 0), Attrs.get("StaffTier", 0))
+		if goal.kind == "staff" and goal.affordable then
+			return WorldData.vector(WorldData.npcs.Demir.position), HIDE_DISTANCE
+		elseif goal.kind == "level" then
+			local arena = WorldData.areas.arena
+			return WorldData.vector(arena.center), arena.radius
+		end
+		return nil, 0
 	elseif state ~= "active" then
 		return nil, 0
 	end

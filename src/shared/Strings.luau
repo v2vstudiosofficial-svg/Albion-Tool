@@ -50,6 +50,10 @@ local tables = {
 		quest_talk_to_elder = "Bilge Nur ile konuş",
 		quest_need_level = "Yaratıkları arındırıp Seviye %d ol, sonra Bilge Nur'a dön",
 		quest_all_done = "Tüm görevler tamam! Işık Koruyucusu sensin",
+		goal_title = "Koruyucu hedefleri",
+		goal_level = "Hedef: Seviye %d (şimdi %d)",
+		goal_staff = "Hedef: Asa seviyesi %d (şimdi %d)",
+		goal_all = "Tüm hedefler tamam! Harikasın",
 
 		hud_level = "Sv %d",
 		hud_coins = "%d",

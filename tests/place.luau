@@ -40,7 +40,7 @@ end
 local replicated = game:GetService("ReplicatedStorage")
 local shared = replicated:FindFirstChild("Shared")
 expectClass(shared, "Folder", "ReplicatedStorage.Shared")
-for _, name in { "Strings", "Balance", "QuestData", "WorldData", "Progression", "Sounds" } do
+for _, name in { "Strings", "Balance", "QuestData", "WorldData", "Progression", "Sounds", "Goals" } do
 	expectClass(shared and shared:FindFirstChild(name), "ModuleScript", "Shared." .. name)
 end
 local remotes = replicated:FindFirstChild("Remotes")
