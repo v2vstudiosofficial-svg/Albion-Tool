@@ -19,6 +19,7 @@ local ChestLogic = require(script.ChestLogic)
 local Balance = require(Shared.Balance)
 local ChestData = require(Shared.ChestData)
 local SkillService = require(script.SkillService)
+local RiftService = require(script.RiftService)
 
 local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
 local notice = ReplicatedStorage.Remotes.Notice :: RemoteEvent
@@ -34,6 +35,7 @@ CombatService.start()
 ChestService.start()
 PouchService.start()
 SkillService.start()
+RiftService.start()
 
 -- Creatures give XP (boosted by the Wisdom skill) and Light Crystals for the pouch; coins come
 -- from turning crystals in at the Great Lantern.

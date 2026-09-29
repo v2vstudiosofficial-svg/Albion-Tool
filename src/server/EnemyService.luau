@@ -397,6 +397,18 @@ local function purify(enemy: Enemy)
 	end
 end
 
+-- Removes an enemy without rewards (a failed wave event fading away).
+function EnemyService.despawn(id: number)
+	local enemy = enemies[id]
+	if not enemy then
+		return
+	end
+	enemies[id] = nil
+	enemy.model:SetAttribute("Alive", false)
+	fx:FireAllClients("despawn", enemy.body.Position)
+	enemy.model:Destroy()
+end
+
 function EnemyService.get(id: number): Enemy?
 	return enemies[id]
 end

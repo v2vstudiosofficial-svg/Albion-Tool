@@ -391,13 +391,20 @@ function Hud.start()
 			showDialog(npc, Strings.get(key, table.unpack(translateArgs(...))))
 		end
 	end)
-	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, first, second)
+	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, first, second, ...)
 		local purified = if kind == "purify" and typeof(second) == "string" then Balance.enemies[second] else nil
 		if purified and purified.isBoss and typeof(first) == "Vector3" then
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if root and (root.Position - first).Magnitude <= purified.leashRadius + 30 then
 				showBanner(Strings.get("banner_boss_down", Strings.get(purified.nameKey)), Strings.get("banner_boss_down_sub"))
+			end
+		elseif kind == "riftWave" then
+			-- first = zone id, second = rift center; wave numbers follow.
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if root and typeof(second) == "Vector3" and (root.Position - second).Magnitude <= 90 then
+				showBanner(Strings.get("banner_rift"), Strings.get("banner_rift_wave", select(1, ...), select(2, ...)))
 			end
 		elseif kind == "questComplete" then
 			local def = QuestData.quests[first]

@@ -322,6 +322,22 @@ enemies.ShadowKing = variant("Warden", {
 -- gives a Mystic chest (or legendCoins when every chest slot is full).
 Balance.legends = { "Warden", "BogMother", "FrostTitan", "ShadowKing" }
 
+-- Shadow Rifts: while players are in a creature zone, a rift sometimes opens there and sends
+-- `waves` waves of the zone's creatures. Clearing every wave before `timeLimit` gives everyone
+-- who helped a `chest` (or coinsPerLevel * zone top level coins when the chest slots are full).
+Balance.rifts = {
+	checkInterval = 20,
+	chance = 0.15,
+	cooldown = 120,
+	waves = 3,
+	baseCount = 3,
+	timeLimit = 90,
+	waveDelay = 2,
+	ringRadius = 9,
+	chest = "silver",
+	coinsPerLevel = 20,
+}
+
 -- Elite creatures: a rare, bigger, golden-crowned version of a regular creature. Everyone who
 -- helped gets a chestChance roll for one of `chests` (when a chest slot is free).
 Balance.elite = {

@@ -732,6 +732,23 @@ test("legends: silhouettes until purified; the waypoint picks a zone for the pla
 	setAttributes({ Level = 3, QuestId = "first_purify", QuestState = "available" })
 end)
 
+test("shadow rift: portal while open, wave banner nearby, cleaned up on close", function()
+	local root = hero.Character.HumanoidRootPart
+	local center = H.read(root, "Position") + Vector3.new(10, -3, 0)
+	advance(2)
+	local before = #workspace.ClientFx:GetChildren()
+	remotes.Fx.OnClientEvent:Fire("riftOpened", "glade", center)
+	advance(0.1)
+	assert(#workspace.ClientFx:GetChildren() >= before + 4, "portal rings and core")
+	remotes.Fx.OnClientEvent:Fire("riftWave", "glade", center, 2, 3)
+	advance(0.1)
+	assert(shownText(Strings.get("banner_rift_wave", 2, 3)), "wave banner")
+	remotes.Fx.OnClientEvent:Fire("riftClosed", "glade", center, true)
+	advance(2)
+	eq(#workspace.ClientFx:GetChildren(), 0, "portal removed")
+	eq(#H.threadErrors, 0, "thread errors")
+end)
+
 test("bag: equip an owned charm, locked ones do nothing", function()
 	setAttributes({ Charms = "swift", Charm = "" })
 	click(findButton(Strings.get("menu_bag")))

@@ -1133,6 +1133,26 @@ test("elites: tougher and more rewarding, rare", function()
 	assert(Strings.has("enemy_label_elite") and Strings.has("notice_elite_chest"), "elite strings")
 end)
 
+test("shadow rifts: every creature zone qualifies, waves grow, fallback coins scale", function()
+	local RiftLogic = require("../src/server/RiftLogic")
+	local zones = RiftLogic.zones()
+	assert(#zones >= 7, "rifts in every creature zone")
+	for _, areaId in zones do
+		local kinds = RiftLogic.kindsFor(areaId)
+		assert(#kinds > 0, "creatures for " .. areaId)
+		for _, kind in kinds do
+			assert(not Balance.enemies[kind].isBoss, "no bosses from rifts")
+		end
+	end
+	assert(RiftLogic.waveSize(2, 1) > RiftLogic.waveSize(1, 1), "waves grow")
+	assert(RiftLogic.waveSize(1, 3) > RiftLogic.waveSize(1, 1), "more players, more creatures")
+	assert(RiftLogic.fallbackCoins("keep") > RiftLogic.fallbackCoins("glade"), "deeper zones pay more")
+	assert(ChestData.chests[Balance.rifts.chest], "rift chest exists")
+	for _, key in { "notice_rift_open", "notice_rift_done", "notice_rift_done_coins", "notice_rift_failed", "banner_rift", "banner_rift_wave" } do
+		assert(Strings.has(key), key)
+	end
+end)
+
 test("game content is English only (no Turkish letters in source)", function()
 	local offenders = {}
 	local function scan(dir: string)

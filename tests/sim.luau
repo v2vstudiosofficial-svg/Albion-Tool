@@ -1007,6 +1007,78 @@ test("elites: crowned, tougher, triple rewards, may drop a chest", function()
 	toVillage(alice)
 end)
 
+test("shadow rift: waves in order, clearing them gives helpers a chest", function()
+	local RiftService = H.loadModule("src/server/RiftService.luau")
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	PlayerProfiles.get(alice).chests = {}
+	PlayerProfiles.sync(alice)
+	local center = vec(WorldData.areas.hollow.center, 3)
+	teleport(alice, center)
+	if not RiftService.active("hollow") then
+		eq(RiftService.open("hollow"), true, "rift opened")
+	end
+	eq(RiftService.open("hollow"), false, "one rift per zone")
+	local function riftEnemies(): { any }
+		local list = {}
+		for _, model in workspace.Enemies:GetChildren() do
+			local EnemyService = H.loadModule("src/server/EnemyService.luau")
+			local enemy = EnemyService.get(model:GetAttribute("EnemyId"))
+			if enemy and enemy.tag == "rift:hollow" then
+				table.insert(list, enemy)
+			end
+		end
+		return list
+	end
+	assert(#riftEnemies() >= Balance.rifts.baseCount + 1, "first wave spawned")
+	local elapsed = 0
+	while RiftService.active("hollow") and elapsed < Balance.rifts.timeLimit do
+		local list = riftEnemies()
+		if #list > 0 then
+			teleport(alice, positionOf(list[1].body) + Vector3.new(0, 1, 2))
+		end
+		advance(0.25)
+		heal(alice)
+		elapsed += 0.25
+	end
+	eq(RiftService.active("hollow"), false, "rift closed")
+	eq(logCount("Fx", function(e)
+		return e.args[1] == "riftWave" and e.args[2] == "hollow"
+	end) >= Balance.rifts.waves, true, "every wave came")
+	eq(logCount("Fx", function(e)
+		return e.args[1] == "riftClosed" and e.args[2] == "hollow" and e.args[4] == true
+	end), 1, "closed by clearing it")
+	assert(string.find(attr(alice, "Chests"), Balance.rifts.chest, 1, true), "rift chest for the helper")
+	toVillage(alice)
+end)
+
+test("shadow rift: running out of time fades the rest away without rewards", function()
+	local RiftService = H.loadModule("src/server/RiftService.luau")
+	local EnemyService = H.loadModule("src/server/EnemyService.luau")
+	local notices = logCount("Notice", function(e)
+		return e.args[1] == "notice_rift_done"
+	end)
+	eq(RiftService.open("grove"), true)
+	local ids = {}
+	for _, model in workspace.Enemies:GetChildren() do
+		local enemy = EnemyService.get(model:GetAttribute("EnemyId"))
+		if enemy and enemy.tag == "rift:grove" then
+			table.insert(ids, enemy.id)
+		end
+	end
+	assert(#ids > 0, "rift creatures")
+	advance(Balance.rifts.timeLimit + 2)
+	eq(RiftService.active("grove"), false, "closed")
+	for _, id in ids do
+		eq(EnemyService.get(id), nil, "faded away")
+	end
+	eq(logCount("Fx", function(e)
+		return e.args[1] == "riftClosed" and e.args[2] == "grove" and e.args[4] == false
+	end), 1, "failed")
+	eq(logCount("Notice", function(e)
+		return e.args[1] == "notice_rift_done"
+	end), notices, "no rewards")
+end)
+
 test("leaving and rejoining restores the saved profile", function()
 	local snapshot = {}
 	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots", "Upgrades", "Crystals", "Skills", "SkillOffer", "PendingPicks" } do

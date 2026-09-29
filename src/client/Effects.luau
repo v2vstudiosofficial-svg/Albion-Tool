@@ -362,6 +362,67 @@ local function onCrystals(from: Vector3, amount: number)
 	Audio.play("pickup")
 end
 
+-- Shadow Rift portals: spinning purple rings above the ground until the rift closes.
+local RIFT_COLOR = Color3.fromRGB(170, 90, 255)
+local portals: { [string]: { parts: { BasePart }, center: Vector3 } } = {}
+
+local function onRiftOpened(areaId: string, center: Vector3)
+	if portals[areaId] then
+		return
+	end
+	local parts = {}
+	for index = 1, 3 do
+		local ring = newPart({
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.3, 5 + index * 2, 5 + index * 2),
+			CFrame = CFrame.new(center + Vector3.new(0, 0.2 * index, 0)) * UPRIGHT,
+			Color = if index == 2 then Color3.new(1, 1, 1) else RIFT_COLOR,
+			Material = Enum.Material.Neon,
+			Transparency = 0.35 + index * 0.1,
+		})
+		table.insert(parts, ring)
+	end
+	local core = newPart({
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(3, 3, 3),
+		CFrame = CFrame.new(center + Vector3.new(0, 3, 0)),
+		Color = RIFT_COLOR,
+		Material = Enum.Material.Neon,
+		Transparency = 0.2,
+	})
+	table.insert(parts, core)
+	portals[areaId] = { parts = parts, center = center }
+	Effects.burst(center + Vector3.new(0, 3, 0), RIFT_COLOR, 40, 12)
+end
+
+local function onRiftClosed(areaId: string, center: Vector3, success: boolean)
+	local portal = portals[areaId]
+	portals[areaId] = nil
+	if portal then
+		for _, part in portal.parts do
+			fadeOut(part, 0.5)
+		end
+	end
+	Effects.burst(center + Vector3.new(0, 3, 0), if success then GOLD else RIFT_COLOR, 60, 16)
+end
+
+local function spinPortals()
+	local now = os.clock()
+	for _, portal in portals do
+		for index, part in portal.parts do
+			if part.Parent then
+				local height = if index == #portal.parts then 3 + math.sin(now * 3) * 0.5 else 0.2 * index
+				local tilt = if index == #portal.parts then CFrame.new() else UPRIGHT
+				part.CFrame = CFrame.new(portal.center + Vector3.new(0, height, 0)) * CFrame.Angles(0, now * (0.8 + index * 0.4), 0) * tilt
+			end
+		end
+	end
+end
+
+local function onDespawn(position: Vector3)
+	Effects.burst(position, RIFT_COLOR, 12, 6)
+end
+
 local function onDeposit(lantern: Vector3, _coins: number)
 	Effects.burst(lantern + Vector3.new(0, 6, 0), GOLD, 40, 12)
 	Effects.burst(lantern + Vector3.new(0, 6, 0), CRYSTAL_COLOR, 20, 10)
@@ -627,6 +688,9 @@ local handlers = {
 	end,
 	hit = onHit,
 	crystals = onCrystals,
+	riftOpened = onRiftOpened,
+	riftClosed = onRiftClosed,
+	despawn = onDespawn,
 	deposit = onDeposit,
 	purify = onPurify,
 	projectile = onProjectile,
@@ -671,6 +735,7 @@ function Effects.start()
 	end
 
 	RunService.RenderStepped:Connect(updateProjectiles)
+	RunService.RenderStepped:Connect(spinPortals)
 	RunService:BindToRenderStep("LvCameraShake", Enum.RenderPriority.Camera.Value + 1, function()
 		local now = os.clock()
 		if now >= shakeUntil then
