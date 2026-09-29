@@ -15,7 +15,8 @@ function PetLogic.progress(profile: any, id: string): number
 	local unlock = pet.unlock
 	local value = 0
 	if unlock.kind == "level" then
-		value = Progression.levelForXp(profile.xp)
+		-- A reborn player has already reached every level.
+		value = if profile.rebirths > 0 then Progression.MAX_LEVEL else Progression.levelForXp(profile.xp)
 	elseif unlock.kind == "legend" then
 		value = if profile.legends[unlock.id] then 1 else 0
 	elseif unlock.kind == "tower" then

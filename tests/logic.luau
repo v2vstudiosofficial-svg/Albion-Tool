@@ -1270,7 +1270,7 @@ test("store data: fixed contents only, valid references, strings, no ids invente
 		assert(Strings.has(costume.nameKey), "costume name " .. id)
 		assert(table.find(CosmeticData.slots, costume.slot), "slot " .. id)
 		local source = costume.source
-		assert(source.coins or source.pass or source.robux, "costume source " .. id)
+		assert(source.coins or source.pass or source.robux or source.rebirth, "costume source " .. id)
 		if source.robux then
 			eq(StoreData.products[source.robux].costume, id, "robux costume product " .. id)
 		end
@@ -1702,6 +1702,96 @@ test("counter quests: count from the day they start; records use the best value;
 	local cleaned = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, questProgress = { rift_watch = { state = "active", count = 0, base = -3 }, elite_hunt = { state = "active", count = 0, base = 7 } } })
 	eq(cleaned.questProgress.rift_watch.base, nil, "bad base dropped")
 	eq(cleaned.questProgress.elite_hunt.base, 7, "good base kept")
+end)
+
+test("rebirth: only at level 100, resets the climb, keeps collections, gives bonus XP and cosmetics", function()
+	local RebirthLogic = require("../src/server/RebirthLogic")
+	local PetLogic = require("../src/server/PetLogic")
+	local CosmeticData = require("../src/shared/CosmeticData")
+	local p = Profile.new()
+	p.xp = Progression.thresholds[Progression.MAX_LEVEL - 1]
+	local ok, reason = RebirthLogic.can(p)
+	eq(ok, false)
+	eq(reason, "level", "level 99 is not enough")
+	eq(RebirthLogic.perform(p), nil, "nothing happens below the cap")
+	eq(p.rebirths, 0)
+	-- A well-equipped level 100 player.
+	p.xp = Progression.thresholds[Progression.MAX_LEVEL]
+	p.coins = 987654
+	p.staffUpgrade = 30
+	p.upgrades = { crit = 5, pouch = 3 }
+	p.skills = { sharp = 5 }
+	p.skillOffer = { "sharp", "swift" }
+	p.pendingPicks = 2
+	p.crystals = 40
+	p.ownedWeapons.hammer = true
+	p.weaponStars.hammer = 4
+	p.slotLevels[1] = 12
+	p.ownedCharms.swift = true
+	p.legends.Warden = true
+	p.towerBest = 21
+	p.counters.purifies = 4000
+	p.questProgress.warden = { state = "completed", count = 1 }
+	p.achievements.friends = 2
+	table.insert(p.chests, { type = "gold", startedAt = 0 })
+	local costumes = RebirthLogic.perform(p) :: { string }
+	eq(p.rebirths, 1)
+	eq(p.xp, 0, "back to level 1")
+	eq(Progression.levelForXp(p.xp), 1)
+	eq(p.coins, Balance.rebirth.startCoins, "a small fresh start")
+	eq(p.staffUpgrade, 0)
+	eq(next(p.upgrades), nil)
+	eq(next(p.skills), nil)
+	eq(#p.skillOffer, 0)
+	eq(p.pendingPicks, 0)
+	eq(p.crystals, 0)
+	-- Everything collected stays.
+	eq(p.ownedWeapons.hammer, true)
+	eq(p.weaponStars.hammer, 4)
+	eq(p.slotLevels[1], 12)
+	eq(p.ownedCharms.swift, true)
+	eq(p.legends.Warden, true)
+	eq(p.towerBest, 21)
+	eq(p.counters.purifies, 4000)
+	eq(p.questProgress.warden.state, "completed")
+	eq(p.achievements.friends, 2)
+	eq(#p.chests, 1, "chests are kept")
+	eq(Progression.chestSlots(1, p.rebirths), #ChestData.slotUnlockLevels, "all chest slots stay open")
+	eq(Progression.chestSlots(1, 0), 1, "a first climb still starts with one")
+	-- Cosmetic rewards: rebirth 1 gives the Dawn Aura, rebirth 3 the Phoenix Wings, each once.
+	eq(costumes[1], "dawn_aura")
+	eq(p.ownedCosmetics.phoenix_wings, nil)
+	eq(#RebirthLogic.grantRewards(p), 0, "nothing given twice")
+	for _ = 1, 2 do
+		p.xp = Progression.thresholds[Progression.MAX_LEVEL]
+		RebirthLogic.perform(p)
+	end
+	eq(p.rebirths, 3)
+	eq(p.ownedCosmetics.phoenix_wings, true, "third rebirth costume")
+	for id, costume in CosmeticData.costumes do
+		if costume.source.rebirth then
+			assert(costume.source.rebirth >= 1, id)
+		end
+	end
+	-- The XP bonus grows per rebirth up to the cap and reaches the player's stats.
+	eq(RebirthLogic.xpBonus(0), 0)
+	assert(math.abs(RebirthLogic.xpBonus(2) - 2 * Balance.rebirth.xpPerRebirth) < 1e-9)
+	eq(RebirthLogic.xpBonus(999), Balance.rebirth.xpPerRebirth * Balance.rebirth.maxBonusRebirths, "capped")
+	local plain = Stats.of({ xp = 0, staffUpgrade = 0 })
+	local reborn = Stats.of({ xp = 0, staffUpgrade = 0, rebirths = 2 })
+	assert(math.abs(reborn.xpMultiplier - plain.xpMultiplier - RebirthLogic.xpBonus(2)) < 1e-9, "stats include the bonus")
+	eq(Stats.of({ xp = 0, staffUpgrade = 0, rebirths = 500 }).xpMultiplier, 1 + RebirthLogic.xpBonus(500))
+	-- A pet earned by level stays earned after the level resets.
+	local q = Profile.new()
+	q.xp = Progression.thresholds[10]
+	eq(PetLogic.unlocked(q, "glowmoth"), true)
+	q.xp = 0
+	eq(PetLogic.unlocked(q, "glowmoth"), false, "before any rebirth a low level has no moth")
+	q.rebirths = 1
+	eq(PetLogic.unlocked(q, "glowmoth"), true, "a reborn player keeps it")
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, rebirths = -1 }).rebirths, 0)
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, rebirths = 3 }).rebirths, 3)
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).rebirths, 0, "missing value")
 end)
 
 test("game content is English only (no Turkish letters in source)", function()

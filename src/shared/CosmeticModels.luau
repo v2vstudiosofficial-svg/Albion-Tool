@@ -56,6 +56,14 @@ local builders: { [string]: (Color3) -> { Spec } } = {
 			{ name = "Trim", size = Vector3.new(2.05, 0.15, 0.16), at = CFrame.new(0, -2.55, 0.25), color = Color3.fromRGB(200, 130, 255), neon = true },
 		}
 	end,
+	phoenix_wings = function(color)
+		return {
+			{ name = "WingL", size = Vector3.new(2.4, 1.6, 0.1), at = CFrame.new(-1.4, 0.35, 0) * CFrame.Angles(0, math.rad(20), math.rad(35)), color = color, neon = true },
+			{ name = "WingR", size = Vector3.new(2.4, 1.6, 0.1), at = CFrame.new(1.4, 0.35, 0) * CFrame.Angles(0, math.rad(-20), math.rad(-35)), color = color, neon = true },
+			{ name = "TipL", size = Vector3.new(1.1, 0.7, 0.12), at = CFrame.new(-2.3, 0.9, 0) * CFrame.Angles(0, math.rad(20), math.rad(35)), color = Color3.fromRGB(255, 220, 120), neon = true },
+			{ name = "TipR", size = Vector3.new(1.1, 0.7, 0.12), at = CFrame.new(2.3, 0.9, 0) * CFrame.Angles(0, math.rad(-20), math.rad(-35)), color = Color3.fromRGB(255, 220, 120), neon = true },
+		}
+	end,
 	crystal_wings = function(color)
 		return {
 			{ name = "WingL", size = Vector3.new(2.2, 1.4, 0.1), at = CFrame.new(-1.3, 0.3, 0) * CFrame.Angles(0, math.rad(20), math.rad(30)), color = color, neon = true },

@@ -1,11 +1,13 @@
 -- Costumes: purely visual, never stronger. One per slot (hat, back, aura). `source` says how to
--- get it: coins (Forge-free shop), pass (Light Pass tier/track) or robux (StoreData product).
+-- get it: coins (Forge-free shop), pass (Light Pass tier/track), robux (StoreData product) or
+-- rebirth (given at that many rebirths, see server/RebirthLogic).
 return {
 	slots = { "hat", "back", "aura" },
 	order = {
 		"lantern_hat", "leaf_crown", "frost_hood", "star_crown",
 		"explorer_cape", "petal_wings", "shadow_cloak", "crystal_wings",
 		"sparkle_aura", "ember_aura", "golden_aura", "rainbow_aura",
+		"dawn_aura", "phoenix_wings",
 	},
 	costumes = {
 		lantern_hat = { nameKey = "costume_lantern_hat", slot = "hat", color = { 255, 210, 110 }, source = { coins = 2000 } },
@@ -20,5 +22,7 @@ return {
 		ember_aura = { nameKey = "costume_ember_aura", slot = "aura", color = { 255, 140, 70 }, source = { coins = 100000 } },
 		golden_aura = { nameKey = "costume_golden_aura", slot = "aura", color = { 255, 205, 70 }, source = { robux = "golden_aura" } },
 		rainbow_aura = { nameKey = "costume_rainbow_aura", slot = "aura", color = { 200, 150, 255 }, source = { pass = 50, track = "premium" } },
+		dawn_aura = { nameKey = "costume_dawn_aura", slot = "aura", color = { 255, 190, 150 }, source = { rebirth = 1 } },
+		phoenix_wings = { nameKey = "costume_phoenix_wings", slot = "back", color = { 255, 130, 60 }, source = { rebirth = 3 } },
 	},
 }

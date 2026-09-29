@@ -10,6 +10,7 @@ export type Input = {
 	upgrades: { [string]: number }?,
 	skills: { [string]: number }?,
 	equippedCharm: string?,
+	rebirths: number?,
 }
 
 export type PlayerStats = {
@@ -60,7 +61,7 @@ function Stats.of(input: Input): PlayerStats
 		regen = upgrade(input, "regen") * ups.regen.perLevel,
 		walkSpeed = Progression.walkSpeed(input.equippedCharm) * (1 + bonus(input, "feet")),
 		crystalMultiplier = 1 + bonus(input, "magnet"),
-		xpMultiplier = 1 + bonus(input, "wisdom"),
+		xpMultiplier = 1 + bonus(input, "wisdom") + Balance.rebirth.xpPerRebirth * math.clamp(input.rebirths or 0, 0, Balance.rebirth.maxBonusRebirths),
 		pouchCapacity = math.floor(
 			(Balance.pouch.baseCapacity + upgrade(input, "pouch") * ups.pouch.perLevel) * (1 + Balance.pouch.perLevel * (level - 1)) + 0.5
 		),

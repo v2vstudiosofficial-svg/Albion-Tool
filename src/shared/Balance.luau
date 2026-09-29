@@ -373,6 +373,13 @@ Balance.tower = {
 	recordMinutes = 2,
 }
 
+-- Rebirth: at level 100 a player may start the climb again. Level, XP, weapon power, forge
+-- upgrades, skills and the crystal pouch reset (coins become `startCoins`); weapons, stars, slot
+-- levels, chests, charms, costumes, pets, quests, the log, the pass and the tower record stay.
+-- Every rebirth adds `xpPerRebirth` XP from creatures (up to `maxBonusRebirths` rebirths) and
+-- keeps all five chest slots open. Rewards are cosmetic (see CosmeticData sources).
+Balance.rebirth = { xpPerRebirth = 0.1, maxBonusRebirths = 5, startCoins = 300 }
+
 -- Rough income of a player fighting same-level creatures (used to size coin rewards that should
 -- feel the same at every level: Light Pass coins and store coin packs).
 Balance.income = { killsPerMinute = 15 }

@@ -48,7 +48,7 @@ function ChestLogic.collect(profile: any, spotId: string, now: number, level: nu
 	if not ChestLogic.spotReady(profile, spotId, now) then
 		return false, "cooldown"
 	end
-	if #profile.chests >= Progression.chestSlots(level) then
+	if #profile.chests >= Progression.chestSlots(level, profile.rebirths) then
 		return false, "full"
 	end
 	table.insert(profile.chests, { type = spot.type, startedAt = 0 })
@@ -58,7 +58,7 @@ end
 
 -- Puts a chest straight into a free chest slot (rewards); false when the slots are full.
 function ChestLogic.give(profile: any, chestType: string, level: number): boolean
-	if not ChestData.chests[chestType] or #profile.chests >= Progression.chestSlots(level) then
+	if not ChestData.chests[chestType] or #profile.chests >= Progression.chestSlots(level, profile.rebirths) then
 		return false
 	end
 	table.insert(profile.chests, { type = chestType, startedAt = 0 })

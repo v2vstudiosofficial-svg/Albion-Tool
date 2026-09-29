@@ -73,6 +73,12 @@
         "EquipPet": {
           "$className": "RemoteEvent"
         },
+        "OpenRebirth": {
+          "$className": "RemoteEvent"
+        },
+        "ConfirmRebirth": {
+          "$className": "RemoteEvent"
+        },
         "Fx": {
           "$className": "RemoteEvent"
         }

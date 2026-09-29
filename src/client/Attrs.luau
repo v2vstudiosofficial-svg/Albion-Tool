@@ -65,6 +65,7 @@ function Attrs.stats(): Stats.PlayerStats
 		tostring(Attrs.get("StaffTier", 0)),
 		Attrs.get("Upgrades", ""),
 		Attrs.get("Skills", ""),
+		tostring(Attrs.get("Rebirths", 0)),
 		charm,
 	}, "|")
 	if key == cachedKey and cachedStats then
@@ -76,6 +77,7 @@ function Attrs.stats(): Stats.PlayerStats
 		upgrades = Attrs.pairs("Upgrades"),
 		skills = Attrs.pairs("Skills"),
 		equippedCharm = if charm ~= "" then charm else nil,
+		rebirths = Attrs.get("Rebirths", 0),
 	})
 	cachedKey, cachedStats = key, stats
 	return stats

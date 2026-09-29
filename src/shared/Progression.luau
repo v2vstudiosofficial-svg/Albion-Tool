@@ -121,8 +121,11 @@ function Progression.companionSlots(level: number): number
 	return math.min(WeaponData.maxCompanions, level // WeaponData.companionEvery)
 end
 
--- Chest slots open at this level (1 at the start, 5 at most).
-function Progression.chestSlots(level: number): number
+-- Chest slots open at this level (1 at the start, 5 at most). Anyone who has been reborn keeps all.
+function Progression.chestSlots(level: number, rebirths: number?): number
+	if (rebirths or 0) > 0 then
+		return #ChestData.slotUnlockLevels
+	end
 	local count = 0
 	for _, needed in ChestData.slotUnlockLevels do
 		if level >= needed then

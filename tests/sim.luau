@@ -1578,6 +1578,77 @@ test("pets: earned by progress, announced once, chosen by the player, bad reques
 	PlayerProfiles.sync(alice)
 end)
 
+test("rebirth: the Great Lantern asks at level 100, resets once when confirmed near it, keeps collections", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local profile = PlayerProfiles.get(alice)
+	local saved = {
+		xp = profile.xp, coins = profile.coins, staffUpgrade = profile.staffUpgrade, upgrades = table.clone(profile.upgrades),
+		skills = table.clone(profile.skills), skillOffer = table.clone(profile.skillOffer), pendingPicks = profile.pendingPicks,
+		crystals = profile.crystals, ownedCosmetics = table.clone(profile.ownedCosmetics), rebirths = profile.rebirths,
+	}
+	local post = workspace.LanternValleyMap.Village.LanternPost
+	assert(post.RebirthPrompt, "the lantern has a Rebirth prompt")
+	local function opened(): number
+		return logCount("OpenRebirth", function(e)
+			return e.target == alice
+		end)
+	end
+	local function atLantern()
+		teleport(alice, positionOf(post) + Vector3.new(3, -3, 0))
+		advance(0.1)
+	end
+	-- Below level 100 the lantern only explains, and a forged confirmation does nothing.
+	atLantern()
+	post.RebirthPrompt.Triggered:Fire(alice)
+	advance(0.2)
+	eq(opened(), 0, "no panel below the cap")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_rebirth_level"
+	end), 1, "told what level it needs")
+	local level = attr(alice, "Level")
+	remotes.ConfirmRebirth.OnServerEvent:Fire(alice)
+	advance(0.3)
+	eq(attr(alice, "Rebirths"), 0, "confirming below level 100 changes nothing")
+	eq(attr(alice, "Level"), level)
+	-- At level 100 the panel opens; far from the lantern a confirmation is refused.
+	profile.xp = Progression.thresholds[Progression.MAX_LEVEL]
+	PlayerProfiles.sync(alice)
+	post.RebirthPrompt.Triggered:Fire(alice)
+	advance(0.2)
+	eq(opened(), 1, "the panel opens at level 100")
+	teleport(alice, vec(WorldData.areas.glade.center, 3))
+	advance(2.1) -- past the request cooldown, so only the distance can refuse it
+	remotes.ConfirmRebirth.OnServerEvent:Fire(alice)
+	advance(0.3)
+	eq(attr(alice, "Rebirths"), 0, "the lantern must be near")
+	-- Confirmed near the lantern: the climb restarts once (after the request cooldown).
+	advance(2.1)
+	atLantern()
+	profile.coins = 555555
+	PlayerProfiles.sync(alice)
+	remotes.ConfirmRebirth.OnServerEvent:Fire(alice)
+	remotes.ConfirmRebirth.OnServerEvent:Fire(alice)
+	advance(0.5)
+	eq(attr(alice, "Rebirths"), saved.rebirths + 1, "reborn once")
+	eq(attr(alice, "Level"), 1, "level restarts")
+	eq(attr(alice, "XP"), 0)
+	eq(attr(alice, "Coins"), Balance.rebirth.startCoins, "a small fresh start")
+	assert(string.find(attr(alice, "Costumes"), "dawn_aura", 1, true), "the Dawn Aura is earned")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_rebirth_done"
+	end), 1, "told once")
+	eq(logCount("Fx", function(e)
+		return e.args[1] == "rebirth"
+	end), 1, "everyone sees the burst")
+	eq(humanoid(alice).MaxHealth, Progression.maxHealth(1), "health follows the new level")
+	profile.xp, profile.coins, profile.staffUpgrade, profile.upgrades = saved.xp, saved.coins, saved.staffUpgrade, saved.upgrades
+	profile.skills, profile.skillOffer, profile.pendingPicks = saved.skills, saved.skillOffer, saved.pendingPicks
+	profile.crystals, profile.ownedCosmetics, profile.rebirths = saved.crystals, saved.ownedCosmetics, saved.rebirths
+	PlayerProfiles.sync(alice)
+	heal(alice)
+	toVillage(alice)
+end)
+
 test("robux store: receipts granted once and only after saving; unknown ones wait", function()
 	local StoreData = H.loadModule("src/shared/StoreData.luau")
 	local MarketplaceService = H.services.MarketplaceService

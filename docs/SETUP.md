@@ -85,6 +85,13 @@ Oyun içi tüm metinler İngilizce.
    yaratıklar; kat bitince sikke toast'ı ve 4 sn sonra sonraki kat; 5. katta sandık. Arenada altın "Leave" pedi köye
    döndürür; yenilirsen köyde doğarsın. Sol ortada "Tower Floor N Best M". İki oyuncuyla aynı koşuya katılınır.
    **Emote**: ekranın solunda ortada "Emotes" → 6 emote; konuşma balonu 3 sn, Dance/Cheer zıplar, Sit oturur.
+10h. M11: **Pet**: Bag → Pets sekmesi; Sv10 olunca Glowmoth açılır ve otomatik peşinden gelir; "Equip"/"Send home".
+   Kilitli pet'te ilerleme "(120 / 500)". **Ranger Wren**: doğu topraklarının girişinde (sırt açıklığının hemen doğusu)
+   yeşil cübbeli NPC. Warden bittikten sonra zincirin sıradaki görevi onundur (Sv8): Elder "Wren'e git" der, görev
+   ipucu, "!" ve ok Wren'i gösterir. `LvDebugLevel` ile Sv8/12/26/50 dene; "Rift Watch" bir Gölge Yarığı bitirince,
+   "Crowned Shadows" 3 elit yenince, "Tower Climber" kule 12. kata çıkınca tamamlanır. **Yeniden doğuş**: Sv100 için
+   `LvDebugLevel` = 100; Büyük Fener direğine yaklaş → "Rebirth" → panel (neyin sıfırlandığı/kaldığı yazar) → onay.
+   Sv1'e dönersin, 300 sikke; HUD'da seviye rozetinin altında "Rebirth 1", "Dawn Aura" kostümü, 5 sandık yuvası açık kalır.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

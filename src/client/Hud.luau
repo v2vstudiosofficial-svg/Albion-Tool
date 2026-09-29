@@ -60,6 +60,21 @@ function Hud.start()
 	}, card)
 	UiKit.corner(badge, 30)
 	local levelLabel = UiKit.label({ Size = UDim2.fromScale(1, 1), TextColor3 = colors.panel, TextSize = 22 }, badge)
+	-- Shown under the level badge once the player has been reborn.
+	local rebirthLabel = UiKit.label({
+		Position = UDim2.fromOffset(4, 76),
+		Size = UDim2.fromOffset(72, 22),
+		TextSize = 13,
+		TextColor3 = colors.accent,
+		Visible = false,
+	}, card)
+	local function refreshRebirth()
+		local count = player:GetAttribute("Rebirths") or 0
+		rebirthLabel.Visible = count > 0
+		rebirthLabel.Text = Strings.get("rebirth_hud", count)
+	end
+	player:GetAttributeChangedSignal("Rebirths"):Connect(refreshRebirth)
+	refreshRebirth()
 	local xpBack = UiKit.create("Frame", {
 		Position = UDim2.fromOffset(80, 14),
 		Size = UDim2.fromOffset(140, 14),

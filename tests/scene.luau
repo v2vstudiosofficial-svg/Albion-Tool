@@ -350,6 +350,7 @@ test("bounty board, tower gate and tower arena exist and can be used", function(
 	local WorldData = loadModule("src/shared/WorldData.luau")
 	local map = workspace:FindFirstChild("LanternValleyMap")
 	assert(map, "map built")
+	eq(map.Village.LanternPost.RebirthPrompt.ClassName, "ProximityPrompt", "the Great Lantern takes rebirths")
 	local board = map.Village.BountyBoard
 	eq(board.PrimaryPart, board.Body, "board primary part")
 	eq(board.Body.TalkPrompt.ClassName, "ProximityPrompt", "board prompt")
@@ -411,7 +412,7 @@ test("pet models build for every pet, anchored and round-bodied", function()
 	end
 end)
 
-test("costume models build for all twelve costumes, welded to their anchor", function()
+test("costume models build for every costume, welded to their anchor", function()
 	local CosmeticModels = loadModule("src/shared/CosmeticModels.luau")
 	local CosmeticData = loadModule("src/shared/CosmeticData.luau")
 	for _, id in CosmeticData.order do

@@ -230,6 +230,8 @@ local remoteNames = {
 	"ClaimBounty",
 	"PlayEmote",
 	"EquipPet",
+	"OpenRebirth",
+	"ConfirmRebirth",
 	"Fx",
 }
 local remotes = {}

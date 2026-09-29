@@ -34,6 +34,7 @@ local equipCosmetic = Remotes:WaitForChild("EquipCosmetic") :: RemoteEvent
 local claimPass = Remotes:WaitForChild("ClaimPass") :: RemoteEvent
 local claimBounty = Remotes:WaitForChild("ClaimBounty") :: RemoteEvent
 local equipPet = Remotes:WaitForChild("EquipPet") :: RemoteEvent
+local confirmRebirth = Remotes:WaitForChild("ConfirmRebirth") :: RemoteEvent
 local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
 local player = Players.LocalPlayer
 local colors = UiKit.colors
@@ -511,7 +512,7 @@ function Menus.start()
 	local function refreshChests()
 		local list = chestStates()
 		local now = workspace:GetServerTimeNow()
-		local slots = Progression.chestSlots(Attrs.get("Level", 1))
+		local slots = Progression.chestSlots(Attrs.get("Level", 1), Attrs.get("Rebirths", 0))
 		local busy = anyUnlocking(list, now)
 		for index, view in chestCards do
 			local chest = list[index]
@@ -850,6 +851,58 @@ function Menus.start()
 		end
 	end)
 
+	-- Rebirth -------------------------------------------------------------------------------
+	-- Opens from the Great Lantern at level 100. Says plainly what resets and what stays; the
+	-- server re-checks everything when the player confirms.
+	local rebirth, rebirthBody = modal("rebirth_title", 400)
+	UiKit.create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, rebirthBody)
+	local function rebirthText(order: number, color: Color3): TextLabel
+		return UiKit.label({ LayoutOrder = order, Size = UDim2.new(1, 0, 0, 60), TextSize = 16, TextWrapped = true, TextColor3 = color }, rebirthBody)
+	end
+	local rebirthIntro = rebirthText(1, colors.text)
+	local rebirthResets = rebirthText(2, colors.muted)
+	local rebirthKeeps = rebirthText(3, colors.muted)
+	local rebirthGain = rebirthText(4, colors.good)
+	local rebirthButtons = UiKit.create("Frame", { LayoutOrder = 5, Size = UDim2.new(1, 0, 0, 52), BackgroundTransparency = 1 }, rebirthBody)
+	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 12) }, rebirthButtons)
+	UiKit.button({ Size = UDim2.fromOffset(150, 48), Text = Strings.get("rebirth_confirm"), TextSize = 20, BackgroundColor3 = colors.good, TextColor3 = colors.panel, LayoutOrder = 1 }, rebirthButtons, function()
+		if Attrs.get("Level", 1) >= Progression.MAX_LEVEL then
+			confirmRebirth:FireServer()
+			closeModal()
+			Audio.play("ui")
+		end
+	end)
+	UiKit.button({ Size = UDim2.fromOffset(150, 48), Text = Strings.get("rebirth_later"), TextSize = 20, BackgroundColor3 = colors.panelLight, TextColor3 = colors.text, LayoutOrder = 2 }, rebirthButtons, function()
+		closeModal()
+	end)
+	local function refreshRebirth()
+		local upcoming = Attrs.get("Rebirths", 0) + 1
+		rebirthIntro.Text = Strings.get("rebirth_intro")
+		rebirthResets.Text = Strings.get("rebirth_resets", Format.short(Balance.rebirth.startCoins))
+		rebirthKeeps.Text = Strings.get("rebirth_keeps")
+		local bonus = math.clamp(upcoming, 0, Balance.rebirth.maxBonusRebirths) * Balance.rebirth.xpPerRebirth
+		rebirthGain.Text = Strings.get("rebirth_gain", upcoming, math.floor(bonus * 100 + 0.5))
+	end
+	Remotes:WaitForChild("OpenRebirth").OnClientEvent:Connect(function()
+		refreshRebirth()
+		if openModal ~= rebirth then
+			showModal(rebirth)
+		end
+	end)
+	local lanternPosition = WorldData.vector(WorldData.plaza)
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			if openModal == rebirth then
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if not root or (root.Position - lanternPosition).Magnitude > Balance.shopDistance + 14 then
+					closeModal()
+				end
+			end
+		end
+	end)
+
 	-- Shop: Robux packs and costumes -----------------------------------------------------------
 	-- Robux products show their live price from Roblox; products without an id say "Soon".
 	-- Nothing here pops up by itself: the shop only opens when the player taps it.
@@ -1030,6 +1083,8 @@ function Menus.start()
 			elseif source.robux then
 				local price = priceOf(StoreData.products[source.robux].productId)
 				setButton(view.button, if price then Strings.get("shop_price_robux", price) else Strings.get("shop_soon"), price ~= nil, colors.good)
+			elseif source.rebirth then
+				setButton(view.button, Strings.get("costume_from_rebirth", source.rebirth), false)
 			else
 				setButton(view.button, Strings.get("costume_from_pass", source.pass), false)
 			end

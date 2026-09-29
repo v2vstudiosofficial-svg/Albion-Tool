@@ -58,6 +58,8 @@ export type Profile = {
 	towerBest: number,
 	-- The pet following the player ("" = none); pets themselves are derived from progress (PetLogic).
 	equippedPet: string,
+	-- Times the player restarted the climb at level 100 (see Balance.rebirth).
+	rebirths: number,
 	achievements: { [string]: number },
 	-- Costumes owned and worn (slot -> costume id).
 	ownedCosmetics: { [string]: boolean },
@@ -107,6 +109,7 @@ function Profile.new(): Profile
 		bounties = {},
 		towerBest = 0,
 		equippedPet = "",
+		rebirths = 0,
 		achievements = {},
 		ownedCosmetics = {},
 		equippedCosmetics = {},
@@ -260,6 +263,7 @@ function Profile.sanitize(data: any): Profile
 	end
 	data.bounties = bounties
 	data.equippedPet = if type(data.equippedPet) == "string" and PetData.pets[data.equippedPet] then data.equippedPet else ""
+	data.rebirths = if isValidAmount(data.rebirths) then math.min(math.floor(data.rebirths), 1000) else 0
 	data.towerBest = if isValidAmount(data.towerBest) then math.min(math.floor(data.towerBest), 10000) else 0
 	local achievements = {}
 	if type(data.achievements) == "table" then

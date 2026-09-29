@@ -27,6 +27,7 @@ local TARGET = {
 	towerWallFloor = { 12, 120 },
 	towerKillSeconds = 6, -- one creature this slow to defeat counts as too hard
 	towerSurviveSeconds = 4, -- three creatures at once
+	rebirthHours = { 4, 30 }, -- a reborn player's whole climb
 }
 
 -- Model assumptions.
@@ -41,8 +42,8 @@ local REFERENCE = Balance.enemies.Gloomling
 local FIGHTERS = 3 -- creatures hitting at once in the survival check
 
 -- Weapons a player can expect to own by a level (chests get rarer weapons over time).
-local function expectedRarity(level: number): number
-	if level >= 50 then
+local function expectedRarity(level: number, reborn: boolean): number
+	if reborn or level >= 50 then
 		return 4
 	elseif level >= 25 then
 		return 3
@@ -58,10 +59,10 @@ local function weaponDps(weaponId: string): number
 end
 
 -- The strongest (packs included) and second strongest weapons available at this level.
-local function bestWeapons(level: number): (string, string)
+local function bestWeapons(level: number, reborn: boolean): (string, string)
 	local list = {}
 	for _, weaponId in WeaponData.order do
-		if table.find(WeaponData.rarityOrder, WeaponData.weapons[weaponId].rarity) <= expectedRarity(level) then
+		if table.find(WeaponData.rarityOrder, WeaponData.weapons[weaponId].rarity) <= expectedRarity(level, reborn) then
 			table.insert(list, weaponId)
 		end
 	end
@@ -145,7 +146,6 @@ for _, spawn in WorldData.spawns do
 	end
 end
 
-local state = { power = 0, upgrades = {}, coins = 0, slotLevel = 0, minutes = 0 }
 local snapshots = {} -- typical player at each level (used by the Shadow Tower check)
 local rows = {}
 local failures = {}
@@ -156,85 +156,103 @@ local function check(level: number, name: string, value: number, range: { number
 	end
 end
 
-for level = 1, Progression.MAX_LEVEL - 1 do
-	local skills = skillsAt(level)
-	local stats = Stats.of({
-		xp = Progression.thresholds[level],
-		staffUpgrade = state.power,
-		upgrades = state.upgrades,
-		skills = skills,
-	})
-	local main, second = bestWeapons(level)
-	local enemy = Progression.enemyStats(REFERENCE, level)
+-- One climb from level 1 to 100. `rebirths` > 0 models a reborn player: weapons, stars and slot
+-- levels are kept, so the whole arsenal is there from the start, and creatures give more XP.
+local function climb(rebirths: number, report: boolean): number
+	local state = { power = 0, upgrades = {}, coins = 0, slotLevel = if rebirths > 0 then WeaponData.maxSlotLevel else 0, minutes = 0 }
+	local reborn = rebirths > 0
+	for level = 1, Progression.MAX_LEVEL - 1 do
+		local skills = skillsAt(level)
+		local stats = Stats.of({
+			xp = Progression.thresholds[level],
+			staffUpgrade = state.power,
+			upgrades = state.upgrades,
+			skills = skills,
+			rebirths = rebirths,
+		})
+		local main, second = bestWeapons(level, reborn)
+		local enemy = Progression.enemyStats(REFERENCE, level)
 
-	local stars = math.min(WeaponData.maxStars, math.floor(state.minutes / 60 * STARS_PER_HOUR))
+		local stars = if reborn then WeaponData.maxStars else math.min(WeaponData.maxStars, math.floor(state.minutes / 60 * STARS_PER_HOUR))
 
-	-- Damage per second against a pack: main weapon + floating weapons, crits included.
-	local critBonus = 1 + stats.critChance * (Balance.critDamage - 1)
-	local function slotDps(weaponId: string, companion: boolean): number
-		local weapon = WeaponData.weapons[weaponId]
-		local hit = Progression.weaponDamage(weaponId, state.power, level, companion, state.slotLevel, stars)
-		local cooldown = Progression.weaponCooldown(weaponId, companion) * stats.cooldownMultiplier
-		return hit / cooldown * PACK_TARGETS[weapon.style]
-	end
-	local dps = slotDps(main, false)
-	for _ = 1, Progression.companionSlots(level) do
-		dps += slotDps(second, true) * stats.companionMultiplier
-	end
-	dps *= stats.damageMultiplier * critBonus
-	local killSeconds = enemy.maxHp / dps
+		-- Damage per second against a pack: main weapon + floating weapons, crits included.
+		local critBonus = 1 + stats.critChance * (Balance.critDamage - 1)
+		local function slotDps(weaponId: string, companion: boolean): number
+			local weapon = WeaponData.weapons[weaponId]
+			local hit = Progression.weaponDamage(weaponId, state.power, level, companion, state.slotLevel, stars)
+			local cooldown = Progression.weaponCooldown(weaponId, companion) * stats.cooldownMultiplier
+			return hit / cooldown * PACK_TARGETS[weapon.style]
+		end
+		local dps = slotDps(main, false)
+		for _ = 1, Progression.companionSlots(level) do
+			dps += slotDps(second, true) * stats.companionMultiplier
+		end
+		dps *= stats.damageMultiplier * critBonus
+		local killSeconds = enemy.maxHp / dps
 
-	-- Three same-level creatures in contact at once.
-	local incoming = FIGHTERS * REFERENCE.contactDamage * enemy.damageMultiplier / REFERENCE.contactCooldown
-	local surviveSeconds = stats.maxHealth / math.max(0.1, incoming - stats.regen)
+		-- Three same-level creatures in contact at once.
+		local incoming = FIGHTERS * REFERENCE.contactDamage * enemy.damageMultiplier / REFERENCE.contactCooldown
+		local surviveSeconds = stats.maxHealth / math.max(0.1, incoming - stats.regen)
 
-	-- Time for this level: fights, walking, trips to the lantern.
-	local span = Progression.thresholds[level + 1] - Progression.thresholds[level]
-	local xpPerKill = math.floor(enemy.reward.xp * stats.xpMultiplier + 0.5)
-	local kills = span / xpPerKill
-	local crystals = kills * enemy.reward.coins * stats.crystalMultiplier
-	local trips = crystals / stats.pouchCapacity
-	local seconds = kills * (killSeconds + TRAVEL_SECONDS) + trips * DEPOSIT_TRIP_SECONDS
-	local minutes = seconds / 60
-	state.minutes += minutes
+		-- Time for this level: fights, walking, trips to the lantern.
+		local span = Progression.thresholds[level + 1] - Progression.thresholds[level]
+		local xpPerKill = math.floor(enemy.reward.xp * stats.xpMultiplier + 0.5)
+		local kills = span / xpPerKill
+		local crystals = kills * enemy.reward.coins * stats.crystalMultiplier
+		local trips = crystals / stats.pouchCapacity
+		local seconds = kills * (killSeconds + TRAVEL_SECONDS) + trips * DEPOSIT_TRIP_SECONDS
+		local minutes = seconds / 60
+		state.minutes += minutes
 
-	-- Income: crystals, chests; chests also level the weapon slots (shared by the open slots).
-	local chests = minutes / CHEST_EVERY_MINUTES
-	state.coins += crystals + chests * averageChestCoins()
-	state.slotLevel = math.min(WeaponData.maxSlotLevel, state.slotLevel + chests * 2.5 / (1 + Progression.companionSlots(level)))
-	shop(state)
+		-- Income: crystals, chests; chests also level the weapon slots (shared by the open slots).
+		local chests = minutes / CHEST_EVERY_MINUTES
+		state.coins += crystals + chests * averageChestCoins()
+		state.slotLevel = math.min(WeaponData.maxSlotLevel, state.slotLevel + chests * 2.5 / (1 + Progression.companionSlots(level)))
+		shop(state)
 
-	-- Legendary Shadows of this level: a solo fight against one big target (no pack bonus).
-	for _, kind in Balance.legends do
-		local boss = Balance.enemies[kind]
-		if boss.scales and bossLevels[kind] == level then
-			local single = dps / PACK_TARGETS[WeaponData.weapons[main].style]
-			local seconds = Progression.enemyStats(boss, level).maxHp / single
-			check(level, kind .. " fight seconds", seconds, TARGET.bossSeconds)
-			table.insert(rows, string.format("     %s fight: %.0f s", kind, seconds))
+		-- Legendary Shadows of this level: a solo fight against one big target (no pack bonus).
+		for _, kind in Balance.legends do
+			local boss = Balance.enemies[kind]
+			if report and boss.scales and bossLevels[kind] == level then
+				local single = dps / PACK_TARGETS[WeaponData.weapons[main].style]
+				local seconds = Progression.enemyStats(boss, level).maxHp / single
+				check(level, kind .. " fight seconds", seconds, TARGET.bossSeconds)
+				table.insert(rows, string.format("     %s fight: %.0f s", kind, seconds))
+			end
+		end
+
+		if report then
+			snapshots[level] = { dps = dps, maxHealth = stats.maxHealth, regen = stats.regen }
+			check(level, "kill seconds", killSeconds, TARGET.killSeconds)
+			check(level, "survive seconds", surviveSeconds, TARGET.surviveSeconds)
+			check(level, "minutes per level", minutes, TARGET.minutesPerLevel)
+		end
+
+		if report and (verbose or level == 1 or level % 10 == 0 or level == 5 or level == 25 or level == 99) then
+			table.insert(rows, string.format(
+				"%3d  %-8s  pow %2d  slot %4.1f  dps %8.0f  hp %8.0f  kill %4.1fs  survive %5.1fs  %5.1f min  total %5.1f h",
+				level, main, state.power, state.slotLevel, dps, enemy.maxHp, killSeconds, surviveSeconds, minutes, state.minutes / 60
+			))
 		end
 	end
-
-	snapshots[level] = { dps = dps, maxHealth = stats.maxHealth, regen = stats.regen }
-
-	check(level, "kill seconds", killSeconds, TARGET.killSeconds)
-	check(level, "survive seconds", surviveSeconds, TARGET.surviveSeconds)
-	check(level, "minutes per level", minutes, TARGET.minutesPerLevel)
-
-	if verbose or level == 1 or level % 10 == 0 or level == 5 or level == 25 or level == 99 then
-		table.insert(rows, string.format(
-			"%3d  %-8s  pow %2d  slot %4.1f  dps %8.0f  hp %8.0f  kill %4.1fs  survive %5.1fs  %5.1f min  total %5.1f h",
-			level, main, state.power, state.slotLevel, dps, enemy.maxHp, killSeconds, surviveSeconds, minutes, state.minutes / 60
-		))
-	end
+	return state.minutes / 60
 end
 
-check(100, "total hours", state.minutes / 60, TARGET.totalHours)
+local firstHours = climb(0, true)
+check(100, "total hours", firstHours, TARGET.totalHours)
+
+local towerRows = {}
+
+-- Rebirth: climbing again is faster (arsenal kept, bonus XP) but must stay a real climb.
+for _, rebirths in { 1, Balance.rebirth.maxBonusRebirths } do
+	local hours = climb(rebirths, false)
+	table.insert(towerRows, 1, string.format("rebirth %d: the climb takes %.1f h (first climb %.1f h)", rebirths, hours, firstHours))
+	check(100, `rebirth {rebirths} climb hours`, hours, TARGET.rebirthHours)
+end
 
 -- Shadow Tower: a typical player who opened a run at their level climbs until creatures take too
 -- long to defeat or hit too hard.
 local TowerLogic = require("../src/server/TowerLogic")
-local towerRows = {}
 for _, anchor in { 10, 25, 50, 75, 100 } do
 	local player = snapshots[math.min(anchor, Progression.MAX_LEVEL - 1)]
 	local wall = nil

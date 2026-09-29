@@ -434,6 +434,13 @@ local function onDeposit(lantern: Vector3, _coins: number)
 	Audio.play("levelUp")
 end
 
+-- A rebirth at the Great Lantern: a big golden and crystal burst for everyone nearby.
+local function onRebirth(position: Vector3)
+	Effects.burst(position, GOLD, 80, 18)
+	Effects.burst(position, CRYSTAL_COLOR, 40, 14)
+	Audio.play("levelUp")
+end
+
 local function onPurify(position: Vector3, kind: string, facing: Vector3?)
 	local stats = Balance.enemies[kind]
 	if not stats then
@@ -698,6 +705,7 @@ local handlers = {
 	despawn = onDespawn,
 	blink = onBlink,
 	deposit = onDeposit,
+	rebirth = onRebirth,
 	purify = onPurify,
 	projectile = onProjectile,
 	projectileEnd = onProjectileEnd,

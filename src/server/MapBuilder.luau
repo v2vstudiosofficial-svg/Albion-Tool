@@ -495,7 +495,14 @@ local function buildVillage(map: Instance)
 	})
 	local plaza = v(WorldData.plaza)
 	disc(village, "Plaza", 30, plaza, COLOR.plaza, Enum.Material.Slate)
-	cylinder(village, "LanternPost", 10, 1, plaza, COLOR.trunk)
+	local lanternPost = cylinder(village, "LanternPost", 10, 1, plaza, COLOR.trunk)
+	ensure(lanternPost, "RebirthPrompt", "ProximityPrompt", {
+		ActionText = Strings.get("rebirth_action"),
+		ObjectText = Strings.get("rebirth_object"),
+		MaxActivationDistance = 10,
+		HoldDuration = 0,
+		RequiresLineOfSight = false,
+	})
 	ballPart(village, "LanternLamp", 2.5, plaza + Vector3.new(0, 10.8, 0), COLOR.lanternOff, {
 		Material = Enum.Material.Glass,
 		Transparency = 0.2,
