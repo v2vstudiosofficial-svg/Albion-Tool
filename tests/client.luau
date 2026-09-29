@@ -1291,10 +1291,13 @@ test("players board: everyone on the server, highest level first, opened by butt
 	friend:SetAttribute("Level", 20)
 	friend:SetAttribute("Rebirths", 1)
 	friend:SetAttribute("TowerBest", 7)
+	friend:SetAttribute("Title", "reborn")
 	assert(not shownText(Strings.get("players_title")), "closed at first")
 	click(findButton(Strings.get("players_button")))
 	advance(0.2)
 	assert(shownText(Strings.get("players_title")), "opened by the button")
+	assert(shownText(Strings.get("title_reborn")), "the chosen title is shown under the name")
+	assert(not shownText(Strings.get("title_keeper")), "no title for players who chose none")
 	local summary = Strings.get("hud_level", 20) .. "   " .. Strings.get("rebirth_hud", 1) .. "   " .. Strings.get("players_tower", 7)
 	assert(shownText(summary), "level, rebirths and tower record: " .. summary)
 	assert(shownText(Strings.get("hud_level", 5)), "the local player's row")
@@ -1322,6 +1325,7 @@ test("players board: everyone on the server, highest level first, opened by butt
 	assert(not shownText(Strings.get("players_title")), "closed by Tab")
 	hero:SetAttribute("Level", heroLevel)
 	friend:SetAttribute("Level", nil)
+	friend:SetAttribute("Title", nil)
 	friend:SetAttribute("Rebirths", nil)
 	friend:SetAttribute("TowerBest", nil)
 end)
@@ -1515,6 +1519,44 @@ test("pets: bag tab shows progress, equips earned pets only; the pet follows its
 	advance(0.3)
 	eq(#pets(), 0, "unknown pets are not drawn")
 	setAttributes({ Pet = "", PetProgress = "" })
+	click(findButton(Strings.get("menu_bag")))
+end)
+
+test("titles: bag tab shows progress, chooses earned titles only", function()
+	local TitleData = H.loadModule("src/shared/TitleData.luau")
+	local QuestData = H.loadModule("src/shared/QuestData.luau")
+	local Format = H.loadModule("src/shared/Format.luau")
+	local progress = {}
+	for _, id in TitleData.order do
+		table.insert(progress, id .. ":" .. (if id == "keeper" or id == "glow_walker" then TitleData.titles[id].unlock.goal else 0))
+	end
+	progress[3] = "shadow_friend:120"
+	setAttributes({ Title = "", TitleProgress = table.concat(progress, ",") })
+	click(findButton(Strings.get("menu_bag")))
+	click(findButton(Strings.get("bag_tab_titles")))
+	assert(shownText(Strings.get("title_keeper")), "title list")
+	assert(shownText(Strings.get("title_unlock_purifies", 1000) .. "  (" .. Strings.get("pet_progress", 120, Format.short(1000)) .. ")"), "progress towards the next title")
+	assert(shownText(Strings.get("title_unlock_quest", Strings.get(QuestData.quests.shadow_king.titleKey))), "quest unlock text")
+	click(findButton(Strings.get("bag_locked_pet")))
+	eq(sent("EquipTitle"), 0, "an unearned title sends nothing")
+	local equipButtons = 0
+	for _, descendant in playerGui:GetDescendants() do
+		if descendant:IsA("TextButton") and descendant.Text == Strings.get("bag_equip") and isShown(descendant) then
+			equipButtons += 1
+		end
+	end
+	eq(equipButtons, 2, "two titles are earned")
+	click(findText(Strings.get("title_glow_walker")).Parent:FindFirstChildOfClass("TextButton"))
+	eq(sent("EquipTitle", function(args)
+		return args[1] == "glow_walker"
+	end), 1, "choose an earned title")
+	setAttributes({ Title = "glow_walker" })
+	assert(shownText(Strings.get("title_hide")), "shows hide")
+	click(findButton(Strings.get("title_hide")))
+	eq(sent("EquipTitle", function(args)
+		return args[1] == ""
+	end), 1, "hide the title")
+	setAttributes({ Title = "", TitleProgress = "" })
 	click(findButton(Strings.get("menu_bag")))
 end)
 

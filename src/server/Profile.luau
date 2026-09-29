@@ -11,6 +11,7 @@ local PassData = if Shared then require(Shared.PassData) else require("../shared
 local StoreData = if Shared then require(Shared.StoreData) else require("../shared/StoreData")
 local BountyData = if Shared then require(Shared.BountyData) else require("../shared/BountyData")
 local PetData = if Shared then require(Shared.PetData) else require("../shared/PetData")
+local TitleData = if Shared then require(Shared.TitleData) else require("../shared/TitleData")
 local SettingsData = if Shared then require(Shared.SettingsData) else require("../shared/SettingsData")
 
 export type QuestProgress = {
@@ -59,6 +60,8 @@ export type Profile = {
 	towerBest: number,
 	-- The pet following the player ("" = none); pets themselves are derived from progress (PetLogic).
 	equippedPet: string,
+	-- The title shown next to the name ("" = none); titles are derived from progress (TitleLogic).
+	equippedTitle: string,
 	-- Comfort settings the player chose (see Profile.setSetting).
 	settings: { [string]: any },
 	-- Times the player restarted the climb at level 100 (see Balance.rebirth).
@@ -112,6 +115,7 @@ function Profile.new(): Profile
 		bounties = {},
 		towerBest = 0,
 		equippedPet = "",
+		equippedTitle = "",
 		settings = SettingsData.defaults(),
 		rebirths = 0,
 		achievements = {},
@@ -276,6 +280,7 @@ function Profile.sanitize(data: any): Profile
 	end
 	data.settings = settings
 	data.equippedPet = if type(data.equippedPet) == "string" and PetData.pets[data.equippedPet] then data.equippedPet else ""
+	data.equippedTitle = if type(data.equippedTitle) == "string" and TitleData.titles[data.equippedTitle] then data.equippedTitle else ""
 	data.rebirths = if isValidAmount(data.rebirths) then math.min(math.floor(data.rebirths), 1000) else 0
 	data.towerBest = if isValidAmount(data.towerBest) then math.min(math.floor(data.towerBest), 10000) else 0
 	local achievements = {}

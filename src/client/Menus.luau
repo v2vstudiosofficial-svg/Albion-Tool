@@ -19,6 +19,7 @@ local CosmeticData = require(Shared:WaitForChild("CosmeticData"))
 local PassData = require(Shared:WaitForChild("PassData"))
 local BountyData = require(Shared:WaitForChild("BountyData"))
 local PetData = require(Shared:WaitForChild("PetData"))
+local TitleData = require(Shared:WaitForChild("TitleData"))
 local StoryData = require(Shared:WaitForChild("StoryData"))
 local QuestData = require(Shared:WaitForChild("QuestData"))
 local Audio = require(script.Parent.Audio)
@@ -39,6 +40,7 @@ local equipCosmetic = Remotes:WaitForChild("EquipCosmetic") :: RemoteEvent
 local claimPass = Remotes:WaitForChild("ClaimPass") :: RemoteEvent
 local claimBounty = Remotes:WaitForChild("ClaimBounty") :: RemoteEvent
 local equipPet = Remotes:WaitForChild("EquipPet") :: RemoteEvent
+local equipTitle = Remotes:WaitForChild("EquipTitle") :: RemoteEvent
 local confirmRebirth = Remotes:WaitForChild("ConfirmRebirth") :: RemoteEvent
 local setSetting = Remotes:WaitForChild("SetSetting") :: RemoteEvent
 local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
@@ -114,9 +116,9 @@ function Menus.start()
 	local bagTabRow = UiKit.create("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, bagBody)
 	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, bagTabRow)
 	local bagTabButtons = {}
-	local BAG_TAB_KEYS = { charms = "bag_tab_charms", pets = "bag_tab_pets", story = "bag_tab_story" }
-	for order, tab in { "charms", "pets", "story" } do
-		bagTabButtons[tab] = UiKit.button({ Size = UDim2.fromOffset(120, 40), TextSize = 18, LayoutOrder = order, Text = Strings.get(BAG_TAB_KEYS[tab]) }, bagTabRow, function()
+	local BAG_TAB_KEYS = { charms = "bag_tab_charms", pets = "bag_tab_pets", titles = "bag_tab_titles", story = "bag_tab_story" }
+	for order, tab in { "charms", "pets", "titles", "story" } do
+		bagTabButtons[tab] = UiKit.button({ Size = UDim2.fromOffset(96, 40), TextSize = 17, LayoutOrder = order, Text = Strings.get(BAG_TAB_KEYS[tab]) }, bagTabRow, function()
 			bagTab = tab
 			refreshBag()
 		end)
@@ -249,6 +251,75 @@ function Menus.start()
 		end
 	end
 
+	-- Titles: earned by playing (never bought); the chosen one shows next to the name in the Players panel.
+	local titleList = UiKit.create("ScrollingFrame", {
+		Position = UDim2.fromOffset(0, 44),
+		Size = UDim2.new(1, 0, 1, -44),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Visible = false,
+	}, bagBody)
+	UiKit.create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, titleList)
+	local TITLE_UNLOCK_KEYS = {
+		level = "title_unlock_level",
+		purifies = "title_unlock_purifies",
+		elites = "title_unlock_elites",
+		rifts = "title_unlock_rifts",
+		chests = "title_unlock_chests",
+		tower = "title_unlock_tower",
+		rebirths = "title_unlock_rebirths",
+	}
+	local titleRows = {}
+	for order, titleId in TitleData.order do
+		local title = TitleData.titles[titleId]
+		local row = UiKit.create("Frame", { LayoutOrder = order, Size = UDim2.new(1, -10, 0, 56), BackgroundColor3 = colors.panelLight, BorderSizePixel = 0 }, titleList)
+		UiKit.corner(row, 12)
+		local name = UiKit.label({ Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -140, 0, 26), Text = Strings.get(title.nameKey), TextSize = 19, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		local info = UiKit.label({ Position = UDim2.fromOffset(12, 30), Size = UDim2.new(1, -140, 0, 22), TextSize = 13, TextWrapped = true, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		local button = UiKit.button({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(104, 44), TextSize = 16 }, row, function()
+			local progress = Attrs.pairs("TitleProgress")[titleId] or 0
+			if progress >= title.unlock.goal then
+				equipTitle:FireServer(if Attrs.get("Title", "") == titleId then "" else titleId)
+				Audio.play("ui")
+			end
+		end)
+		titleRows[titleId] = { name = name, info = info, button = button }
+	end
+	local function refreshTitles()
+		local progress = Attrs.pairs("TitleProgress")
+		local active = Attrs.get("Title", "")
+		for titleId, view in titleRows do
+			local unlock = TitleData.titles[titleId].unlock
+			local value = progress[titleId] or 0
+			local earned = value >= unlock.goal
+			view.name.TextTransparency = if earned then 0 else 0.5
+			if unlock.kind == "quest" then
+				view.info.Text = Strings.get("title_unlock_quest", Strings.get(QuestData.quests[unlock.id].titleKey))
+			else
+				view.info.Text = Strings.get(TITLE_UNLOCK_KEYS[unlock.kind], unlock.goal)
+			end
+			if not earned then
+				if unlock.goal > 1 then
+					view.info.Text ..= "  (" .. Strings.get("pet_progress", Format.short(value), Format.short(unlock.goal)) .. ")"
+				end
+				view.button.Text = Strings.get("bag_locked_pet")
+				view.button.BackgroundColor3 = colors.panel
+				view.button.TextColor3 = colors.muted
+			elseif active == titleId then
+				view.button.Text = Strings.get("title_hide")
+				view.button.BackgroundColor3 = colors.good
+				view.button.TextColor3 = colors.panel
+			else
+				view.button.Text = Strings.get("bag_equip")
+				view.button.BackgroundColor3 = colors.accent
+				view.button.TextColor3 = colors.panel
+			end
+		end
+	end
+
 	-- Story: the scenes of the finished quests can be watched again. Nothing here gives rewards.
 	local storyList = UiKit.create("ScrollingFrame", {
 		Position = UDim2.fromOffset(0, 44),
@@ -322,6 +393,10 @@ function Menus.start()
 		petList.Visible = bagTab == "pets"
 		if bagTab == "pets" then
 			refreshPets()
+		end
+		titleList.Visible = bagTab == "titles"
+		if bagTab == "titles" then
+			refreshTitles()
 		end
 		local tier = Attrs.get("StaffTier", 0)
 		staffLine.Text = Strings.get("bag_staff", tier, Progression.staffDamage(tier, Attrs.get("Level", 1)))
@@ -1501,7 +1576,7 @@ function Menus.start()
 			end
 		end
 	end)
-	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Stars", "Pet", "PetProgress", "QuestsDone", "QuestId", "QuestState", "Chests", "Legends" } do
+	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Stars", "Pet", "PetProgress", "Title", "TitleProgress", "QuestsDone", "QuestId", "QuestState", "Chests", "Legends" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			refreshBadge()
 			if openModal == legends then

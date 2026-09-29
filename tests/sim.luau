@@ -1701,6 +1701,53 @@ test("pets: earned by progress, announced once, chosen by the player, bad reques
 	PlayerProfiles.sync(alice)
 end)
 
+test("titles: a new title is announced once, only earned ones can be chosen", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local TitleData = H.loadModule("src/shared/TitleData.luau")
+	local profile = PlayerProfiles.get(alice)
+	local saved = { title = profile.equippedTitle, purifies = profile.counters.purifies, tower = profile.towerBest }
+	local goal = TitleData.titles.tower_climber.unlock.goal
+	profile.equippedTitle = ""
+	profile.towerBest = goal - 1
+	PlayerProfiles.sync(alice)
+	eq(attr(alice, "Title"), "", "no title is shown until one is chosen")
+	local function announced(): number
+		return logCount("Notice", function(e)
+			return e.target == alice and e.args[1] == "notice_title_new" and e.args[2] == "title_tower_climber"
+		end)
+	end
+	local before = announced()
+	profile.towerBest = goal
+	PlayerProfiles.sync(alice)
+	advance(0.2)
+	eq(announced(), before + 1, "told about the new title")
+	PlayerProfiles.sync(alice)
+	eq(announced(), before + 1, "announced only once")
+	eq(attr(alice, "Title"), "", "it is not chosen for the player")
+	assert(string.find(attr(alice, "TitleProgress"), "tower_climber:" .. goal, 1, true), "progress replicated")
+	remotes.EquipTitle.OnServerEvent:Fire(alice, "tower_climber")
+	advance(0.4)
+	eq(attr(alice, "Title"), "tower_climber", "chosen")
+	remotes.EquipTitle.OnServerEvent:Fire(alice, "tower_climber")
+	remotes.EquipTitle.OnServerEvent:Fire(alice, "")
+	advance(0.4)
+	eq(attr(alice, "Title"), "tower_climber", "a second request inside the cooldown is ignored")
+	for _, bad in { 5, {}, string.rep("x", 99), "nope", "reborn" } do
+		advance(0.4)
+		remotes.EquipTitle.OnServerEvent:Fire(alice, bad)
+	end
+	advance(0.4)
+	eq(attr(alice, "Title"), "tower_climber", "bad or unearned requests change nothing")
+	remotes.EquipTitle.OnServerEvent:Fire(alice, "")
+	advance(0.4)
+	eq(attr(alice, "Title"), "", "hidden again")
+	profile.equippedTitle = "reborn"
+	PlayerProfiles.sync(alice)
+	eq(attr(alice, "Title"), "", "an unearned saved title is not shown")
+	profile.equippedTitle, profile.towerBest = saved.title, saved.tower
+	PlayerProfiles.sync(alice)
+end)
+
 test("rebirth: the Great Lantern asks at level 100, resets once when confirmed near it, keeps collections", function()
 	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
 	local profile = PlayerProfiles.get(alice)

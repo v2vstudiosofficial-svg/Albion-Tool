@@ -1650,6 +1650,68 @@ test("pets: earned by progress, equipped only when earned, saved choice is clean
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).equippedPet, "", "missing value")
 end)
 
+test("titles: earned by progress, chosen only when earned, saved choice is cleaned", function()
+	local TitleLogic = require("../src/server/TitleLogic")
+	local TitleData = require("../src/shared/TitleData")
+	local kinds = { level = true, purifies = true, elites = true, rifts = true, chests = true, tower = true, rebirths = true, quest = true }
+	for _, id in TitleData.order do
+		local title = TitleData.titles[id]
+		assert(title and Strings.has(title.nameKey), id .. " name")
+		assert(kinds[title.unlock.kind] and title.unlock.goal >= 1, id .. " unlock")
+		if title.unlock.kind == "quest" then
+			assert(QuestData.quests[title.unlock.id], id .. " needs a real quest")
+		end
+	end
+	eq(#TitleData.order, (function()
+		local n = 0
+		for _ in TitleData.titles do
+			n += 1
+		end
+		return n
+	end)(), "every title is in the order")
+	local p = Profile.new()
+	eq(TitleLogic.earned(p)[1], "keeper", "everyone starts as a Light Keeper")
+	eq(#TitleLogic.earned(p), 1)
+	eq(TitleLogic.equip(p, "reborn"), false, "cannot choose it before it is earned")
+	eq(TitleLogic.equip(p, "nope"), false)
+	eq(TitleLogic.equip(p, "keeper"), true)
+	eq(TitleLogic.active(p), "keeper")
+	p.counters.purifies = 999
+	eq(TitleLogic.unlocked(p, "shadow_friend"), false, "one short")
+	p.counters.purifies = 99999
+	eq(TitleLogic.progress(p, "shadow_friend"), TitleData.titles.shadow_friend.unlock.goal, "progress is capped")
+	eq(TitleLogic.unlocked(p, "kings_bane"), false)
+	p.questProgress.shadow_king = { state = "active", count = 0 }
+	eq(TitleLogic.unlocked(p, "kings_bane"), false, "an unfinished quest does not count")
+	p.questProgress.shadow_king = { state = "completed", count = 1 }
+	eq(TitleLogic.unlocked(p, "kings_bane"), true)
+	p.xp = Progression.thresholds[25]
+	eq(TitleLogic.unlocked(p, "glow_walker"), true)
+	eq(TitleLogic.unlocked(p, "lantern_master"), false)
+	p.rebirths = 1
+	eq(TitleLogic.unlocked(p, "reborn"), true)
+	eq(TitleLogic.unlocked(p, "lantern_master"), true, "a reborn player has reached every level")
+	p.counters.elites = 50
+	p.counters.rifts = 25
+	p.counters.chests = 50
+	p.towerBest = 30
+	p.questProgress.keepers_promise = { state = "completed", count = 1 }
+	eq(#TitleLogic.earned(p), #TitleData.order, "every kind of unlock works")
+	eq(TitleLogic.equip(p, ""), true, "hiding the title")
+	eq(TitleLogic.active(p), "")
+	local tampered = Profile.new()
+	tampered.equippedTitle = "lantern_master"
+	eq(TitleLogic.active(tampered), "", "a title that is not earned is never shown")
+	assert(string.find(TitleLogic.encode(Profile.new()), "^keeper:1,glow_walker:1,"), "progress pairs for the menu")
+	local function saved(value: any): string
+		return Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, equippedTitle = value }).equippedTitle
+	end
+	eq(saved("nope"), "")
+	eq(saved(5), "")
+	eq(saved("reborn"), "reborn")
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).equippedTitle, "", "missing value")
+end)
+
 test("counter quests: count from the day they start; records use the best value; paid once", function()
 	local function ready(): any
 		local p = Profile.new()

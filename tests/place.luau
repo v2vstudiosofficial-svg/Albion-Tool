@@ -65,6 +65,7 @@ for _, name in {
 	"ClaimBounty",
 	"PlayEmote",
 	"EquipPet",
+	"EquipTitle",
 	"OpenRebirth",
 	"Cinematic",
 	"SetSetting",

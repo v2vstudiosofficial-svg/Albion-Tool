@@ -73,6 +73,9 @@
         "EquipPet": {
           "$className": "RemoteEvent"
         },
+        "EquipTitle": {
+          "$className": "RemoteEvent"
+        },
         "OpenRebirth": {
           "$className": "RemoteEvent"
         },

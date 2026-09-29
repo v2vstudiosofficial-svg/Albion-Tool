@@ -1,6 +1,6 @@
 -- "Players": who is on this server, with their level, rebirths and best Shadow Tower floor,
 -- highest level first. Everything shown comes from attributes the server already replicates to
--- everyone (Level, Rebirths, TowerBest), so it needs no saved data. Open it with the button under
+-- everyone (Level, Rebirths, TowerBest, Title), so it needs no saved data. Open it with the button under
 -- Emotes or the Tab key.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Strings = require(Shared:WaitForChild("Strings"))
+local TitleData = require(Shared:WaitForChild("TitleData"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 
@@ -60,7 +61,11 @@ function PlayerBoard.start()
 			end
 			local row = UiKit.create("Frame", { LayoutOrder = index, Size = UDim2.new(1, 0, 0, ROW_HEIGHT - 4), BackgroundColor3 = if other == player then colors.panelLight else colors.panel, BorderSizePixel = 0 }, list)
 			UiKit.corner(row, 10)
-			UiKit.label({ Position = UDim2.fromOffset(12, 0), Size = UDim2.new(0.42, 0, 1, 0), Text = nameOf(other), TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+			local title = PlayerBoard.titleOf(other)
+			UiKit.label({ Position = UDim2.fromOffset(12, if title ~= "" then 1 else 0), Size = UDim2.new(0.42, 0, if title ~= "" then 0.6 else 1, 0), Text = nameOf(other), TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+			if title ~= "" then
+				UiKit.label({ Position = UDim2.new(0, 12, 0.55, 0), Size = UDim2.new(0.42, 0, 0.4, 0), Text = title, TextSize = 12, TextColor3 = colors.accent, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+			end
 			UiKit.label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0.55, 0, 1, 0), Text = PlayerBoard.summary(other), TextSize = 15, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Right }, row)
 		end
 		panel.Size = UDim2.fromOffset(480, 56 + math.min(#everyone, MAX_ROWS) * ROW_HEIGHT)
@@ -98,6 +103,12 @@ function PlayerBoard.start()
 			end
 		end
 	end)
+end
+
+-- The title a player chose (their Title attribute), or "" when none is shown.
+function PlayerBoard.titleOf(other: Player): string
+	local title = TitleData.titles[other:GetAttribute("Title") or ""]
+	return if title then Strings.get(title.nameKey) else ""
 end
 
 -- "Lv 42  Rebirth 2  Tower 17" (parts that are zero are left out).

@@ -14,6 +14,7 @@ local StoreLogic = require(script.Parent.StoreLogic)
 local PassLogic = require(script.Parent.PassLogic)
 local BountyLogic = require(script.Parent.BountyLogic)
 local PetLogic = require(script.Parent.PetLogic)
+local TitleLogic = require(script.Parent.TitleLogic)
 local RebirthLogic = require(script.Parent.RebirthLogic)
 local Shared = ReplicatedStorage.Shared
 local QuestData = require(Shared.QuestData)
@@ -154,6 +155,8 @@ function PlayerProfiles.sync(player: Player)
 	player:SetAttribute("QuestsDone", table.concat(storyDone, ","))
 	player:SetAttribute("Pet", PetLogic.active(profile))
 	player:SetAttribute("PetProgress", PetLogic.encode(profile))
+	player:SetAttribute("Title", TitleLogic.active(profile))
+	player:SetAttribute("TitleProgress", TitleLogic.encode(profile))
 	local log = {}
 	for _, id in AchievementData.order do
 		table.insert(log, id .. ":" .. AchievementLogic.claimed(profile, id) .. ":" .. AchievementLogic.progress(profile, id))

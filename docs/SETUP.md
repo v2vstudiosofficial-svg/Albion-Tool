@@ -129,6 +129,8 @@ Oyun içi tüm metinler İngilizce.
 10q. M20: **Kael the Keeper** (epilog): Shadow King arındırılana kadar köyde görünmez; sonra Elder/Wren onu işaret eder.
    `keepers_promise` (Sv92, 200 arındırma) → köyde "reunion" süsü (Büyük Fener çevresinde 3 Bekçi); `begin_again` (Sv100,
    1 rebirth). Test: `LvDebugLevel` ile Sv100'e çık, Kael'le konuş, arındır, Great Lantern'de rebirth yap.
+10r. M21: **Unvanlar** (Bag → Titles): 11 unvan oynayarak kazanılır (Light Keeper hemen; Glow Walker Sv25 ... Lantern Master Sv100).
+   Yeni unvan bildirimi gelir, seçmek oyuncuya kalır; seçilen unvan Tab (Players) panelinde adın altında görünür. Seçmeden "Hide" ile gizlenir.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).
