@@ -83,7 +83,7 @@ local function attack(target: Targets.Target, profile: Profile.Profile, stats: S
 		return false
 	end
 	local companion = slot > 0
-	local damage = Progression.weaponDamage(weaponId, profile.staffUpgrade, stats.level, companion, profile.slotLevels[slot + 1])
+	local damage = Progression.weaponDamage(weaponId, profile.staffUpgrade, stats.level, companion, profile.slotLevels[slot + 1], profile.weaponStars[weaponId])
 		* stats.damageMultiplier
 		* (if companion then stats.companionMultiplier else 1)
 	local aim = primary.body.Position
@@ -148,7 +148,7 @@ local function onRequestWave(player: Player)
 	-- The wave hits like the main weapon (slot level and skills included) times the wave bonus, so
 	-- it stays useful at every level.
 	local main = Profile.loadout(profile)
-	local waveDamage = Progression.weaponDamage(main, profile.staffUpgrade, level, false, profile.slotLevels[1])
+	local waveDamage = Progression.weaponDamage(main, profile.staffUpgrade, level, false, profile.slotLevels[1], profile.weaponStars[main])
 		* playerStats.damageMultiplier
 		* Balance.wave.damageMultiplier
 	stats.damage = math.max(stats.damage, math.floor(waveDamage + 0.5))

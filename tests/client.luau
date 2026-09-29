@@ -588,8 +588,10 @@ test("weapons menu: main weapon, floating slots, locked ones do nothing", functi
 	eq(sent("EquipWeapon", function(args)
 		return args[1] == 1 and args[2] == ""
 	end), 1, "back to auto")
+	setAttributes({ Stars = "bow:2" })
+	assert(shownText(Strings.get(WeaponData.weapons.bow.nameKey) .. "\n" .. Strings.get("weapon_stars", 2, WeaponData.maxStars)), "stars on the weapon tile")
 	click(findButton(Strings.get("menu_weapons")))
-	setAttributes({ Level = 3, Companions = "" })
+	setAttributes({ Level = 3, Companions = "", Stars = "" })
 end)
 
 test("chests in the world: shown when ready, hidden while their spot is empty", function()
@@ -660,6 +662,9 @@ test("chests menu: slots by level, one unlock at a time, timers, open and reward
 	assert(shownText(Strings.get("chest_reward_coins", 33)), "coins line")
 	assert(shownText(Strings.get("chest_reward_weapon", Strings.get("weapon_bow_name"), Strings.get("rarity_common"))), "weapon line")
 	assert(shownText(Strings.get("chest_reward_slot", Strings.get("bag_main"), 3, 1)), "slot line")
+	remotes.Fx.OnClientEvent:Fire("chestOpened", { chest = "wood", coins = 10, weapon = "bow", rarity = "common", duplicate = true, star = 2, slots = {} })
+	advance(0.2)
+	assert(shownText(Strings.get("chest_reward_star", Strings.get("weapon_bow_name"), 2, 5)), "star line for a repeat")
 	click(findButton("X"))
 	setAttributes({ Level = 3, Chests = "" })
 end)
@@ -783,6 +788,69 @@ test("adventure log: rows with progress, claim when ready, badge", function()
 	click(findButton(Strings.get("menu_log")))
 end)
 
+test("bounty board: opens from the server, shows progress, claims a finished bounty, closes when walking away", function()
+	local BountyData = H.loadModule("src/shared/BountyData.luau")
+	local Progression = H.loadModule("src/shared/Progression.luau")
+	local Format = H.loadModule("src/shared/Format.luau")
+	setAttributes({ Bounties = "purify:40:12,chest:2:2,rift:1:0" })
+	remotes.OpenBoard.OnClientEvent:Fire()
+	advance(0.2)
+	assert(shownText(Strings.get("board_hint")), "board open")
+	assert(shownText(Strings.get("bounty_purify", 40)), "purify bounty")
+	assert(shownText(Strings.get("bounty_progress", 12, 40)), "progress shown")
+	local level = hero:GetAttribute("Level")
+	assert(shownText(Strings.get("bounty_reward", Format.short(Progression.incomeCoins(level, BountyData.kinds.chest.minutes)))), "reward in coins")
+	click(findButton(Strings.get("bounty_progress", 12, 40)))
+	eq(sent("ClaimBounty"), 0, "an unfinished bounty sends nothing")
+	click(findButton(Strings.get("bounty_claim")))
+	eq(sent("ClaimBounty", function(args)
+		return args[1] == 2
+	end), 1, "claim the finished one")
+	setAttributes({ Bounties = "purify:40:12,elite:3:0,rift:1:0" })
+	assert(shownText(Strings.get("bounty_elite", 3)), "board refreshed with the new bounty")
+	assert(not findButton(Strings.get("bounty_claim")), "nothing left to claim")
+	teleport(Vector3.new(0, 3, -150))
+	advance(1)
+	assert(not shownText(Strings.get("board_hint")), "board closes when walking away")
+	setAttributes({ Bounties = "" })
+end)
+
+test("emotes: the panel sends the chosen emote, bubbles show over heads and fade", function()
+	local EmoteData = H.loadModule("src/shared/EmoteData.luau")
+	assert(not shownText(Strings.get("emote_wave")), "panel starts closed")
+	click(findButton(Strings.get("emote_button")))
+	assert(shownText(Strings.get("emote_wave")), "panel open")
+	click(findButton(Strings.get("emote_dance")))
+	eq(sent("PlayEmote", function(args)
+		return args[1] == "dance"
+	end), 1, "chosen emote sent")
+	assert(not shownText(Strings.get("emote_wave")), "panel closes after choosing")
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Parent = hero.Character
+	local owner = hero
+	local function bubbles(): number
+		local count = 0
+		for _, child in head:GetChildren() do
+			if child.Name == "EmoteBubble" then
+				count += 1
+			end
+		end
+		return count
+	end
+	remotes.Fx.OnClientEvent:Fire("emote", owner, "cheer")
+	advance(0.1)
+	eq(bubbles(), 1, "bubble over the head")
+	remotes.Fx.OnClientEvent:Fire("emote", owner, "laugh")
+	advance(0.1)
+	eq(bubbles(), 1, "a new emote replaces the old bubble")
+	remotes.Fx.OnClientEvent:Fire("emote", owner, "nope")
+	remotes.Fx.OnClientEvent:Fire("emote", "notaplayer", "wave")
+	advance(EmoteData.duration + 0.5)
+	eq(bubbles(), 0, "bubble fades")
+	head:Destroy()
+end)
+
 test("bag: equip an owned charm, locked ones do nothing", function()
 	setAttributes({ Charms = "swift", Charm = "" })
 	click(findButton(Strings.get("menu_bag")))
@@ -895,6 +963,23 @@ test("double XP time left shows on the HUD while the boost runs", function()
 			assert(not isShown(descendant), "hidden when the boost ends")
 		end
 	end
+end)
+
+test("shadow tower: floor banner and HUD label while inside", function()
+	setAttributes({ TowerBest = 7, TowerFloor = 0 })
+	assert(not shownText(Strings.get("tower_hud", 3, 7)), "no label outside the tower")
+	setAttributes({ TowerFloor = 3 })
+	assert(shownText(Strings.get("tower_hud", 3, 7)), "floor and best floor shown")
+	remotes.Fx.OnClientEvent:Fire("towerFloor", 3, 8)
+	advance(0.2)
+	assert(shownText(Strings.get("tower_floor", 3)), "floor banner")
+	assert(shownText(Strings.get("tower_floor_sub", 8)), "creature count under it")
+	setAttributes({ TowerBest = 8 })
+	assert(shownText(Strings.get("tower_hud", 3, 8)), "best floor follows")
+	remotes.Fx.OnClientEvent:Fire("towerFloor", "x", nil)
+	setAttributes({ TowerFloor = 0 })
+	assert(not shownText(Strings.get("tower_hud", 3, 8)), "label hides after leaving")
+	advance(3)
 end)
 
 test("settings toggle sound and the performance overlay", function()

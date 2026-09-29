@@ -849,7 +849,13 @@ test("chest rewards: coins in range, rarity weights, duplicates to coins, slot l
 	eq(low.coins, ChestData.chests.wood.coins[1], "lowest coins")
 	eq(low.weapon, "staff", "weapon chance 0 < 0.25 hits; lowest rarity roll -> common; first common")
 	eq(low.duplicate, true, "staff is already owned")
-	eq(low.duplicateCoins, ChestData.duplicateCoins.common)
+	eq(low.star, 1, "a repeat gives the first star instead of coins")
+	eq(low.duplicateCoins, nil)
+	p.weaponStars.staff = WeaponData.maxStars
+	local maxed = ChestLogic.roll("wood", sequence({ 0 }), p, 1)
+	eq(maxed.star, nil, "no star past the maximum")
+	eq(maxed.duplicateCoins, ChestData.duplicateCoins.common, "full stars turn a repeat into coins")
+	p.weaponStars.staff = nil
 	local high = ChestLogic.roll("wood", sequence({ 0.999 }), p, 1)
 	eq(high.coins, ChestData.chests.wood.coins[2], "highest coins")
 	eq(high.weapon, nil, "no weapon when the chance roll fails")
@@ -883,6 +889,29 @@ test("chest rewards: coins in range, rarity weights, duplicates to coins, slot l
 		assert(seen[weaponId], "chests can give " .. weaponId)
 	end
 	eq(legendaryFromWood, false, "wooden chests never give legendary weapons")
+end)
+
+test("weapon stars: repeat finds add stars, damage grows per star, profiles are cleaned", function()
+	local p = Profile.new()
+	table.insert(p.chests, { type = "wood", startedAt = 1 })
+	local reward = ChestLogic.open(p, 1, 1 + ChestData.chests.wood.unlockSeconds, sequence({ 0 }), 1) :: any
+	eq(reward.star, 1)
+	eq(p.weaponStars.staff, 1, "star stored")
+	local coins = p.coins
+	eq(coins, reward.coins, "a star is not paid in coins as well")
+	eq(Progression.starMultiplier(0), 1)
+	eq(Progression.starMultiplier(WeaponData.maxStars + 9), Progression.starMultiplier(WeaponData.maxStars), "star cap")
+	assert(Progression.weaponDamage("sword", 0, 20, false, 0, 3) > Progression.weaponDamage("sword", 0, 20, false, 0, 0), "stars help")
+	local cleaned = Profile.sanitize({
+		xp = 0, coins = 0, staffUpgrade = 0,
+		weaponStars = { bow = 3, sword = 99, nope = 2, axe = -1, hammer = "x" },
+	})
+	eq(cleaned.weaponStars.bow, 3)
+	eq(cleaned.weaponStars.sword, WeaponData.maxStars, "capped")
+	eq(cleaned.weaponStars.nope, nil, "unknown weapon dropped")
+	eq(cleaned.weaponStars.axe, nil)
+	eq(cleaned.weaponStars.hammer, nil)
+	eq(next(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).weaponStars), nil, "missing stars")
 end)
 
 test("opening applies rewards: coins, new weapon, capped slot levels", function()
@@ -1388,6 +1417,177 @@ test("store balance: a coin pack is worth minutes of play, never a whole game", 
 		local limit = if level < 25 then 20 else 10
 		assert(bought <= limit, `level {level}: the largest pack buys {bought} power levels`)
 	end
+end)
+
+test("bounty board: fills three different bounties by level, progress counts from the day taken", function()
+	local BountyLogic = require("../src/server/BountyLogic")
+	local BountyData = require("../src/shared/BountyData")
+	local p = Profile.new()
+	BountyLogic.fill(p, 1, math.random)
+	eq(#p.bounties, BountyData.slots, "board is full")
+	local kinds = {}
+	for _, bounty in p.bounties do
+		assert(not kinds[bounty.kind], "kinds never repeat on one board")
+		kinds[bounty.kind] = true
+		assert(BountyData.kinds[bounty.kind].minLevel <= 1, "only kinds open at this level")
+	end
+	eq(kinds.legend, nil, "no legend bounty at level 1")
+	-- Only what happens after taking a bounty counts.
+	p.counters.purifies = 100
+	p.bounties = { { kind = "purify", goal = 40, base = 100 } }
+	eq(BountyLogic.progress(p, p.bounties[1]), 0, "earlier purifies do not count")
+	p.counters.purifies = 120
+	eq(BountyLogic.progress(p, p.bounties[1]), 20)
+	eq(BountyLogic.complete(p, p.bounties[1]), false)
+	eq(BountyLogic.encode(p), "purify:40:20")
+	p.counters.purifies = 999
+	eq(BountyLogic.progress(p, p.bounties[1]), 40, "progress is capped at the goal")
+	eq(BountyLogic.readyCount(p), 1)
+end)
+
+test("bounty board: claiming pays income minutes once and offers a new bounty", function()
+	local BountyLogic = require("../src/server/BountyLogic")
+	local BountyData = require("../src/shared/BountyData")
+	local p = Profile.new()
+	p.counters.chests = 0
+	p.bounties = { { kind = "chest", goal = 2, base = 0 }, { kind = "purify", goal = 40, base = 0 } }
+	eq(BountyLogic.claim(p, 1, 10, math.random), nil, "not finished yet")
+	eq(BountyLogic.claim(p, 5, 10, math.random), nil, "no such slot")
+	p.counters.chests = 2
+	local coins = p.coins
+	local paid = BountyLogic.claim(p, 1, 10, math.random) :: any
+	eq(paid.coins, Progression.incomeCoins(10, BountyData.kinds.chest.minutes), "coins are minutes of own income")
+	eq(p.coins, coins + paid.coins)
+	eq(#p.bounties, BountyData.slots, "the claimed bounty left and the board was topped up")
+	for _, bounty in p.bounties do
+		assert(bounty.kind ~= "chest" or bounty.base == 2, "a new chest bounty starts from the current count")
+	end
+	local again = BountyLogic.claim(p, 1, 10, math.random)
+	assert(again == nil or again.kind ~= "chest", "the same progress cannot be claimed twice")
+	-- Legends only join the board once the player can reach them.
+	p.bounties = {}
+	local sawLegend = false
+	for _ = 1, 50 do
+		p.bounties = {}
+		BountyLogic.fill(p, BountyData.kinds.legend.minLevel, math.random)
+		for _, bounty in p.bounties do
+			sawLegend = sawLegend or bounty.kind == "legend"
+		end
+	end
+	assert(sawLegend, "legend bounties appear from their level")
+end)
+
+test("bounty board: rewards stay small, saved bounties are cleaned", function()
+	local BountyData = require("../src/shared/BountyData")
+	for kind, def in BountyData.kinds do
+		assert(def.minutes <= 8 and def.goal >= 1, kind .. " reward and goal")
+	end
+	local total = 0
+	for _, kind in BountyData.order do
+		total += BountyData.kinds[kind].minutes
+	end
+	assert(total / #BountyData.order <= 5, "an average bounty pays at most five minutes of income")
+	assert(BountyData.passAction and require("../src/shared/PassData").xp[BountyData.passAction], "bounties give Pass XP")
+	local cleaned = Profile.sanitize({
+		xp = 0, coins = 0, staffUpgrade = 0,
+		bounties = {
+			{ kind = "purify", goal = 9999, base = 5 },
+			{ kind = "purify", goal = 40, base = 0 },
+			{ kind = "nope", goal = 1, base = 0 },
+			{ kind = "elite", goal = -1, base = 0 },
+			{ kind = "rift", goal = 1, base = "x" },
+			"junk",
+			{ kind = "chest", goal = 2, base = 3 },
+			{ kind = "legend", goal = 1, base = 0 },
+			{ kind = "elite", goal = 3, base = 0 },
+		},
+	})
+	eq(#cleaned.bounties, 3, "at most three bounties")
+	eq(cleaned.bounties[1].goal, BountyData.kinds.purify.goal, "goal capped to the current one")
+	eq(cleaned.bounties[2].kind, "chest", "duplicates and broken entries dropped")
+	eq(#Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).bounties, 0, "missing board")
+end)
+
+test("emotes: known ids only, cooldown, only nearby players see it, every text exists", function()
+	local EmoteLogic = require("../src/server/EmoteLogic")
+	local EmoteData = require("../src/shared/EmoteData")
+	eq(#EmoteData.order, 6)
+	for _, id in EmoteData.order do
+		local emote = EmoteData.emotes[id]
+		assert(emote and Strings.has(emote.nameKey) and Strings.has(emote.bubbleKey), id .. " texts")
+		assert(emote.action == nil or emote.action == "jump" or emote.action == "sit", id .. " action")
+		eq(EmoteLogic.valid(id), true)
+	end
+	for _, bad in { "", "nope", 5, {}, false } do
+		eq(EmoteLogic.valid(bad), false, "unknown emote rejected")
+	end
+	eq(EmoteLogic.ready(nil, 10), true, "first emote")
+	eq(EmoteLogic.ready(10, 10 + EmoteData.cooldown - 0.1), false, "cooldown")
+	eq(EmoteLogic.ready(10, 10 + EmoteData.cooldown), true)
+	local near = { position = { x = EmoteData.range, z = 0 } }
+	local far = { position = { x = EmoteData.range + 1, z = 0 } }
+	local seen = EmoteLogic.audience({ x = 0, z = 0 }, { near, far })
+	eq(#seen, 1, "only nearby players")
+	eq(seen[1], near)
+end)
+
+test("shadow tower: floor levels, scaling past level 100, counts, kinds, chests, entry rules", function()
+	local TowerLogic = require("../src/server/TowerLogic")
+	local tower = Balance.tower
+	local level, extra = TowerLogic.floorLevel(10, 1)
+	eq(level, 10 + tower.levelOffset + 1, "floor 1 is close to the player's level")
+	eq(extra, 0)
+	local capped, over = TowerLogic.floorLevel(100, 5)
+	eq(capped, Progression.MAX_LEVEL, "creatures never pass level 100")
+	eq(over, 100 + tower.levelOffset + 5 - Progression.MAX_LEVEL, "the rest becomes extra strength")
+	eq(TowerLogic.floorLevel(1, 1), 1, "never below level 1")
+	local hp0, damage0 = TowerLogic.scale(0)
+	eq(hp0, 1)
+	eq(damage0, 1)
+	local hp10, damage10 = TowerLogic.scale(10)
+	assert(hp10 > 1 and damage10 > 1 and hp10 > damage10, "health grows faster than damage")
+	assert(TowerLogic.count(1, 1) >= tower.baseCount, "a floor is never empty")
+	eq(TowerLogic.count(1000, 1), tower.maxCount, "capped for one player")
+	eq(TowerLogic.count(1, 3), TowerLogic.count(1, 1) + 2 * tower.extraPerPlayer, "more players, more creatures")
+	eq(TowerLogic.eliteCount(1), 0)
+	eq(TowerLogic.eliteCount(tower.eliteEvery), 1, "an elite every few floors")
+	assert(TowerLogic.eliteCount(500) <= 3, "elite cap")
+	for _, testLevel in { 1, 7, 12, 40, 60, 100 } do
+		local kinds = TowerLogic.kindsFor(testLevel)
+		assert(#kinds > 0, "creatures for level " .. testLevel)
+		for _, kind in kinds do
+			assert(Balance.enemies[kind] and not Balance.enemies[kind].isBoss, kind .. " is a regular creature")
+		end
+	end
+	eq(contains(TowerLogic.kindsFor(1), "Gloomling"), true, "early floors send early creatures")
+	eq(contains(TowerLogic.kindsFor(100), "Gloomling"), false, "late floors do not")
+	eq(TowerLogic.chestFor(4), nil)
+	eq(TowerLogic.chestFor(5), "silver")
+	eq(TowerLogic.chestFor(10), "gold")
+	eq(TowerLogic.chestFor(30), "mystic")
+	eq(TowerLogic.chestFor(35), "gold", "mystic chests only every tenth floor")
+	for floor = 1, 200 do
+		local chestType = TowerLogic.chestFor(floor)
+		assert(chestType == nil or ChestData.chests[chestType], "real chest type")
+	end
+	eq(TowerLogic.canEnter(tower.minLevel - 1), false)
+	eq(TowerLogic.canEnter(tower.minLevel), true)
+	local ok, reason = TowerLogic.canEnter(70, 100)
+	eq(ok, false)
+	eq(reason, "low", "a much lower level cannot join a high run")
+	eq(TowerLogic.canEnter(100 - tower.joinRange, 100), true)
+	assert(TowerLogic.floorCoins(50, 1000) <= Progression.incomeCoins(50, tower.floorMinutes.max), "floor coins are capped")
+	assert(TowerLogic.recordCoins(50) > TowerLogic.floorCoins(50, 1), "a new best pays more than a floor")
+	local p = Profile.new()
+	eq(TowerLogic.record(p, 3), true)
+	eq(TowerLogic.record(p, 3), false, "the same floor is not a new best")
+	eq(TowerLogic.record(p, 2), false)
+	eq(p.towerBest, 3)
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, towerBest = -5 }).towerBest, 0)
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, towerBest = "x" }).towerBest, 0)
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, towerBest = 12.7 }).towerBest, 0, "fractions are not floors")
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, towerBest = 99999 }).towerBest, 10000, "absurd values are capped")
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).towerBest, 0, "missing value")
 end)
 
 test("game content is English only (no Turkish letters in source)", function()

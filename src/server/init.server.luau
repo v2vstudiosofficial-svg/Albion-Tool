@@ -21,6 +21,9 @@ local ChestData = require(Shared.ChestData)
 local SkillService = require(script.SkillService)
 local RiftService = require(script.RiftService)
 local AchievementService = require(script.AchievementService)
+local BountyService = require(script.BountyService)
+local EmoteService = require(script.EmoteService)
+local TowerService = require(script.TowerService)
 local Targets = require(script.Targets)
 local CosmeticService = require(script.CosmeticService)
 local PassService = require(script.PassService)
@@ -44,6 +47,9 @@ PouchService.start()
 SkillService.start()
 RiftService.start()
 AchievementService.start()
+BountyService.start(map)
+EmoteService.start()
+TowerService.start(map)
 CosmeticService.start()
 PassService.start()
 StoreService.start()
@@ -73,6 +79,9 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 		AchievementService.count(player, "purifies")
 		if enemy.elite then
 			AchievementService.count(player, "elites")
+		end
+		if table.find(Balance.legends, enemyType) then
+			AchievementService.count(player, "legendWins")
 		end
 		-- Elites may drop a chest for everyone who helped.
 		if profile and enemy.elite and eliteRandom:NextNumber() < Balance.elite.chestChance then

@@ -17,6 +17,7 @@ local AchievementData = require(Shared:WaitForChild("AchievementData"))
 local StoreData = require(Shared:WaitForChild("StoreData"))
 local CosmeticData = require(Shared:WaitForChild("CosmeticData"))
 local PassData = require(Shared:WaitForChild("PassData"))
+local BountyData = require(Shared:WaitForChild("BountyData"))
 local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
@@ -30,6 +31,7 @@ local claimAchievement = Remotes:WaitForChild("ClaimAchievement") :: RemoteEvent
 local buyCosmetic = Remotes:WaitForChild("BuyCosmetic") :: RemoteEvent
 local equipCosmetic = Remotes:WaitForChild("EquipCosmetic") :: RemoteEvent
 local claimPass = Remotes:WaitForChild("ClaimPass") :: RemoteEvent
+local claimBounty = Remotes:WaitForChild("ClaimBounty") :: RemoteEvent
 local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
 local player = Players.LocalPlayer
 local colors = UiKit.colors
@@ -280,6 +282,7 @@ function Menus.start()
 		local companions = Attrs.list("Companions")
 		local owned = Attrs.set("Weapons")
 		local slotLevels = Attrs.list("SlotLevels")
+		local stars = Attrs.pairs("Stars")
 		local current = if editingSlot == 0 then Attrs.get("Weapon", "staff") else companions[editingSlot]
 		for slot, button in slotButtons do
 			local open = slot <= slots
@@ -295,7 +298,11 @@ function Menus.start()
 		weaponHint.Text = Strings.get(if editingSlot == 0 then "bag_main_hint" else "bag_slot_hint")
 		for weaponId, tile in tiles do
 			local unlocked = owned[weaponId] == true
-			tile.button.Text = if unlocked then Strings.get(WeaponData.weapons[weaponId].nameKey) else Strings.get("weapon_find")
+			local weaponStars = stars[weaponId] or 0
+			tile.button.Text = if not unlocked
+				then Strings.get("weapon_find")
+				elseif weaponStars > 0 then Strings.get(WeaponData.weapons[weaponId].nameKey) .. "\n" .. Strings.get("weapon_stars", weaponStars, WeaponData.maxStars)
+				else Strings.get(WeaponData.weapons[weaponId].nameKey)
 			tile.button.BackgroundColor3 = if weaponId == current then colors.good elseif unlocked then colors.panelLight else colors.panel
 			tile.button.TextColor3 = if weaponId == current then colors.panel elseif unlocked then colors.text else colors.muted
 			tile.stripe.BackgroundTransparency = if unlocked then 0 else 0.7
@@ -306,7 +313,9 @@ function Menus.start()
 				"weapon_info",
 				Strings.get(WeaponData.rarities[weapon.rarity].nameKey),
 				Strings.get(weapon.descKey),
-				Progression.weaponDamage(current, Attrs.get("StaffTier", 0), level, editingSlot > 0, tonumber(slotLevels[editingSlot + 1]))
+				Progression.weaponDamage(current, Attrs.get("StaffTier", 0), level, editingSlot > 0, tonumber(slotLevels[editingSlot + 1]), stars[current]),
+				stars[current] or 0,
+				WeaponData.maxStars
 			)
 			else ""
 		autoButton.Visible = editingSlot > 0
@@ -468,7 +477,9 @@ function Menus.start()
 		local weapon = WeaponData.weapons[reward.weapon or ""]
 		if weapon then
 			local rarity = WeaponData.rarities[weapon.rarity]
-			if reward.duplicate then
+			if reward.star then
+				line(Strings.get("chest_reward_star", Strings.get(weapon.nameKey), reward.star, WeaponData.maxStars), UiKit.rgb(rarity.color), 22)
+			elseif reward.duplicate then
 				line(Strings.get("chest_reward_duplicate", Strings.get(weapon.nameKey)), colors.muted)
 			else
 				line(Strings.get("chest_reward_weapon", Strings.get(weapon.nameKey), Strings.get(rarity.nameKey)), UiKit.rgb(rarity.color), 22)
@@ -658,6 +669,93 @@ function Menus.start()
 			end
 		end
 	end
+
+	-- Bounty Board ---------------------------------------------------------------------------
+	-- Opens from the village board (server event); rows come from the Bounties attribute
+	-- ("kind:goal:progress" in board order). Closes when the player walks away.
+	local board, boardBody = modal("board_title", 330)
+	UiKit.label({ Size = UDim2.new(1, 0, 0, 24), Text = Strings.get("board_hint"), TextSize = 14, TextWrapped = true, TextColor3 = colors.muted }, boardBody)
+	local boardRows = {}
+	for slot = 1, BountyData.slots do
+		local row = UiKit.create("Frame", {
+			Position = UDim2.fromOffset(0, 32 + (slot - 1) * 82),
+			Size = UDim2.new(1, -8, 0, 76),
+			BackgroundColor3 = colors.panelLight,
+			BorderSizePixel = 0,
+		}, boardBody)
+		UiKit.corner(row, 12)
+		local name = UiKit.label({ Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -130, 0, 24), TextSize = 17, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		local reward = UiKit.label({ Position = UDim2.fromOffset(12, 28), Size = UDim2.new(1, -130, 0, 18), TextSize = 13, TextColor3 = colors.coin, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		local barBack = UiKit.create("Frame", { Position = UDim2.fromOffset(12, 54), Size = UDim2.new(1, -130, 0, 10), BackgroundColor3 = Color3.fromRGB(30, 26, 48), BorderSizePixel = 0 }, row)
+		UiKit.corner(barBack, 5)
+		local fill = UiKit.create("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = colors.xp, BorderSizePixel = 0 }, barBack)
+		UiKit.corner(fill, 5)
+		local button = UiKit.button({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(100, 44), TextSize = 17 }, row, function()
+			if boardRows[slot].done then
+				claimBounty:FireServer(slot)
+				Audio.play("ui")
+			end
+		end)
+		boardRows[slot] = { row = row, name = name, reward = reward, fill = fill, button = button, done = false }
+	end
+	local function boardEntries(): { { kind: string, goal: number, progress: number } }
+		local entries = {}
+		for _, item in Attrs.list("Bounties") do
+			local kind, goal, value = string.match(item, "^([^:]+):(%d+):(%d+)$")
+			if kind and BountyData.kinds[kind] then
+				table.insert(entries, { kind = kind, goal = tonumber(goal) :: number, progress = tonumber(value) :: number })
+			end
+		end
+		return entries
+	end
+	local function refreshBoard()
+		local entries = boardEntries()
+		local level = Attrs.get("Level", 1)
+		for slot, view in boardRows do
+			local entry = entries[slot]
+			view.row.Visible = entry ~= nil
+			if entry then
+				local def = BountyData.kinds[entry.kind]
+				local done = entry.progress >= entry.goal
+				view.done = done
+				view.name.Text = Strings.get(def.nameKey, entry.goal)
+				view.reward.Text = Strings.get("bounty_reward", Format.short(Progression.incomeCoins(level, def.minutes)))
+				view.fill.Size = UDim2.fromScale(math.clamp(entry.progress / entry.goal, 0, 1), 1)
+				view.button.Text = if done then Strings.get("bounty_claim") else Strings.get("bounty_progress", entry.progress, entry.goal)
+				view.button.BackgroundColor3 = if done then colors.good else colors.panel
+				view.button.TextColor3 = if done then colors.panel else colors.muted
+			end
+		end
+	end
+	Remotes:WaitForChild("OpenBoard").OnClientEvent:Connect(function()
+		refreshBoard()
+		if openModal ~= board then
+			showModal(board)
+		end
+	end)
+	player:GetAttributeChangedSignal("Bounties"):Connect(function()
+		if openModal == board then
+			refreshBoard()
+		end
+	end)
+	player:GetAttributeChangedSignal("Level"):Connect(function()
+		if openModal == board then
+			refreshBoard()
+		end
+	end)
+	local boardPosition = WorldData.vector(WorldData.board.position)
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			if openModal == board then
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if not root or (root.Position - boardPosition).Magnitude > Balance.shopDistance + 4 then
+					closeModal()
+				end
+			end
+		end
+	end)
 
 	-- Shop: Robux packs and costumes -----------------------------------------------------------
 	-- Robux products show their live price from Roblox; products without an id say "Soon".
@@ -1186,7 +1284,7 @@ function Menus.start()
 			end
 		end
 	end)
-	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "Legends" } do
+	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Stars", "Chests", "Legends" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			refreshBadge()
 			if openModal == legends then

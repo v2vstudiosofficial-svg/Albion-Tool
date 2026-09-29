@@ -12,6 +12,7 @@ local SkillLogic = require(script.Parent.SkillLogic)
 local AchievementLogic = require(script.Parent.AchievementLogic)
 local StoreLogic = require(script.Parent.StoreLogic)
 local PassLogic = require(script.Parent.PassLogic)
+local BountyLogic = require(script.Parent.BountyLogic)
 local Shared = ReplicatedStorage.Shared
 local QuestData = require(Shared.QuestData)
 local AchievementData = require(Shared.AchievementData)
@@ -35,6 +36,12 @@ local random = Random.new()
 
 local function rng(): number
 	return random:NextNumber()
+end
+
+-- The Bounty Board has its own generator so it never shifts other random rolls.
+local bountyRandom = Random.new()
+local function bountyRng(): number
+	return bountyRandom:NextNumber()
 end
 
 -- "id:value" pairs for small replicated tables (upgrade levels, skill ranks).
@@ -109,6 +116,7 @@ function PlayerProfiles.sync(player: Player)
 	player:SetAttribute("Companions", table.concat(companions, ","))
 	player:SetAttribute("Weapons", csv(profile.ownedWeapons))
 	player:SetAttribute("SlotLevels", table.concat(profile.slotLevels, ","))
+	player:SetAttribute("Stars", pairsCsv(profile.weaponStars))
 	-- Chests as "type:startedAt" in slot order; spots as "spotId:readyAt" for taken spots only.
 	local chests = {}
 	for _, chest in profile.chests do
@@ -126,6 +134,8 @@ function PlayerProfiles.sync(player: Player)
 	table.sort(spots)
 	player:SetAttribute("ChestSpots", table.concat(spots, ","))
 	player:SetAttribute("Legends", csv(profile.legends))
+	player:SetAttribute("Bounties", BountyLogic.encode(profile))
+	player:SetAttribute("TowerBest", profile.towerBest)
 	local log = {}
 	for _, id in AchievementData.order do
 		table.insert(log, id .. ":" .. AchievementLogic.claimed(profile, id) .. ":" .. AchievementLogic.progress(profile, id))
@@ -255,6 +265,7 @@ local function load(player: Player)
 	session:Reconcile()
 	Profile.sanitize(session.Data)
 	PassLogic.ensureSeason(session.Data)
+	BountyLogic.fill(session.Data, Progression.levelForXp(session.Data.xp), bountyRng)
 	if session.Data.pendingPicks > 0 and #session.Data.skillOffer == 0 then
 		session.Data.skillOffer = SkillLogic.roll(session.Data, rng)
 	end

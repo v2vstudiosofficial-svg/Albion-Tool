@@ -128,6 +128,13 @@ local function teleport(player, position: any)
 	root(player).Position = position
 end
 
+-- Model:PivotTo (used by the server to teleport characters): moves the root part.
+roblox.implementMethod("Model", "PivotTo", function(self, cframe)
+	local part = self.HumanoidRootPart
+	part.Position = cframe.Position
+	part.CFrame = cframe
+end)
+
 local function heal(player)
 	local h = humanoid(player)
 	h.Health = h.MaxHealth
@@ -1144,7 +1151,7 @@ test("the light wave hits like the main weapon at any level", function()
 	local profile = PlayerProfiles.get(alice)
 	local main = Profile.loadout(profile)
 	local level = attr(alice, "Level")
-	local expected = Progression.weaponDamage(main, profile.staffUpgrade, level, false, profile.slotLevels[1]) * Balance.wave.damageMultiplier
+	local expected = Progression.weaponDamage(main, profile.staffUpgrade, level, false, profile.slotLevels[1], profile.weaponStars[main]) * Balance.wave.damageMultiplier
 	advance(Balance.wave.cooldown + 1)
 	nearAnyEnemy(alice, "Rockling", "hollow")
 	local hits = #H.remoteLog
@@ -1230,6 +1237,220 @@ test("team bonus: playing close together gives more XP per purify", function()
 	end
 	assert(found, `a purify paid {expected} XP (alone {alone}) with a teammate nearby`)
 	assert(xpOf(bob) > before, "xp gained")
+	toVillage(alice)
+	toVillage(bob)
+end)
+
+test("bounty board: opens at the board, counts real play, pays once and only near the board", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local BountyData = H.loadModule("src/shared/BountyData.luau")
+	local PassData = H.loadModule("src/shared/PassData.luau")
+	assert(#string.split(attr(alice, "Bounties"), ",") == BountyData.slots, "the board is filled on join")
+	local profile = PlayerProfiles.get(alice)
+	local counters = profile.counters
+	profile.bounties = {
+		{ kind = "purify", goal = 1, base = counters.purifies or 0 },
+		{ kind = "chest", goal = 2, base = counters.chests or 0 },
+		{ kind = "rift", goal = 1, base = counters.rifts or 0 },
+	}
+	PlayerProfiles.sync(alice)
+	talk(alice, "BountyBoard")
+	eq(logCount("OpenBoard", function(e)
+		return e.target == alice
+	end), 1, "board opened by the prompt")
+	local coins = attr(alice, "Coins")
+	remotes.ClaimBounty.OnServerEvent:Fire(alice, 1)
+	advance(0.4)
+	eq(attr(alice, "Coins"), coins, "nothing to claim before the work is done")
+	local readyBefore = logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_bounty_ready"
+	end)
+	assert(purifyOne(alice, "Gloomling"), "purified a creature")
+	assert(string.find(attr(alice, "Bounties"), "purify:1:1", 1, true), "progress replicated: " .. attr(alice, "Bounties"))
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_bounty_ready"
+	end), readyBefore + 1, "told once that a bounty is ready")
+	-- Far from the board the claim is refused.
+	local farCoins = attr(alice, "Coins")
+	remotes.ClaimBounty.OnServerEvent:Fire(alice, 1)
+	advance(0.4)
+	eq(attr(alice, "Coins"), farCoins, "a claim far from the board pays nothing")
+	local passXp = attr(alice, "PassXp")
+	talk(alice, "BountyBoard")
+	local level = attr(alice, "Level")
+	local expected = Progression.incomeCoins(level, BountyData.kinds.purify.minutes)
+	local before = attr(alice, "Coins")
+	remotes.ClaimBounty.OnServerEvent:Fire(alice, 1)
+	remotes.ClaimBounty.OnServerEvent:Fire(alice, 1)
+	advance(0.5)
+	eq(attr(alice, "Coins"), before + expected, "paid once, as many coins as the board shows")
+	eq(attr(alice, "PassXp"), passXp + PassData.xp.bounty, "Pass XP for the bounty")
+	eq(#string.split(attr(alice, "Bounties"), ","), BountyData.slots, "a new bounty took its place")
+	for _, args in { { "x" }, { 0 }, { 99 }, { 1.5 }, { {} } } do
+		remotes.ClaimBounty.OnServerEvent:Fire(alice, args[1])
+		advance(0.4)
+	end
+	eq(attr(alice, "Coins"), before + expected, "bad requests change nothing")
+	toVillage(alice)
+end)
+
+test("emotes: shown to nearby players only, cooldown, bad ids ignored, sit and hop", function()
+	toVillage(alice)
+	toVillage(bob)
+	local EmoteData = H.loadModule("src/shared/EmoteData.luau")
+	local function shownTo(player, id): number
+		return logCount("Fx", function(e)
+			return e.target == player and e.args[1] == "emote" and e.args[2] == alice and e.args[3] == id
+		end)
+	end
+	remotes.PlayEmote.OnServerEvent:Fire(alice, "wave")
+	advance(0.1)
+	eq(shownTo(alice, "wave"), 1, "the player sees their own emote")
+	eq(shownTo(bob, "wave"), 1, "a nearby player sees it")
+	remotes.PlayEmote.OnServerEvent:Fire(alice, "wave")
+	advance(0.1)
+	eq(shownTo(bob, "wave"), 1, "cooldown blocks a second emote")
+	advance(EmoteData.cooldown)
+	for _, bad in { "nope", 5, {}, "" } do
+		remotes.PlayEmote.OnServerEvent:Fire(alice, bad)
+		advance(EmoteData.cooldown)
+	end
+	eq(logCount("Fx", function(e)
+		return e.target == bob and e.args[1] == "emote" and e.args[2] == alice
+	end), 1, "bad ids show nothing")
+	remotes.PlayEmote.OnServerEvent:Fire(alice, "sit")
+	advance(0.1)
+	eq(humanoid(alice).Sit, true, "sit emote sits")
+	humanoid(alice).Sit = false
+	advance(EmoteData.cooldown)
+	teleport(bob, vec(WorldData.areas.glade.center, 3))
+	remotes.PlayEmote.OnServerEvent:Fire(alice, "bow")
+	advance(0.1)
+	eq(shownTo(bob, "bow"), 0, "a far player does not see it")
+	eq(shownTo(alice, "bow"), 1)
+	toVillage(bob)
+end)
+
+test("shadow tower: level gate, floors, rewards once, leaving, defeat and join rules", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local TowerLogic = H.loadModule("src/server/TowerLogic.luau")
+	local PassData = H.loadModule("src/shared/PassData.luau")
+	local tower = Balance.tower
+	local center = vec(WorldData.areas.tower.center)
+	local profile = PlayerProfiles.get(alice)
+	local savedXp = profile.xp
+	local function setLevel(player, level: number)
+		PlayerProfiles.get(player).xp = Progression.thresholds[level]
+		PlayerProfiles.sync(player)
+	end
+	local function towerEnemies(): { any }
+		local list = {}
+		for _, model in workspace.Enemies:GetChildren() do
+			local flat = positionOf(model.Body) - center
+			if isAlive(model) and Vector3.new(flat.X, 0, flat.Z).Magnitude < WorldData.areas.tower.radius + 5 then
+				table.insert(list, model)
+			end
+		end
+		return list
+	end
+	local function insideAt(player): boolean
+		local offset = root(player).Position - center
+		return Vector3.new(offset.X, 0, offset.Z).Magnitude < WorldData.areas.tower.radius
+	end
+	local gate = workspace.LanternValleyMap.Village.TowerGate.Body
+	assert(gate.TalkPrompt, "gate prompt")
+	assert(workspace.LanternValleyMap.Tower.ExitPad.LeavePrompt, "exit prompt")
+
+	-- Too low: told, stays in the village.
+	setLevel(alice, tower.minLevel - 1)
+	talk(alice, "TowerGate")
+	eq(insideAt(alice), false, "below the minimum level stays out")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_tower_level"
+	end), 1, "told the level needed")
+
+	-- Level ok: enters, floor 1 creatures appear after the start delay.
+	local level = tower.minLevel + 2
+	setLevel(alice, level)
+	talk(alice, "TowerGate")
+	assert(insideAt(alice), "teleported into the arena")
+	eq(attr(alice, "TowerFloor"), 1)
+	eq(#towerEnemies(), 0, "creatures wait for the start delay")
+	advance(tower.startDelay + 1.5)
+	local expected = TowerLogic.count(1, 1)
+	eq(#towerEnemies(), expected, "floor 1 creatures")
+	local floorLevel = TowerLogic.floorLevel(level, 1)
+	for _, model in towerEnemies() do
+		eq(model:GetAttribute("Level"), floorLevel, "creature level follows the floor")
+	end
+	assert(logCount("Fx", function(e)
+		return e.target == alice and e.args[1] == "towerFloor" and e.args[2] == 1 and e.args[3] == expected
+	end) == 1, "floor banner sent")
+
+	-- Clear the floor: paid once, best floor recorded, next floor comes after a pause.
+	local coins = attr(alice, "Coins")
+	local passXp = attr(alice, "PassXp")
+	local guard = 0
+	while #towerEnemies() > 0 and guard < 30 do
+		local model = towerEnemies()[1]
+		purifyOne(alice, model:GetAttribute("EnemyType"), 30)
+		guard += 1
+	end
+	eq(#towerEnemies(), 0, "floor cleared")
+	assert(insideAt(alice), "still in the arena")
+	advance(1.6)
+	eq(attr(alice, "TowerBest"), 1, "best floor recorded")
+	local paid = TowerLogic.floorCoins(level, 1) + TowerLogic.recordCoins(level)
+	eq(attr(alice, "Coins"), coins + paid, "floor coins plus the new-best bonus")
+	assert(attr(alice, "PassXp") >= passXp + PassData.xp.tower, "Pass XP for the floor")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_tower_record" and e.args[2] == 1
+	end), 1, "new best announced")
+	advance(tower.floorDelay + 1.5)
+	eq(attr(alice, "TowerFloor"), 2, "next floor")
+	eq(#towerEnemies(), TowerLogic.count(2, 1), "floor 2 creatures")
+
+	-- A second player who is far below the run's level cannot join; leaving closes the run.
+	setLevel(bob, 1)
+	toVillage(bob)
+	setLevel(alice, 60)
+	PlayerProfiles.sync(alice)
+	talk(bob, "TowerGate")
+	eq(insideAt(bob), false, "level 1 cannot enter")
+	teleport(alice, positionOf(workspace.LanternValleyMap.Tower.ExitPad) + Vector3.new(0, 2, 0))
+	workspace.LanternValleyMap.Tower.ExitPad.LeavePrompt.Triggered:Fire(alice)
+	advance(1.6)
+	eq(insideAt(alice), false, "back in the village")
+	eq(attr(alice, "TowerFloor"), 0)
+	eq(#towerEnemies(), 0, "the empty run's creatures are gone")
+	eq(attr(alice, "TowerBest"), 1, "leaving keeps the best floor")
+
+	-- Far from the gate does nothing; defeat ends the run.
+	setLevel(alice, level)
+	teleport(alice, vec(WorldData.areas.glade.center, 3))
+	gate.TalkPrompt.Triggered:Fire(alice)
+	advance(0.2)
+	eq(insideAt(alice), false, "the prompt needs the player near the gate")
+	talk(alice, "TowerGate")
+	assert(insideAt(alice), "entered again")
+	advance(tower.startDelay + 1.5)
+	assert(#towerEnemies() > 0, "a new run starts at floor 1")
+	eq(attr(alice, "TowerFloor"), 1)
+	-- Being carried out of the arena (e.g. a respawn in the village) also ends the run for that player.
+	toVillage(alice)
+	advance(1.6)
+	eq(attr(alice, "TowerFloor"), 0, "leaving the arena ends the run")
+	eq(#towerEnemies(), 0, "an empty arena closes the run")
+	talk(alice, "TowerGate")
+	advance(tower.startDelay + 1.5)
+	eq(attr(alice, "TowerFloor"), 1, "a fresh run")
+	humanoid(alice).Health = 0
+	advance(1.6)
+	eq(attr(alice, "TowerFloor"), 0, "defeated players leave the run")
+	eq(#towerEnemies(), 0, "the run closed")
+	humanoid(alice).Health = humanoid(alice).MaxHealth
+	profile.xp = savedXp
+	PlayerProfiles.sync(alice)
 	toVillage(alice)
 	toVillage(bob)
 end)

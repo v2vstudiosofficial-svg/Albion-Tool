@@ -210,6 +210,110 @@ local function buildHouse(parent: Instance, name: string, base: Vector3)
 	end
 end
 
+-- A wooden notice board with the Bounty Board prompt.
+local function buildBoard(parent: Instance)
+	local spec = WorldData.board
+	local board = ensure(parent, "BountyBoard", "Model") :: Model
+	local frame = CFrame.lookAt(v(spec.position), v(spec.lookAt))
+	local body = part(board, "Body", {
+		Size = Vector3.new(6, 4.4, 0.6),
+		CFrame = frame,
+		Color = COLOR.door,
+	})
+	for index, x in { -2.6, 2.6 } do
+		part(board, "Post" .. index, {
+			Size = Vector3.new(0.6, 5.2, 0.6),
+			CFrame = frame * CFrame.new(x, -1.2, 0.2),
+			Color = COLOR.trunk,
+		})
+	end
+	for index, offset in { Vector3.new(-1.6, 0.9, -0.35), Vector3.new(0.4, -0.5, -0.35), Vector3.new(1.7, 0.7, -0.35) } do
+		part(board, "Note" .. index, {
+			Size = Vector3.new(1.4, 1.8, 0.1),
+			CFrame = frame * CFrame.new(offset.X, offset.Y, offset.Z),
+			Color = Color3.fromRGB(245, 235, 200),
+		})
+	end
+	if not board.PrimaryPart then
+		board.PrimaryPart = body
+	end
+	ensure(body, "TalkPrompt", "ProximityPrompt", {
+		ActionText = Strings.get("board_action"),
+		ObjectText = Strings.get(spec.nameKey),
+		MaxActivationDistance = 10,
+		HoldDuration = 0,
+		RequiresLineOfSight = false,
+	})
+	local tag = ensure(body, "NameTag", "BillboardGui", {
+		Size = UDim2.fromScale(6, 1),
+		StudsOffset = Vector3.new(0, 4.2, 0),
+		MaxDistance = 70,
+	})
+	ensure(tag, "Label", "TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = Strings.get(spec.nameKey),
+		TextScaled = true,
+		Font = Enum.Font.FredokaOne,
+		TextColor3 = Color3.new(1, 1, 1),
+		TextStrokeTransparency = 0.4,
+	})
+end
+
+-- The village gate to the Shadow Tower: a glowing portal between two pillars.
+local function buildTowerGate(parent: Instance)
+	local spec = WorldData.towerGate
+	local gate = ensure(parent, "TowerGate", "Model") :: Model
+	local frame = CFrame.lookAt(v(spec.position), v(spec.lookAt))
+	for index, x in { -4.5, 4.5 } do
+		part(gate, "Pillar" .. index, {
+			Size = Vector3.new(2, 12, 2),
+			CFrame = frame * CFrame.new(x, 6, 0),
+			Color = COLOR.shadowStone,
+			Material = Enum.Material.Slate,
+		})
+	end
+	part(gate, "Lintel", {
+		Size = Vector3.new(11, 2, 2.4),
+		CFrame = frame * CFrame.new(0, 12.5, 0),
+		Color = COLOR.shadowStone,
+		Material = Enum.Material.Slate,
+	})
+	local body = part(gate, "Body", {
+		Size = Vector3.new(7, 10, 0.5),
+		CFrame = frame * CFrame.new(0, 5, 0),
+		Color = Color3.fromRGB(150, 110, 220),
+		Material = Enum.Material.Neon,
+		Transparency = 0.45,
+		CanCollide = false,
+	})
+	ensure(body, "Glow", "PointLight", { Color = Color3.fromRGB(170, 130, 240), Range = 18, Brightness = 1.5, Shadows = false })
+	if not gate.PrimaryPart then
+		gate.PrimaryPart = body
+	end
+	ensure(body, "TalkPrompt", "ProximityPrompt", {
+		ActionText = Strings.get("tower_enter_action"),
+		ObjectText = Strings.get(spec.nameKey),
+		MaxActivationDistance = 12,
+		HoldDuration = 0,
+		RequiresLineOfSight = false,
+	})
+	local tag = ensure(body, "NameTag", "BillboardGui", {
+		Size = UDim2.fromScale(7, 1),
+		StudsOffset = Vector3.new(0, 7, 0),
+		MaxDistance = 80,
+	})
+	ensure(tag, "Label", "TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = Strings.get(spec.nameKey),
+		TextScaled = true,
+		Font = Enum.Font.FredokaOne,
+		TextColor3 = Color3.new(1, 1, 1),
+		TextStrokeTransparency = 0.4,
+	})
+end
+
 local function buildNpc(parent: Instance, name: string, robe: Color3, hat: Color3, actionKey: string)
 	local spec = WorldData.npcs[name]
 	local npc = ensure(parent, name, "Model") :: Model
@@ -402,6 +506,8 @@ local function buildVillage(map: Instance)
 	buildNpc(village, "Elder", Color3.fromRGB(95, 115, 205), Color3.fromRGB(95, 115, 205), "npc_talk_action")
 	buildNpc(village, "Smith", Color3.fromRGB(190, 115, 60), Color3.fromRGB(80, 70, 80), "npc_shop_action")
 	buildForge(village)
+	buildBoard(village)
+	buildTowerGate(village)
 	buildVillageProps(village)
 
 	local bushes = {
@@ -820,6 +926,52 @@ local function buildEast(map: Instance)
 	buildEastProps(east, eastAvoid())
 end
 
+-- The Shadow Tower's arena: a round stone floor far outside the valley, an invisible wall ring,
+-- glowing pillars and the pad that leads back to the village.
+local function buildTower(map: Instance)
+	local tower = ensure(map, "Tower", "Folder")
+	local area = WorldData.areas.tower
+	local center = v(area.center)
+	local radius = area.radius
+	cylinder(tower, "Floor", 2, radius * 2 + 10, center + Vector3.new(0, -2, 0), COLOR.shadowStone, { Material = Enum.Material.Slate })
+	part(tower, "Rune", {
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.2, radius * 1.3, radius * 1.3),
+		CFrame = CFrame.new(center + Vector3.new(0, 0.1, 0)) * UPRIGHT,
+		Color = Color3.fromRGB(150, 110, 220),
+		Material = Enum.Material.Neon,
+		Transparency = 0.6,
+		CanCollide = false,
+	})
+	local segments = 16
+	for index = 1, segments do
+		local angle = index / segments * math.pi * 2
+		local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		part(tower, "Wall" .. index, {
+			Size = Vector3.new(radius * 2 * math.pi / segments + 2, 40, 2),
+			CFrame = CFrame.lookAt(center + direction * (radius + 3) + Vector3.new(0, 20, 0), center + Vector3.new(0, 20, 0)),
+			Transparency = 1,
+		})
+		if index % 2 == 0 then
+			local base = center + direction * (radius + 1)
+			cylinder(tower, "Pillar" .. index, 10, 2, base, COLOR.shadowStone, { Material = Enum.Material.Slate })
+			ballPart(tower, "Flame" .. index, 1.6, base + Vector3.new(0, 11, 0), COLOR.torch, { Material = Enum.Material.Neon, CanCollide = false })
+		end
+	end
+	local exitOffset = WorldData.towerExit.offset
+	local pad = cylinder(tower, "ExitPad", 0.6, 7, center + Vector3.new(exitOffset[1], exitOffset[2], exitOffset[3]), COLOR.star, {
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+	})
+	ensure(pad, "LeavePrompt", "ProximityPrompt", {
+		ActionText = Strings.get("tower_leave_action"),
+		ObjectText = Strings.get("tower_exit_name"),
+		MaxActivationDistance = 10,
+		HoldDuration = 0,
+		RequiresLineOfSight = false,
+	})
+end
+
 local MapBuilder = {}
 
 function MapBuilder.build(): Folder
@@ -829,6 +981,7 @@ function MapBuilder.build(): Folder
 	buildForest(map)
 	buildRuins(map)
 	buildEast(map)
+	buildTower(map)
 	return map :: Folder
 end
 

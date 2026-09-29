@@ -61,6 +61,15 @@
         "OpenShop": {
           "$className": "RemoteEvent"
         },
+        "OpenBoard": {
+          "$className": "RemoteEvent"
+        },
+        "ClaimBounty": {
+          "$className": "RemoteEvent"
+        },
+        "PlayEmote": {
+          "$className": "RemoteEvent"
+        },
         "Fx": {
           "$className": "RemoteEvent"
         }

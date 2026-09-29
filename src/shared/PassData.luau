@@ -7,7 +7,7 @@ local PassData = {
 	tiers = 50,
 	xpPerTier = 1000,
 	-- Pass XP for things players do.
-	xp = { purify = 10, elite = 50, rift = 200, quest = 300, chest = 100, legend = 500, levelUp = 100 },
+	xp = { purify = 10, elite = 50, rift = 200, quest = 300, chest = 100, legend = 500, levelUp = 100, bounty = 150, tower = 40 },
 	rewards = {},
 }
 

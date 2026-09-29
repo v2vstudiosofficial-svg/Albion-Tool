@@ -345,6 +345,32 @@ Balance.rifts = {
 	coinsPerLevel = 20,
 }
 
+-- The Shadow Tower: an endless climb in a private arena reached from the village. Floor `f`
+-- sends creatures of level anchor + levelOffset + f (anchor = level of whoever opened the run, capped
+-- at 100); past level 100 they grow by hpGrowth / damageGrowth per floor instead. There is no
+-- timer; a run ends when everyone inside has left or been defeated. Clearing a floor pays coins
+-- (minutes of own income), Pass XP, and a chest every `chestEvery` floors; a new best floor pays a
+-- bonus. A player may join a run when their level is at most `joinRange` below its anchor.
+Balance.tower = {
+	minLevel = 10,
+	joinRange = 20,
+	levelOffset = -2,
+	hpGrowth = 1.04,
+	damageGrowth = 1.03,
+	baseCount = 5,
+	countEvery = 3,
+	maxCount = 12,
+	extraPerPlayer = 2,
+	eliteEvery = 5,
+	startDelay = 3,
+	floorDelay = 4,
+	ringRadius = 9,
+	leaveMargin = 12,
+	chestEvery = 5,
+	floorMinutes = { base = 0.4, perFloor = 0.02, max = 0.9 },
+	recordMinutes = 2,
+}
+
 -- Rough income of a player fighting same-level creatures (used to size coin rewards that should
 -- feel the same at every level: Light Pass coins and store coin packs).
 Balance.income = { killsPerMinute = 15 }

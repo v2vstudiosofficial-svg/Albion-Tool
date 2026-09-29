@@ -22,6 +22,11 @@ local TARGET = {
 	minutesPerLevel = { 0.3, 13 }, -- the last levels are a long-term goal
 	totalHours = { 6, 30 },
 	bossSeconds = { 20, 150 }, -- a solo legend fight at the boss's own level (single target)
+	-- Shadow Tower: the floor where a typical player (no extra effort) finds it too hard. The climb
+	-- is endless, so there must be a wall, but not a wall so low that the mode ends at once.
+	towerWallFloor = { 12, 120 },
+	towerKillSeconds = 6, -- one creature this slow to defeat counts as too hard
+	towerSurviveSeconds = 4, -- three creatures at once
 }
 
 -- Model assumptions.
@@ -29,6 +34,8 @@ local PACK_TARGETS = { bolt = 1, arrow = 1, fan = 1.5, arc = 2, thrust = 1.8, pi
 local TRAVEL_SECONDS = 2 -- walking to the next creature
 local DEPOSIT_TRIP_SECONDS = 45 -- to the Great Lantern and back
 local CHEST_EVERY_MINUTES = 8 -- a chest found and opened
+-- Repeat finds: about one chest in 8 minutes gives a given top weapon a star every ~1.7 hours.
+local STARS_PER_HOUR = 0.6
 local COMBAT_PICK_SHARE = 0.5 -- share of skill picks going to sharp / swift / lucky
 local REFERENCE = Balance.enemies.Gloomling
 local FIGHTERS = 3 -- creatures hitting at once in the survival check
@@ -139,6 +146,7 @@ for _, spawn in WorldData.spawns do
 end
 
 local state = { power = 0, upgrades = {}, coins = 0, slotLevel = 0, minutes = 0 }
+local snapshots = {} -- typical player at each level (used by the Shadow Tower check)
 local rows = {}
 local failures = {}
 
@@ -159,11 +167,13 @@ for level = 1, Progression.MAX_LEVEL - 1 do
 	local main, second = bestWeapons(level)
 	local enemy = Progression.enemyStats(REFERENCE, level)
 
+	local stars = math.min(WeaponData.maxStars, math.floor(state.minutes / 60 * STARS_PER_HOUR))
+
 	-- Damage per second against a pack: main weapon + floating weapons, crits included.
 	local critBonus = 1 + stats.critChance * (Balance.critDamage - 1)
 	local function slotDps(weaponId: string, companion: boolean): number
 		local weapon = WeaponData.weapons[weaponId]
-		local hit = Progression.weaponDamage(weaponId, state.power, level, companion, state.slotLevel)
+		local hit = Progression.weaponDamage(weaponId, state.power, level, companion, state.slotLevel, stars)
 		local cooldown = Progression.weaponCooldown(weaponId, companion) * stats.cooldownMultiplier
 		return hit / cooldown * PACK_TARGETS[weapon.style]
 	end
@@ -205,6 +215,8 @@ for level = 1, Progression.MAX_LEVEL - 1 do
 		end
 	end
 
+	snapshots[level] = { dps = dps, maxHealth = stats.maxHealth, regen = stats.regen }
+
 	check(level, "kill seconds", killSeconds, TARGET.killSeconds)
 	check(level, "survive seconds", surviveSeconds, TARGET.surviveSeconds)
 	check(level, "minutes per level", minutes, TARGET.minutesPerLevel)
@@ -219,6 +231,32 @@ end
 
 check(100, "total hours", state.minutes / 60, TARGET.totalHours)
 
+-- Shadow Tower: a typical player who opened a run at their level climbs until creatures take too
+-- long to defeat or hit too hard.
+local TowerLogic = require("../src/server/TowerLogic")
+local towerRows = {}
+for _, anchor in { 10, 25, 50, 75, 100 } do
+	local player = snapshots[math.min(anchor, Progression.MAX_LEVEL - 1)]
+	local wall = nil
+	for floor = 1, 400 do
+		local level, extra = TowerLogic.floorLevel(anchor, floor)
+		local hpScale, damageScale = TowerLogic.scale(extra)
+		local enemy = Progression.enemyStats(REFERENCE, level)
+		local killSeconds = enemy.maxHp * hpScale / player.dps
+		local incoming = FIGHTERS * REFERENCE.contactDamage * enemy.damageMultiplier * damageScale / REFERENCE.contactCooldown
+		local surviveSeconds = player.maxHealth / math.max(0.1, incoming - player.regen)
+		if killSeconds > TARGET.towerKillSeconds or surviveSeconds < TARGET.towerSurviveSeconds then
+			wall = floor
+			break
+		end
+	end
+	table.insert(towerRows, string.format("tower: run opened at level %3d -> too hard from floor %s", anchor, tostring(wall)))
+	check(anchor, "tower wall floor", wall or 999, TARGET.towerWallFloor)
+end
+
+for _, row in towerRows do
+	print(row)
+end
 print(" lvl  weapon    power  slot  dps           enemy hp     kill     survive     per level  so far")
 for _, row in rows do
 	print(row)

@@ -9,7 +9,7 @@ export type Claim = { id: string, tier: number, coins: number, chest: string?, c
 local AchievementLogic = {}
 
 -- Counters kept in profile.counters (the rest are derived from the profile).
-AchievementLogic.COUNTERS = { "purifies", "elites", "rifts", "chests", "crystals" }
+AchievementLogic.COUNTERS = { "purifies", "elites", "rifts", "chests", "crystals", "legendWins" }
 
 function AchievementLogic.count(profile: any, counter: string, amount: number?)
 	profile.counters[counter] = (profile.counters[counter] or 0) + (amount or 1)

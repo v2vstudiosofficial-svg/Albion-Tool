@@ -76,6 +76,8 @@ M8 — Kalite ve bağlılık (kullanıcı isteği): kod/mantık hatalarının ta
 
 M9 — Mağaza, Işık Pası ve kostümler (kullanıcı isteği): Robux paketleri (sabit fiyatlı sikke paketleri, 30 dk 2x XP, tek seferlik başlangıç paketi, Premium Pas, 2 kostüm); sezonluk 50 kademeli Işık Pası (oynayarak XP, ücretsiz ve premium yol); yalnızca görünüş değiştiren 12 kostüm (şapka/sırt/aura; sikke, pas veya Robux ile). Kurallar: ücretli rastgele ödül yok (sandık satılmaz, pasta sandık yok), baskı ekranı/sahte sayaç yok, her güç kalemi oynayarak da kazanılır, ürün kimlikleri uydurulmaz (0 = "Soon"). Bitiş: `lune run tests/all` geçer; sim satın alma makbuzunu (kaydedilmeden onay yok, tekrar yok) kapsar.
 
+M10 — Uzun ömür (kullanıcı isteği): silah yıldızları (sandıktan çıkan kopya silah sikke yerine yıldız verir, en çok 5, yıldız başına +%6 hasar); Köyde İlan Panosu (3 ilan, oyuncunun kendi gelirinin dakikası kadar sikke + Pas XP, süre/ceza yok); Gölge Kulesi (köy kapısından girilen, dışarıdaki özel arenada sonsuz kat modu, co-op, 5 katta bir sandık, Sv100 sonrası güç eğrisi, zaman baskısı yok; `tests/balance` duvar katını denetler); 6 emote (hepsi ücretsiz, animasyon kimliği yok, konuşma balonu). Bitiş: `lune run tests/all` geçer.
+
 6. TOKEN VE ÇALIŞMA KURALLARI
 
 - Bu planı MASTER_PLAN.md’ye bir kez kaydet; her mesajda yeniden yazma ve yeniden tasarlama.

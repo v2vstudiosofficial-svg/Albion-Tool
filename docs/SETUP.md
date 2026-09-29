@@ -77,6 +77,14 @@ Oyun içi tüm metinler İngilizce.
    `xp_boost` (sol üstte "2x XP 29:59"), `starter` veya `pass_premium`. Gerçek satın alma: Creator Dashboard →
    Monetization → Developer Products'ta ürünleri oluştur, kimlikleri `src/shared/StoreData.luau` → `productId`'ye yaz,
    yayınla; Studio'daki satın alma penceresi test modudur (Robux düşmez).
+10g. M10: **Silah yıldızları**: sandıktan zaten sahip olduğun silah çıkınca ödül panelinde "X again - now 2/5 stars!";
+   Weapons menüsünde silah kutusunda "2/5 stars", altta hasar (Power) artar. 5 yıldızda kopya sikkeye döner.
+   **İlan Panosu**: köyde ahşap pano (Elder'ın soluna doğru) → "Read": 3 ilan, ilerleme çubuğu; bitince "Claim" ve
+   toast "A bounty is ready..."; uzaklaşınca panel kapanır. **Gölge Kulesi**: köyün doğu-güneyinde mor kapı (Climb),
+   Sv10 gerekir (`LvDebugLevel` ile dene) → çok uzaktaki taş arenaya ışınlanır; 3 sn sonra "Floor 1" afişi ve
+   yaratıklar; kat bitince sikke toast'ı ve 4 sn sonra sonraki kat; 5. katta sandık. Arenada altın "Leave" pedi köye
+   döndürür; yenilirsen köyde doğarsın. Sol ortada "Tower Floor N Best M". İki oyuncuyla aynı koşuya katılınır.
+   **Emote**: ekranın solunda ortada "Emotes" → 6 emote; konuşma balonu 3 sn, Dance/Cheer zıplar, Sit oturur.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

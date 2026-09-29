@@ -226,6 +226,9 @@ local remoteNames = {
 	"Notice",
 	"NpcSay",
 	"OpenShop",
+	"OpenBoard",
+	"ClaimBounty",
+	"PlayEmote",
 	"Fx",
 }
 local remotes = {}

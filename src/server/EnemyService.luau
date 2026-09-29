@@ -356,6 +356,8 @@ export type SpawnOptions = {
 	elite: boolean?,
 	-- Free-form label for systems that track their own enemies (e.g. "rift").
 	tag: string?,
+	-- Extra health / damage multipliers (the Shadow Tower past level 100).
+	scale: { hp: number, damage: number }?,
 }
 
 local function createEnemy(kind: string, level: number, position: Vector3, areaId: string, options: SpawnOptions): Enemy
@@ -368,6 +370,11 @@ local function createEnemy(kind: string, level: number, position: Vector3, areaI
 		stats = table.clone(base)
 		stats.size *= Balance.elite.sizeMultiplier
 		stats.elite = true
+	end
+	if options.scale then
+		scaled = table.clone(scaled)
+		scaled.maxHp = math.max(1, math.floor(scaled.maxHp * options.scale.hp + 0.5))
+		scaled.damageMultiplier *= options.scale.damage
 	end
 	nextId += 1
 	local home = position + Vector3.new(0, stats.hoverHeight, 0)
@@ -418,8 +425,8 @@ local function spawnAt(spawnIndex: number)
 end
 
 -- A one-off enemy that never respawns (wave events). Returns its id.
-function EnemyService.spawnTemporary(kind: string, level: number, position: Vector3, areaId: string, tag: string?, elite: boolean?): number
-	return createEnemy(kind, level, position, areaId, { tag = tag, elite = elite }).id
+function EnemyService.spawnTemporary(kind: string, level: number, position: Vector3, areaId: string, tag: string?, elite: boolean?, scale: { hp: number, damage: number }?): number
+	return createEnemy(kind, level, position, areaId, { tag = tag, elite = elite, scale = scale }).id
 end
 
 local function purify(enemy: Enemy)

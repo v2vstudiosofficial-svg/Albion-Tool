@@ -107,6 +107,24 @@ function Hud.start()
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, card)
 
+	-- Shadow Tower: current floor and best floor, shown while inside the tower.
+	local towerRegion = UiKit.region(gui, Vector2.new(0, 0), UDim2.new(0, 12, 0.5, 34), Vector2.new(280, 24))
+	local towerLabel = UiKit.label({
+		Size = UDim2.fromScale(1, 1),
+		TextSize = 16,
+		TextColor3 = colors.accent,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextStrokeTransparency = 0.4,
+		Visible = false,
+	}, towerRegion)
+	local function refreshTower()
+		local floor = player:GetAttribute("TowerFloor") or 0
+		towerLabel.Visible = floor > 0
+		towerLabel.Text = Strings.get("tower_hud", floor, player:GetAttribute("TowerBest") or 0)
+	end
+	player:GetAttributeChangedSignal("TowerFloor"):Connect(refreshTower)
+	player:GetAttributeChangedSignal("TowerBest"):Connect(refreshTower)
+
 	-- Team bonus: shown while other players are close by (the server applies the same rule).
 	local teamLabel = UiKit.label({
 		Position = UDim2.fromOffset(4, 108),
@@ -462,6 +480,8 @@ function Hud.start()
 			if root and (root.Position - first).Magnitude <= purified.leashRadius + 30 then
 				showBanner(Strings.get("banner_boss_down", Strings.get(purified.nameKey)), Strings.get("banner_boss_down_sub"))
 			end
+		elseif kind == "towerFloor" and typeof(first) == "number" and typeof(second) == "number" then
+			showBanner(Strings.get("tower_floor", first), Strings.get("tower_floor_sub", second))
 		elseif kind == "riftWave" then
 			-- first = zone id, second = rift center; wave numbers follow.
 			local character = player.Character

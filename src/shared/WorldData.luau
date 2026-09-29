@@ -13,6 +13,9 @@ WorldData.npcs = {
 	Smith = { nameKey = "npc_smith_name", position = { -22, 1.6, -36 }, lookAt = { 0, 1.6, -28 } },
 }
 
+-- The Bounty Board in the village (BountyData); read it with the prompt.
+WorldData.board = { nameKey = "board_name", position = { -12, 2.4, 30 }, lookAt = { 0, 2.4, 40 } }
+
 -- Enemy zones; enemies in a zone sleep while no player is within radius + WorldData.wakeMargin.
 -- `levels` = creature levels there (the waypoint picks a zone that fits the player's level).
 -- The east lands (x > 82) are reached through openings in the rock ridge.
@@ -30,7 +33,13 @@ WorldData.areas = {
 	citadel = { center = { 150, 0, -245 }, radius = 40, levels = { 51, 75 } },
 	keep = { center = { 210, 0, -292 }, radius = 30, levels = { 76, 100 } },
 	throne = { center = { 118, 0, -305 }, radius = 20 },
+	-- The Shadow Tower's arena, far outside the playable valley (players are teleported in).
+	tower = { center = { -320, 0, 0 }, radius = 36 },
 }
+
+-- The village gate to the Shadow Tower and the pad inside the arena that leads back.
+WorldData.towerGate = { nameKey = "tower_gate_name", position = { 24, 0, -34 }, lookAt = { 0, 0, 12 } }
+WorldData.towerExit = { offset = { 0, 0, -28 } }
 
 -- Rock ridge between the valley and the east lands; players pass through these openings (z ranges).
 WorldData.ridge = { x = 83, openings = { { 2, 26 }, { -132, -106 }, { -304, -280 } } }

@@ -10,8 +10,10 @@ export type Reward = {
 	chest: string,
 	coins: number,
 	weapon: string?,
-	-- True when the weapon was already owned and became coins instead.
+	-- True when the weapon was already owned: it gains a star (`star` = the new count) or, at full
+	-- stars, turns into coins (`duplicateCoins`).
 	duplicate: boolean?,
+	star: number?,
 	duplicateCoins: number?,
 	-- slot (0 = main, 1..4 floating) -> levels gained
 	slots: { [number]: number },
@@ -141,7 +143,12 @@ function ChestLogic.roll(chestType: string, rng: () -> number, profile: any, lev
 			reward.weapon = weaponId
 			if profile.ownedWeapons[weaponId] then
 				reward.duplicate = true
-				reward.duplicateCoins = ChestData.duplicateCoins[rarity :: string]
+				local stars = profile.weaponStars[weaponId] or 0
+				if stars < WeaponData.maxStars then
+					reward.star = stars + 1
+				else
+					reward.duplicateCoins = ChestData.duplicateCoins[rarity :: string]
+				end
 			end
 		end
 	end
@@ -180,6 +187,9 @@ function ChestLogic.open(profile: any, index: number, now: number, rng: () -> nu
 	profile.coins += reward.coins + (reward.duplicateCoins or 0)
 	if reward.weapon and not reward.duplicate then
 		profile.ownedWeapons[reward.weapon] = true
+	end
+	if reward.weapon and reward.star then
+		profile.weaponStars[reward.weapon] = reward.star
 	end
 	for slot, gained in reward.slots do
 		profile.slotLevels[slot + 1] = math.min(WeaponData.maxSlotLevel, (profile.slotLevels[slot + 1] or 0) + gained)

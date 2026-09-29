@@ -19,6 +19,11 @@ return {
 	maxSlotLevel = 30,
 	slotLevelBonus = 0.05,
 
+	-- A weapon found again in a chest gains a star (up to maxStars); every star makes that weapon
+	-- hit a little harder, wherever it is equipped. At full stars a repeat turns into coins.
+	maxStars = 5,
+	starBonus = 0.06,
+
 	-- Every `companionEvery` levels a floating weapon slot opens behind the player (max `maxCompanions`).
 	companionEvery = 25,
 	maxCompanions = 4,

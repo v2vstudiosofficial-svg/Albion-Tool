@@ -9,6 +9,7 @@ local AchievementData = if Shared then require(Shared.AchievementData) else requ
 local CosmeticData = if Shared then require(Shared.CosmeticData) else require("../shared/CosmeticData")
 local PassData = if Shared then require(Shared.PassData) else require("../shared/PassData")
 local StoreData = if Shared then require(Shared.StoreData) else require("../shared/StoreData")
+local BountyData = if Shared then require(Shared.BountyData) else require("../shared/BountyData")
 
 export type QuestProgress = {
 	state: "active" | "completed",
@@ -37,6 +38,8 @@ export type Profile = {
 	equippedWeapon: string,
 	companions: { string },
 	ownedWeapons: { [string]: boolean },
+	-- Stars per weapon (1..WeaponData.maxStars) from repeat finds in chests.
+	weaponStars: { [string]: number },
 	-- slotLevels[slot + 1]: level of weapon slot 0 (main) .. 4 (floating).
 	slotLevels: { number },
 	chests: { Chest },
@@ -46,6 +49,10 @@ export type Profile = {
 	legends: { [string]: boolean },
 	-- Adventure Log: counters (purifies, elites, rifts, chests, crystals) and claimed tiers.
 	counters: { [string]: number },
+	-- Bounty Board: open bounties (see BountyLogic).
+	bounties: { { kind: string, goal: number, base: number } },
+	-- Highest Shadow Tower floor cleared.
+	towerBest: number,
 	achievements: { [string]: number },
 	-- Costumes owned and worn (slot -> costume id).
 	ownedCosmetics: { [string]: boolean },
@@ -86,11 +93,14 @@ function Profile.new(): Profile
 		equippedWeapon = "staff",
 		companions = {},
 		ownedWeapons = { staff = true },
+		weaponStars = {},
 		slotLevels = { 0, 0, 0, 0, 0 },
 		chests = {},
 		chestSpots = {},
 		legends = {},
 		counters = {},
+		bounties = {},
+		towerBest = 0,
 		achievements = {},
 		ownedCosmetics = {},
 		equippedCosmetics = {},
@@ -174,6 +184,16 @@ function Profile.sanitize(data: any): Profile
 		data.equippedWeapon = WeaponData.starter
 	end
 
+	local stars = {}
+	if type(data.weaponStars) == "table" then
+		for weaponId, value in data.weaponStars do
+			if WeaponData.weapons[weaponId] and isValidAmount(value) and value >= 1 then
+				stars[weaponId] = math.min(WeaponData.maxStars, math.floor(value))
+			end
+		end
+	end
+	data.weaponStars = stars
+
 	local slotLevels = {}
 	for index = 1, WeaponData.maxCompanions + 1 do
 		local value = type(data.slotLevels) == "table" and data.slotLevels[index]
@@ -220,6 +240,20 @@ function Profile.sanitize(data: any): Profile
 		end
 	end
 	data.counters = counters
+
+	local bounties = {}
+	if type(data.bounties) == "table" then
+		local seen = {}
+		for _, bounty in data.bounties do
+			local def = type(bounty) == "table" and BountyData.kinds[bounty.kind]
+			if def and #bounties < BountyData.slots and not seen[bounty.kind] and isValidAmount(bounty.goal) and isValidAmount(bounty.base) then
+				seen[bounty.kind] = true
+				table.insert(bounties, { kind = bounty.kind, goal = math.clamp(math.floor(bounty.goal), 1, def.goal), base = math.floor(bounty.base) })
+			end
+		end
+	end
+	data.bounties = bounties
+	data.towerBest = if isValidAmount(data.towerBest) then math.min(math.floor(data.towerBest), 10000) else 0
 	local achievements = {}
 	if type(data.achievements) == "table" then
 		for id, tier in data.achievements do

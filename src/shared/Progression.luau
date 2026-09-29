@@ -97,9 +97,14 @@ function Progression.slotMultiplier(slotLevel: number?): number
 	return 1 + WeaponData.slotLevelBonus * math.clamp(slotLevel or 0, 0, WeaponData.maxSlotLevel)
 end
 
-function Progression.weaponDamage(weaponId: string, staffUpgrade: number, level: number, companion: boolean?, slotLevel: number?): number
+-- Bonus from a weapon's stars (repeat finds in chests).
+function Progression.starMultiplier(stars: number?): number
+	return 1 + WeaponData.starBonus * math.clamp(stars or 0, 0, WeaponData.maxStars)
+end
+
+function Progression.weaponDamage(weaponId: string, staffUpgrade: number, level: number, companion: boolean?, slotLevel: number?, stars: number?): number
 	local weapon = WeaponData.weapons[weaponId]
-	local damage = weapon.damage * Progression.tierMultiplier(staffUpgrade) * levelMultiplier(level) * Progression.slotMultiplier(slotLevel)
+	local damage = weapon.damage * Progression.tierMultiplier(staffUpgrade) * levelMultiplier(level) * Progression.slotMultiplier(slotLevel) * Progression.starMultiplier(stars)
 	if companion then
 		damage *= WeaponData.companionDamage
 	end

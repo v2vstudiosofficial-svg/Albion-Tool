@@ -346,6 +346,51 @@ test("chest spots sit on open ground (not inside walls, trees or rocks)", functi
 	end
 end)
 
+test("bounty board, tower gate and tower arena exist and can be used", function()
+	local WorldData = loadModule("src/shared/WorldData.luau")
+	local map = workspace:FindFirstChild("LanternValleyMap")
+	assert(map, "map built")
+	local board = map.Village.BountyBoard
+	eq(board.PrimaryPart, board.Body, "board primary part")
+	eq(board.Body.TalkPrompt.ClassName, "ProximityPrompt", "board prompt")
+	local gate = map.Village.TowerGate
+	eq(gate.PrimaryPart, gate.Body, "gate primary part")
+	eq(gate.Body.TalkPrompt.ClassName, "ProximityPrompt", "gate prompt")
+	eq(gate.Body.CanCollide, false, "the portal can be walked into")
+	-- Village objects keep a little space from each other and from the NPCs.
+	local points = { board = WorldData.board.position, gate = WorldData.towerGate.position }
+	for name, npc in WorldData.npcs do
+		points[name] = npc.position
+	end
+	local names = {}
+	for name in points do
+		table.insert(names, name)
+	end
+	for i = 1, #names do
+		for j = i + 1, #names do
+			assert(WorldData.flatDistance(points[names[i]], points[names[j]]) > 6, names[i] .. " and " .. names[j] .. " are too close")
+		end
+	end
+	assert(WorldData.towerGate.position[1] < WorldData.bounds.maxX and WorldData.towerGate.position[1] > WorldData.bounds.minX, "gate inside the valley")
+	-- The arena lies outside the valley, has a floor, a closed ring of walls and a way out.
+	local area = WorldData.areas.tower
+	assert(area.center[1] < WorldData.bounds.minX - area.radius, "arena is outside the playable valley")
+	local arena = map.Tower
+	assert(arena.Floor.Size.Y >= area.radius * 2, "floor covers the arena")
+	local walls = 0
+	for _, child in arena:GetChildren() do
+		if string.sub(child.Name, 1, 4) == "Wall" then
+			walls += 1
+			eq(child.Transparency, 1, "invisible wall")
+			eq(child.CanCollide, true, "walls block")
+		end
+	end
+	eq(walls, 16, "closed ring of walls")
+	eq(arena.ExitPad.LeavePrompt.ClassName, "ProximityPrompt", "way out")
+	local offset = WorldData.towerExit.offset
+	assert(math.sqrt(offset[1] ^ 2 + offset[3] ^ 2) < area.radius - 4, "the exit pad is inside the arena")
+end)
+
 test("costume models build for all twelve costumes, welded to their anchor", function()
 	local CosmeticModels = loadModule("src/shared/CosmeticModels.luau")
 	local CosmeticData = loadModule("src/shared/CosmeticData.luau")

@@ -61,6 +61,9 @@ for _, name in {
 	"Notice",
 	"NpcSay",
 	"OpenShop",
+	"OpenBoard",
+	"ClaimBounty",
+	"PlayEmote",
 	"Fx",
 } do
 	expectClass(remotes and remotes:FindFirstChild(name), "RemoteEvent", "Remotes." .. name)

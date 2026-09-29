@@ -99,6 +99,7 @@ local function onChestAction(player: Player, action: unknown, index: unknown)
 				weapon = reward.weapon,
 				rarity = weapon and weapon.rarity,
 				duplicate = reward.duplicate == true,
+				star = reward.star,
 				slots = slots,
 			})
 		end
