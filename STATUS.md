@@ -5,7 +5,7 @@
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil arayüz.
 - M6a: oyun İngilizce; takip kamerası, otomatik saldırı; 8 silah; Sv100; yüzen ek silahlar;
   Studio'da `LvDebugLevel` / `LvDebugAllWeapons`.
-- M6b: kişisel süreli sandıklar (4 tür, 2–20 dk, yuva 1→5); ödül: sikke, silah, yuva seviyesi (%5/sv).
+- M6b: süreli sandıklar (4 tür, 2–20 dk, yuva 1→5): sikke, silah, yuva seviyesi.
 - M6c: kristal/kese, Forge, kritik vuruş, yetenek kartları, `Shared/Stats`.
 - M6d: doğu toprakları (Sv8–100), 3 efsane boss + Legends, 2. bölüm görevleri.
 - M7–M8: sayı kısaltma, elitler, yarıklar; hata düzeltmeleri, Macera Günlüğü, takım bonusu.
@@ -18,11 +18,12 @@
 - M12: 27 sahnelik hikâye + sinematik mod (Skip, daktilo, kamera); hikâye XP'si (seviye kapılı görevler
   2–3 seviye, +%1 XP/görev); animasyonlar; M13: Story sekmesi, Pas/rebirth düzeltmesi;
   M14: işaretçiler, ipuçları, 6 kostüm; M15: profesyonel ayarlar penceresi + grafik
-  ön ayarları/özelleştirme (Auto–Ultra, gölge, parlama, sis, FOV, ses, arayüz boyutu).
+  ön ayarları/özelleştirme
+  (Auto–Ultra, gölge, parlama, sis, FOV, ses, arayüz boyutu); M16: Players paneli (Tab), ses rehberi.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah kademeleri, üstel düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 64, balance, api, scene 15, sim 51, client 44/45/45/1, place; hepsi geçti (sinematik akış,
+- logic 64, balance, api, scene 15, sim 51, client 45/46/46/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,2 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.
@@ -34,7 +35,7 @@
 - Mağaza ürün kimlikleri 0 (`StoreData`); sinematik kamera/PlayerModule kilidi Studio'da denenmedi.
 
 ## Bekleyen elle testler (kullanıcı isteğiyle ertelendi)
-`docs/SETUP.md` → "Elle test listesi" maddelerinin tamamı (1–16, 6b/6c, 10b–10m) oynanmadı.
+`docs/SETUP.md` → "Elle test listesi" maddelerinin tamamı (1–16, 6b/6c, 10b–10n) oynanmadı.
 
 ## Sonraki adım (tek)
 Kullanıcının yeni isteği; ertelenen Studio testleri (yukarıda) yapılınca Output hatalarını düzeltmek.

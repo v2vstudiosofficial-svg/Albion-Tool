@@ -70,7 +70,7 @@ function Graphics.apply(choices: { shadows: boolean, bloom: boolean, atmosphere:
 	pcall(function()
 		local level = QUALITY_LEVELS[choices.detail]
 		local rendering = (settings :: any)().Rendering
-		rendering.QualityLevel = level
+		rendering.QualityLevel = (Enum.QualityLevel :: any):FromValue(level)
 	end)
 end
 

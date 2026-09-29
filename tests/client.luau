@@ -20,7 +20,7 @@ local withJumpButton = mode == "touch"
 
 -- Client-side fake services -----------------------------------------------------------------
 
-local Players = { list = {}, PlayerRemoving = H.Signal.new() }
+local Players = { list = {}, PlayerAdded = H.Signal.new(), PlayerRemoving = H.Signal.new() }
 local hero = H.newPlayer("Hero", 1, Players)
 local friend = H.newPlayer("Friend", 2, Players)
 Players.LocalPlayer = hero
@@ -1256,6 +1256,47 @@ test("settings apply: look, effects, damage numbers, creature bars, camera scene
 	assert(perf, "the performance overlay follows the saved setting")
 	setAttributes({ Pref_perf = false, Pref_quality = "auto" })
 	eq(#H.threadErrors, 0, "thread errors")
+end)
+
+test("players board: everyone on the server, highest level first, opened by button or Tab", function()
+	local heroLevel = hero:GetAttribute("Level")
+	hero:SetAttribute("Level", 5)
+	friend:SetAttribute("Level", 20)
+	friend:SetAttribute("Rebirths", 1)
+	friend:SetAttribute("TowerBest", 7)
+	assert(not shownText(Strings.get("players_title")), "closed at first")
+	click(findButton(Strings.get("players_button")))
+	advance(0.2)
+	assert(shownText(Strings.get("players_title")), "opened by the button")
+	local summary = Strings.get("hud_level", 20) .. "   " .. Strings.get("rebirth_hud", 1) .. "   " .. Strings.get("players_tower", 7)
+	assert(shownText(summary), "level, rebirths and tower record: " .. summary)
+	assert(shownText(Strings.get("hud_level", 5)), "the local player's row")
+	local friendRow = findText(friend.DisplayName or friend.Name)
+	local heroRow = findText(hero.DisplayName or hero.Name)
+	assert(friendRow and heroRow, "both names listed")
+	assert(friendRow.Parent.LayoutOrder < heroRow.Parent.LayoutOrder, "the higher level is listed first")
+	-- Levels change live; a player who leaves disappears.
+	hero:SetAttribute("Level", 30)
+	advance(1.5)
+	assert(findText(hero.DisplayName or hero.Name).Parent.LayoutOrder < findText(friend.DisplayName or friend.Name).Parent.LayoutOrder, "the order follows the levels")
+	table.remove(Players.list, table.find(Players.list, friend))
+	Players.PlayerRemoving:Fire(friend)
+	advance(0.5)
+	assert(not findText(friend.DisplayName or friend.Name), "a player who left is gone")
+	table.insert(Players.list, friend)
+	-- Tab toggles it too.
+	click(findButton(Strings.get("players_button")))
+	assert(not shownText(Strings.get("players_title")), "closed")
+	H.services.UserInputService.InputBegan:Fire({ KeyCode = Enum.KeyCode.Tab }, false)
+	advance(0.2)
+	assert(shownText(Strings.get("players_title")), "opened by Tab")
+	H.services.UserInputService.InputBegan:Fire({ KeyCode = Enum.KeyCode.Tab }, false)
+	advance(0.2)
+	assert(not shownText(Strings.get("players_title")), "closed by Tab")
+	hero:SetAttribute("Level", heroLevel)
+	friend:SetAttribute("Level", nil)
+	friend:SetAttribute("Rebirths", nil)
+	friend:SetAttribute("TowerBest", nil)
 end)
 
 test("bag: equip an owned charm, locked ones do nothing", function()

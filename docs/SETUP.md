@@ -117,6 +117,9 @@ Oyun içi tüm metinler İngilizce.
    Interface: arayüz boyutu (Small/Normal/Large; telefonda dene), yaratık adı ve can çubuğu, performans göstergesi.
    "Reset this page" sayfayı sıfırlar. Çık-gir yapınca ayarlar korunmalı. Studio'da gerçek fark: Rendering QualityLevel
    ve Lighting efektleri (Bloom, Atmosphere, ColorCorrection, SunRays) yalnızca Studio/oyun içinde görülür.
+10n. M16: **Players paneli**: solda ortada "Emotes"un altındaki **Players** düğmesi ya da **Tab** tuşu: sunucudaki herkes, en yüksek
+   seviye üstte; "Lv N   Rebirth N   Tower N" (sıfırlar gösterilmez). Seviye değişince ve biri çıkınca kendini yeniler.
+   2 oyunculu testte (Test → Clients and Servers) diğerinin seviyesini `LvDebugLevel` ile değiştirip sırayı gör.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).
@@ -146,7 +149,16 @@ Oyun içi tüm metinler İngilizce.
 
 ## Sesler
 `src/shared/Sounds.luau` içindeki boş kimlikler sessizdir. Creator Store'dan lisansı uygun
-sesler seçip `rbxassetid://<id>` biçiminde doldur.
+sesler seçip `rbxassetid://<id>` biçiminde doldur (kimlik uydurma; yanlış kimlik sessiz kalır).
+Hangi anahtar ne zaman çalar ve neye benzemeli (Creator Store'da arama önerisi):
+- `ui`: her düğme/pencere (27 yer): kısa, yumuşak "tık" — "ui click soft".
+- `hit`: vuruş: kısa tok bir çarpma — "hit soft impact". `attack`: silah savurma (var: swordslash).
+- `purify`/`pickup`: arındırma ve kristal toplama: parlak çıngırak — "magic chime short".
+- `levelUp`/`questComplete`: 1–2 sn zafer melodisi — "level up fanfare".
+- `wave`: Light Wave: geniş "vuu" — "magic whoosh". `slamWarn`/`slam`: boss uyarısı ve yere vuruş —
+  "warning low tone", "heavy slam".
+- `music`: döngülü, sakin, masalsı köy müziği — "fantasy village ambient loop".
+Ses düzeyini oyun içinde Settings > Audio'dan ayarlayabilirsin.
 
 ## Üçüncü taraf
 `src/server/Packages/ProfileStore.luau`: loleris (MAD STUDIO) ProfileStore, npm
