@@ -1907,6 +1907,90 @@ test("comfort settings: two known switches, booleans only, cleaned on load", fun
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).settings.cinematics, true, "missing settings")
 end)
 
+test("settings data: every setting is complete, presets cover the graphics options, values are cleaned", function()
+	local SettingsData = require("../src/shared/SettingsData")
+	local seen = {}
+	for _, key in SettingsData.order do
+		seen[key] = true
+		local def = SettingsData.settings[key]
+		assert(def, key .. " is defined")
+		assert(table.find(SettingsData.categories, def.category), key .. " category")
+		assert(Strings.has(def.nameKey) and Strings.has(def.nameKey .. "_desc"), key .. " has a name and a description")
+		assert(def.default ~= nil and SettingsData.clean(key, def.default) == def.default, key .. " default is valid")
+		if def.kind == "choice" then
+			for _, option in def.options do
+				assert(Strings.has("opt_" .. option), key .. " option text " .. option)
+			end
+		elseif def.kind == "range" then
+			assert(def.min < def.max and def.step > 0 and (def.max - def.min) % def.step == 0, key .. " range")
+		end
+	end
+	for key in SettingsData.settings do
+		assert(seen[key], key .. " is in the menu order")
+	end
+	for _, category in SettingsData.categories do
+		assert(Strings.has("settings_cat_" .. category), category .. " page name")
+	end
+	-- Presets decide exactly the options marked `preset`, with valid values.
+	for name, preset in SettingsData.presets do
+		for key, def in SettingsData.settings do
+			if def.preset then
+				assert(SettingsData.clean(key, preset[key]) == preset[key], name .. " has a valid " .. key)
+			else
+				assert(preset[key] == nil, name .. " must not decide " .. key)
+			end
+		end
+	end
+	for _, name in { "low", "medium", "high", "ultra" } do
+		assert(SettingsData.presets[name], name .. " preset")
+	end
+	assert(SettingsData.effectDensity.low < SettingsData.effectDensity.medium and SettingsData.effectDensity.medium <= SettingsData.effectDensity.high, "effects density grows")
+	-- Cleaning: wrong types, out of range values and odd numbers.
+	eq(SettingsData.clean("shadows", "yes"), nil)
+	eq(SettingsData.clean("shadows", false), false)
+	eq(SettingsData.clean("effects", "extreme"), nil)
+	eq(SettingsData.clean("effects", "low"), "low")
+	eq(SettingsData.clean("nope", true), nil, "unknown key")
+	eq(SettingsData.clean("fov", 1000), 70, "clamped to the top")
+	eq(SettingsData.clean("fov", -5), 40, "clamped to the bottom")
+	eq(SettingsData.clean("fov", 52), 50, "snapped to its step")
+	eq(SettingsData.clean("fov", 53), 55)
+	eq(SettingsData.clean("master", 0/0), nil, "not a number")
+	eq(SettingsData.clean("master", math.huge), nil)
+	eq(SettingsData.clean("master", "loud"), nil)
+	-- The value in force: presets decide the graphics options unless the player chose Custom.
+	local values = SettingsData.defaults()
+	eq(SettingsData.effective(values, "shadows", false), true, "Auto on a computer is High")
+	eq(SettingsData.effective(values, "shadows", true), false, "Auto on a phone is Medium (no shadows)")
+	eq(SettingsData.resolveQuality("auto", true), "medium")
+	eq(SettingsData.resolveQuality("auto", false), "high")
+	eq(SettingsData.resolveQuality("ultra", true), "ultra", "a chosen preset is kept on any device")
+	values.quality = "low"
+	values.shadows = true
+	eq(SettingsData.effective(values, "shadows", false), false, "a preset ignores the saved single value")
+	values.quality = "custom"
+	eq(SettingsData.effective(values, "shadows", false), true, "Custom uses the saved value")
+	eq(SettingsData.effective(values, "master", false), 100, "non-graphics options are never preset")
+	-- Saving through the profile: batches skip bad entries; resetting a page restores defaults.
+	local p = Profile.new()
+	eq(Profile.applySettings(p, { quality = "custom", shadows = false, fov = 65, master = "loud", nope = 1, [5] = true } :: any), 3, "three valid, three skipped")
+	eq(p.settings.fov, 65)
+	eq(p.settings.master, 100, "a bad value changes nothing")
+	Profile.resetSettings(p, "graphics")
+	eq(p.settings.fov, SettingsData.settings.fov.default)
+	eq(p.settings.quality, "auto")
+	Profile.setSetting(p, "sfx", 30)
+	Profile.resetSettings(p, "graphics")
+	eq(p.settings.sfx, 30, "another page is untouched")
+	Profile.resetSettings(p)
+	eq(p.settings.sfx, 100, "everything reset")
+	local cleaned = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, settings = { fov = 999, uiScale = "huge", perf = true, quality = "ultra" } })
+	eq(cleaned.settings.fov, 70)
+	eq(cleaned.settings.uiScale, "normal", "an invalid choice falls back")
+	eq(cleaned.settings.perf, true)
+	eq(cleaned.settings.quality, "ultra")
+end)
+
 test("game content is English only (no Turkish letters in source)", function()
 	local offenders = {}
 	local function scan(dir: string)

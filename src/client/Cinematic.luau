@@ -15,6 +15,7 @@ local WorldData = require(Shared:WaitForChild("WorldData"))
 local Audio = require(script.Parent.Audio)
 local CameraRig = require(script.Parent.CameraRig)
 local UiKit = require(script.Parent.UiKit)
+local Settings = require(script.Parent.Settings)
 local World = require(script.Parent.World)
 
 local player = Players.LocalPlayer
@@ -183,7 +184,7 @@ function Cinematic.start()
 		busy, skipRequested, advanceRequested = true, false, false
 		currentScene = sceneId
 		-- With "camera scenes" turned off in Settings every scene is just captions.
-		local full = scene.mode == "full" and player:GetAttribute("PrefCinematics") ~= false
+		local full = scene.mode == "full" and Settings.get("cinematics")
 		local humanoid = select(1, localRoot())
 		if full then
 			blockingControls = true

@@ -7,6 +7,8 @@ local Sounds = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("So
 local Audio = {}
 
 local enabled = true
+-- Volume sliders from Settings (0-1): `master` scales everything, `sfx` the sound effects.
+local masterVolume, sfxVolume = 1, 1
 local cache: { [string]: Sound } = {}
 local music: Sound? = nil
 
@@ -33,6 +35,7 @@ function Audio.play(key: string)
 	end
 	local sound = soundFor(key)
 	if sound then
+		sound.Volume = Sounds[key].volume * masterVolume * sfxVolume
 		SoundService:PlayLocalSound(sound)
 	end
 end
@@ -45,6 +48,13 @@ function Audio.setEnabled(value: boolean)
 	enabled = value
 	if music then
 		music.Playing = value
+	end
+end
+
+function Audio.setVolumes(master: number, sfx: number)
+	masterVolume, sfxVolume = math.clamp(master, 0, 1), math.clamp(sfx, 0, 1)
+	if music then
+		music.Volume = Sounds.music.volume * masterVolume
 	end
 end
 

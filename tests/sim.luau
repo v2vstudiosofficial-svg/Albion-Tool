@@ -1720,23 +1720,51 @@ test("level hints: one-time signposts, never repeated, none after a rebirth", fu
 	PlayerProfiles.sync(alice)
 end)
 
-test("comfort settings: saved through the server, bad requests ignored", function()
+test("settings: validated and saved through the server, presets and resets, bad requests ignored", function()
 	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
-	eq(attr(alice, "PrefShake"), true)
+	eq(attr(alice, "Pref_shake"), true, "defaults replicate")
+	eq(attr(alice, "Pref_quality"), "auto")
+	eq(attr(alice, "Pref_fov"), 50)
 	remotes.SetSetting.OnServerEvent:Fire(alice, "shake", false)
 	advance(0.4)
-	eq(attr(alice, "PrefShake"), false, "screen shake turned off")
-	eq(PlayerProfiles.get(alice).settings.shake, false, "and saved in the profile")
-	for _, args in { { "nope", true }, { "shake", "off" }, { 5, true }, { {}, {} } } do
+	eq(attr(alice, "Pref_shake"), false, "one setting")
+	eq(PlayerProfiles.get(alice).settings.shake, false, "saved in the profile")
+	-- A table of changes (a preset with its values) is validated key by key.
+	remotes.SetSetting.OnServerEvent:Fire(alice, { quality = "custom", shadows = false, fov = 63, master = "loud", nope = 1 })
+	advance(0.4)
+	eq(attr(alice, "Pref_quality"), "custom")
+	eq(attr(alice, "Pref_shadows"), false)
+	eq(attr(alice, "Pref_fov"), 65, "a value snaps to its step")
+	eq(attr(alice, "Pref_master"), 100, "a bad value is skipped")
+	assert(attr(alice, "Pref_nope") == nil, "unknown keys are never stored")
+	-- Resetting one page.
+	remotes.SetSetting.OnServerEvent:Fire(alice, { reset = "graphics" })
+	advance(0.4)
+	eq(attr(alice, "Pref_fov"), 50)
+	eq(attr(alice, "Pref_quality"), "auto")
+	eq(attr(alice, "Pref_shake"), false, "the gameplay page is untouched")
+	remotes.SetSetting.OnServerEvent:Fire(alice, { reset = true })
+	advance(0.4)
+	eq(attr(alice, "Pref_shake"), true, "reset everything")
+	-- Bad requests change nothing.
+	for _, args in { { "nope", true }, { "shake", "off" }, { 5, true }, { {}, {} }, { { reset = "bogus" } }, { "fov", 1e9 } } do
 		advance(0.4)
 		remotes.SetSetting.OnServerEvent:Fire(alice, args[1], args[2])
 	end
 	advance(0.4)
-	eq(attr(alice, "PrefShake"), false, "bad requests change nothing")
-	eq(attr(alice, "PrefCinematics"), true)
-	remotes.SetSetting.OnServerEvent:Fire(alice, "shake", true)
+	eq(attr(alice, "Pref_shake"), true)
+	eq(attr(alice, "Pref_fov"), 70, "an out-of-range number is clamped, not rejected")
+	remotes.SetSetting.OnServerEvent:Fire(alice, { reset = true })
 	advance(0.4)
-	eq(attr(alice, "PrefShake"), true)
+	-- Too many keys in one request: only a bounded number is looked at.
+	local flood = {}
+	for index = 1, 60 do
+		flood["k" .. index] = true
+	end
+	flood.perf = true
+	remotes.SetSetting.OnServerEvent:Fire(alice, flood)
+	advance(0.4)
+	assert(attr(alice, "Pref_k1") == nil, "no junk attributes")
 end)
 
 test("robux store: receipts granted once and only after saving; unknown ones wait", function()

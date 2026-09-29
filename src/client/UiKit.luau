@@ -113,9 +113,20 @@ local function camera(): Camera
 	return current
 end
 
+-- The player's own interface size (Settings > Interface); every region follows it live.
+local scaleFactor = 1
+local scaleUpdaters: { () -> () } = {}
+
 function UiKit.screenScale(): number
 	local viewport = camera().ViewportSize
-	return math.clamp(math.min(viewport.X / 1000, viewport.Y / 560), 0.6, 1)
+	return math.clamp(math.clamp(math.min(viewport.X / 1000, viewport.Y / 560), 0.6, 1) * scaleFactor, 0.5, 1.3)
+end
+
+function UiKit.setScaleFactor(factor: number)
+	scaleFactor = math.clamp(factor, 0.5, 1.5)
+	for _, update in scaleUpdaters do
+		update()
+	end
 end
 
 -- A transparent, auto-scaling container anchored to a screen region; place panels inside it.
@@ -131,6 +142,7 @@ function UiKit.region(parent: Instance, anchor: Vector2, position: UDim2, size: 
 		scale.Scale = UiKit.screenScale()
 	end
 	camera():GetPropertyChangedSignal("ViewportSize"):Connect(update)
+	table.insert(scaleUpdaters, update)
 	update()
 	return frame
 end

@@ -11,6 +11,7 @@ local PassData = if Shared then require(Shared.PassData) else require("../shared
 local StoreData = if Shared then require(Shared.StoreData) else require("../shared/StoreData")
 local BountyData = if Shared then require(Shared.BountyData) else require("../shared/BountyData")
 local PetData = if Shared then require(Shared.PetData) else require("../shared/PetData")
+local SettingsData = if Shared then require(Shared.SettingsData) else require("../shared/SettingsData")
 
 export type QuestProgress = {
 	state: "active" | "completed",
@@ -59,7 +60,7 @@ export type Profile = {
 	-- The pet following the player ("" = none); pets themselves are derived from progress (PetLogic).
 	equippedPet: string,
 	-- Comfort settings the player chose (see Profile.setSetting).
-	settings: { shake: boolean, cinematics: boolean },
+	settings: { [string]: any },
 	-- Times the player restarted the climb at level 100 (see Balance.rebirth).
 	rebirths: number,
 	achievements: { [string]: number },
@@ -111,7 +112,7 @@ function Profile.new(): Profile
 		bounties = {},
 		towerBest = 0,
 		equippedPet = "",
-		settings = { shake = true, cinematics = true },
+		settings = SettingsData.defaults(),
 		rebirths = 0,
 		achievements = {},
 		ownedCosmetics = {},
@@ -265,8 +266,15 @@ function Profile.sanitize(data: any): Profile
 		end
 	end
 	data.bounties = bounties
-	local settings = if type(data.settings) == "table" then data.settings else {}
-	data.settings = { shake = settings.shake ~= false, cinematics = settings.cinematics ~= false }
+	local saved = if type(data.settings) == "table" then data.settings else {}
+	local settings = SettingsData.defaults()
+	for key in SettingsData.settings do
+		local cleaned = SettingsData.clean(key, saved[key])
+		if cleaned ~= nil then
+			settings[key] = cleaned
+		end
+	end
+	data.settings = settings
 	data.equippedPet = if type(data.equippedPet) == "string" and PetData.pets[data.equippedPet] then data.equippedPet else ""
 	data.rebirths = if isValidAmount(data.rebirths) then math.min(math.floor(data.rebirths), 1000) else 0
 	data.towerBest = if isValidAmount(data.towerBest) then math.min(math.floor(data.towerBest), 10000) else 0
@@ -392,14 +400,35 @@ function Profile.sanitize(data: any): Profile
 	return data
 end
 
--- Comfort settings: "shake" (screen shake and camera punches) and "cinematics" (camera moves and
--- paused controls in story scenes; off = captions only). Returns false for anything else.
-function Profile.setSetting(profile: Profile, key: string, value: boolean): boolean
-	if (key ~= "shake" and key ~= "cinematics") or type(value) ~= "boolean" then
+-- Saves one setting (see SettingsData). Returns false for an unknown key or a bad value.
+function Profile.setSetting(profile: Profile, key: string, value: any): boolean
+	local cleaned = SettingsData.clean(key, value)
+	if cleaned == nil then
 		return false
 	end
-	profile.settings[key] = value
+	profile.settings[key] = cleaned
 	return true
+end
+
+-- Saves several settings at once (the menu sends a preset and its values together). Keys that are
+-- not valid are skipped; returns how many were saved.
+function Profile.applySettings(profile: Profile, changes: { [string]: any }): number
+	local saved = 0
+	for key, value in changes do
+		if type(key) == "string" and Profile.setSetting(profile, key, value) then
+			saved += 1
+		end
+	end
+	return saved
+end
+
+-- Puts one category (or every setting) back to its defaults.
+function Profile.resetSettings(profile: Profile, category: string?)
+	for key, def in SettingsData.settings do
+		if category == nil or def.category == category then
+			profile.settings[key] = def.default
+		end
+	end
 end
 
 function Profile.applyReward(profile: Profile, reward: Reward)

@@ -147,6 +147,7 @@ for _, eventName in {
 	"MouseButton1Down",
 	"MouseButton1Up",
 	"MouseEnter",
+	"InputBegan",
 	"MouseLeave",
 	"Destroying",
 	"ChildAdded",

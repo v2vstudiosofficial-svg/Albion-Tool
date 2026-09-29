@@ -109,6 +109,14 @@ Oyun içi tüm metinler İngilizce.
 10l. M15: **Rahatlık ayarları**: Settings → "Screen shake" (ekran sarsıntısı ve kamera yumruğu) ve "Camera in story scenes" (kapalıysa
    sahneler yalnızca alt yazı olur, bant/kamera/hareket kilidi yok). İkisi de profile kaydedilir. Sahne sonrası hemen yeni alt yazı
    gelince siyah bantlar kalmaz.
+10m. M15: **Ayarlar penceresi** (sağ üst Settings): solda 4 sayfa (Graphics, Audio, Gameplay, Interface). Graphics'te üstte
+   Auto/Low/Medium/High/Ultra; Auto telefonda Medium, bilgisayarda High seçer ve altta yazar. Tek bir seçeneği (Shadows,
+   Glow, Haze and colors, Effects, Render detail) değiştirince "Custom" olur. Field of view kaydırıcısı: sürükle ya da -/+.
+   Low: gölge, sis ve parlama kapanır (Lighting'de gözle kontrol et); Ultra: güneş ışınları eklenir. Audio: ana ses ve efekt
+   ses düzeyi (ses kimlikleri boş olduğu için duymazsın). Gameplay: sarsıntı, sahne kamerası, hasar sayıları, menzil halkası.
+   Interface: arayüz boyutu (Small/Normal/Large; telefonda dene), yaratık adı ve can çubuğu, performans göstergesi.
+   "Reset this page" sayfayı sıfırlar. Çık-gir yapınca ayarlar korunmalı. Studio'da gerçek fark: Rendering QualityLevel
+   ve Lighting efektleri (Bloom, Atmosphere, ColorCorrection, SunRays) yalnızca Studio/oyun içinde görülür.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

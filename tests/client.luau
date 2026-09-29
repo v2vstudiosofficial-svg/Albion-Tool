@@ -128,6 +128,7 @@ H.services.UserInputService = {
 	end,
 	InputChanged = H.Signal.new(),
 	InputBegan = H.Signal.new(),
+	InputEnded = H.Signal.new(),
 	TouchPinch = H.Signal.new(),
 }
 H.services.RunService = {
@@ -1066,30 +1067,195 @@ test("story journal: finished scenes can be replayed, the current one is marked,
 	setAttributes({ QuestsDone = "", QuestId = "first_purify", QuestState = "available" })
 end)
 
-test("comfort settings: toggles ask the server; with camera scenes off a full scene is only captions", function()
+-- Settings window -------------------------------------------------------------------------------
+
+local function settingsRow(titleKey: string): any
+	local title = findText(Strings.get(titleKey))
+	assert(title, "settings row " .. titleKey)
+	return title.Parent
+end
+
+local function rowButton(row: any, text: string): any
+	for _, descendant in row:GetDescendants() do
+		if descendant:IsA("TextButton") and descendant.Text == text then
+			return descendant
+		end
+	end
+	error("no button " .. text)
+end
+
+local function lastChanges(): any
+	local last = nil
+	for _, entry in H.remoteLog do
+		if entry.remote == "SetSetting" and entry.direction == "toServer" then
+			last = entry.args[1]
+		end
+	end
+	return last
+end
+
+test("settings window: pages, presets, single options make it Custom, reset, notes", function()
+	local SettingsData = H.loadModule("src/shared/SettingsData.luau")
+	local device = if touchMode then "medium" else "high"
 	click(findButton(Strings.get("menu_settings")))
-	setAttributes({ PrefShake = true, PrefCinematics = true })
-	local on, off = Strings.get("setting_on"), Strings.get("setting_off")
-	assert(shownText(Strings.get("settings_shake", on)) and shownText(Strings.get("settings_scenes", on)), "both on")
-	click(findButton(Strings.get("settings_shake", on)))
-	eq(sent("SetSetting", function(args)
-		return args[1] == "shake" and args[2] == false
-	end), 1, "shake off requested")
-	click(findButton(Strings.get("settings_scenes", on)))
-	eq(sent("SetSetting", function(args)
-		return args[1] == "cinematics" and args[2] == false
-	end), 1, "camera scenes off requested")
-	setAttributes({ PrefShake = false, PrefCinematics = false })
-	assert(shownText(Strings.get("settings_shake", off)) and shownText(Strings.get("settings_scenes", off)), "labels follow the saved values")
+	assert(shownText(Strings.get("settings_reset")), "window open")
+	assert(shownText(Strings.get("settings_auto_note", Strings.get(({ medium = "opt_medium", high = "opt_high" })[device]))), "Auto says what it picked")
+	for _, key in { "set_detail", "set_shadows", "set_effects", "set_bloom", "set_atmosphere", "set_fov" } do
+		assert(shownText(Strings.get(key)), "graphics row " .. key)
+	end
+	assert(not shownText(Strings.get("set_master")), "audio rows are on another page")
+	-- A preset chip asks for that preset.
+	click(findButton(Strings.get("opt_low")))
+	eq(lastChanges().quality, "low", "Low preset requested")
+	setAttributes({ Pref_quality = "low" })
+	assert(not shownText(Strings.get("settings_custom_note")), "a preset is not Custom")
+	-- One option: everything on screen is kept and the preset becomes Custom.
+	click(rowButton(settingsRow("set_shadows"), ""))
+	local changes = lastChanges()
+	eq(changes.quality, "custom", "a single option makes the preset Custom")
+	eq(changes.shadows, true, "the switch flipped (Low had shadows off)")
+	eq(changes.bloom, false, "the other options stay as the preset had them")
+	eq(changes.effects, SettingsData.presets.low.effects)
+	eq(changes.detail, "low")
+	setAttributes({ Pref_quality = "custom", Pref_shadows = true, Pref_effects = "low", Pref_bloom = false, Pref_atmosphere = false, Pref_detail = "low" })
+	assert(shownText(Strings.get("settings_custom_note")), "Custom is explained")
+	click(rowButton(settingsRow("set_effects"), Strings.get("opt_high")))
+	eq(lastChanges().effects, "high", "effects choice")
+	eq(lastChanges().quality, "custom")
+	-- Sliders: the + button steps, dragging sets a value when the finger lets go.
+	click(rowButton(settingsRow("set_fov"), "+"))
+	eq(lastChanges().fov, SettingsData.settings.fov.default + SettingsData.settings.fov.step, "one step")
+	local track = nil
+	for _, descendant in playerGui:GetDescendants() do
+		if descendant.Name == "Track" and isShown(descendant) then
+			track = descendant
+		end
+	end
+	assert(track, "the slider track")
+	local drag = { UserInputType = Enum.UserInputType.MouseButton1, Position = Vector3.new(500, 0, 0) }
+	track.InputBegan:Fire(drag)
+	H.services.UserInputService.InputEnded:Fire(drag)
+	advance(0.1)
+	assert(lastChanges().fov ~= nil and lastChanges().fov >= 40 and lastChanges().fov <= 70, "a dragged value is clamped to the range")
+	-- Pages and reset.
+	click(findButton(Strings.get("settings_cat_audio")))
+	assert(shownText(Strings.get("set_master")) and shownText(Strings.get("set_sfx")) and shownText(Strings.get("set_sound")), "audio page")
+	assert(not shownText(Strings.get("set_shadows")), "graphics rows hidden")
+	click(rowButton(settingsRow("set_master"), "-"))
+	eq(lastChanges().master, 90, "volume steps by ten")
+	click(rowButton(settingsRow("set_sound"), ""))
+	eq(lastChanges().sound, false, "the sound switch")
+	click(findButton(Strings.get("settings_reset")))
+	eq(lastChanges().reset, "audio", "reset asks for this page only")
+	click(findButton(Strings.get("settings_cat_gameplay")))
+	for _, key in { "set_shake", "set_cinematics", "set_damage_numbers", "set_range_ring" } do
+		assert(shownText(Strings.get(key)), "gameplay row " .. key)
+	end
+	click(rowButton(settingsRow("set_shake"), ""))
+	eq(lastChanges().shake, false)
+	assert(lastChanges().quality == nil, "gameplay options never touch the graphics preset")
+	click(findButton(Strings.get("settings_cat_interface")))
+	click(rowButton(settingsRow("set_ui_scale"), Strings.get("opt_large")))
+	eq(lastChanges().uiScale, "large")
+	click(findButton(Strings.get("settings_cat_graphics")))
 	click(findButton(Strings.get("menu_settings")))
-	-- A full scene now shows captions only: no bars, the controls stay free.
+	assert(not shownText(Strings.get("settings_reset")), "window closed")
+	setAttributes({ Pref_quality = "auto", Pref_shadows = true, Pref_effects = "high", Pref_bloom = true, Pref_atmosphere = true, Pref_detail = "high" })
+end)
+
+test("settings apply: look, effects, damage numbers, creature bars, camera scenes, interface size", function()
+	local Lighting = H.game:GetService("Lighting")
+	setAttributes({ Pref_quality = "low" })
+	eq(Lighting.GlobalShadows, false, "Low: no shadows")
+	assert(not Lighting:FindFirstChild("LvAtmosphere"), "Low: no haze")
+	local bloom = Lighting:FindFirstChild("LvBloom")
+	assert(bloom and bloom.Enabled == false, "Low: no glow")
+	setAttributes({ Pref_quality = "ultra" })
+	eq(Lighting.GlobalShadows, true, "Ultra: shadows")
+	assert(Lighting:FindFirstChild("LvAtmosphere"), "Ultra: haze")
+	eq(Lighting.LvBloom.Enabled, true, "Ultra: glow")
+	eq(Lighting.LvRays.Enabled, true, "Ultra: sun rays")
+	setAttributes({ Pref_quality = "high" })
+	eq(Lighting.LvRays.Enabled, false, "High has no sun rays")
+	setAttributes({ Pref_quality = "custom", Pref_shadows = false, Pref_bloom = true, Pref_atmosphere = false, Pref_detail = "medium", Pref_effects = "medium" })
+	eq(Lighting.GlobalShadows, false, "Custom follows the single options")
+	eq(Lighting.LvBloom.Enabled, true)
+	assert(not Lighting:FindFirstChild("LvAtmosphere"), "Custom: haze off")
+	-- Creature names and health bars.
+	local function barsEnabled(): boolean
+		for _, gui in playerGui.EnemyBillboards:GetChildren() do
+			if gui:IsA("BillboardGui") and not gui.Enabled then
+				return false
+			end
+		end
+		return #playerGui.EnemyBillboards:GetChildren() > 0
+	end
+	setAttributes({ Pref_enemyBars = true })
+	assert(barsEnabled(), "bars shown")
+	setAttributes({ Pref_enemyBars = false })
+	for _, gui in playerGui.EnemyBillboards:GetChildren() do
+		if gui:IsA("BillboardGui") then
+			eq(gui.Enabled, false, "bars hidden")
+		end
+	end
+	setAttributes({ Pref_enemyBars = true })
+	-- Damage numbers.
+	local function damageText(text: string): boolean
+		for _, descendant in workspace:GetDescendants() do
+			if descendant:IsA("TextLabel") and descendant.Text == text then
+				return true
+			end
+		end
+		return false
+	end
+	local victim = enemies[1]
+	setAttributes({ Pref_damageNumbers = false })
+	remotes.Fx.OnClientEvent:Fire("hit", victim, H.read(victim.Body, "Position"), 31337, false)
+	advance(0.1)
+	assert(not damageText("31.3K") and not damageText("31337"), "no damage number when they are off")
+	setAttributes({ Pref_damageNumbers = true })
+	remotes.Fx.OnClientEvent:Fire("hit", victim, H.read(victim.Body, "Position"), 31337, false)
+	advance(0.1)
+	assert(damageText("31.3K"), "damage number shown when on")
+	advance(1.5)
+	-- Camera scenes: off = captions only.
+	setAttributes({ Pref_cinematics = false })
 	remotes.Cinematic.OnClientEvent:Fire("first_purify")
 	advance(0.5)
 	assert(shownText(Strings.get("npc_elder_name")), "captions still play")
 	assert(not (playerGui.Cinematic.BarTop.Visible or playerGui.Cinematic.BarBottom.Visible), "no letterbox")
 	click(findButton(Strings.get("cinematic_skip")))
 	advance(1)
-	setAttributes({ PrefShake = true, PrefCinematics = true })
+	setAttributes({ Pref_cinematics = true })
+	-- Interface size: every region follows.
+	local function regionScale(): number
+		for _, child in playerGui.Hud:GetChildren() do
+			local scale = child:FindFirstChildOfClass("UIScale")
+			if child:IsA("Frame") and scale then
+				return scale.Scale
+			end
+		end
+		error("no region")
+	end
+	setAttributes({ Pref_uiScale = "normal" })
+	local normal = regionScale()
+	setAttributes({ Pref_uiScale = "large" })
+	assert(regionScale() > normal, "large makes the interface bigger")
+	setAttributes({ Pref_uiScale = "small" })
+	assert(regionScale() < normal, "small makes it smaller")
+	setAttributes({ Pref_uiScale = "normal" })
+	-- The performance display is saved too.
+	setAttributes({ Pref_perf = true })
+	advance(1.5)
+	local perf = false
+	for _, descendant in playerGui:GetDescendants() do
+		if descendant:IsA("TextLabel") and string.find(descendant.Text, "FPS", 1, true) and isShown(descendant) then
+			perf = true
+		end
+	end
+	assert(perf, "the performance overlay follows the saved setting")
+	setAttributes({ Pref_perf = false, Pref_quality = "auto" })
+	eq(#H.threadErrors, 0, "thread errors")
 end)
 
 test("bag: equip an owned charm, locked ones do nothing", function()
@@ -1319,23 +1485,6 @@ test("rebirth: the panel says what resets, confirms only at level 100, badge and
 	assert(shownText(Strings.get("costume_from_legend", Strings.get(Balance.enemies.ShadowKing.nameKey))), "Kael's Crown explained")
 	click(findButton(Strings.get("menu_shop")))
 	setAttributes({ Level = 3 })
-end)
-
-test("settings toggle sound and the performance overlay", function()
-	click(findButton(Strings.get("menu_settings")))
-	local on, off = Strings.get("setting_on"), Strings.get("setting_off")
-	click(findButton(Strings.get("settings_sound", on)))
-	assert(shownText(Strings.get("settings_sound", off)), "sound off")
-	click(findButton(Strings.get("settings_fps", off)))
-	assert(shownText(Strings.get("settings_fps", on)), "fps on")
-	advance(1.5)
-	local perf = false
-	for _, descendant in playerGui:GetDescendants() do
-		if descendant:IsA("TextLabel") and string.find(descendant.Text, "FPS", 1, true) and isShown(descendant) then
-			perf = true
-		end
-	end
-	assert(perf, "perf overlay text")
 end)
 
 test("forge opens from the server with every upgrade, buys, and closes when walking away", function()

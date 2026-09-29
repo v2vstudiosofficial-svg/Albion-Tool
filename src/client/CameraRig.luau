@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
+local Settings = require(script.Parent.Settings)
 
 local player = Players.LocalPlayer
 
@@ -45,7 +46,7 @@ function CameraRig.setShot(newShot: Shot?)
 end
 
 function CameraRig.punch(degrees: number)
-	if player:GetAttribute("PrefShake") == false then
+	if not Settings.get("shake") then
 		return
 	end
 	punchDegrees = math.max(punchDegrees, degrees)
@@ -73,7 +74,7 @@ local function updateCamera(dt: number)
 	end
 	if camera.CameraType ~= Enum.CameraType.Scriptable then
 		camera.CameraType = Enum.CameraType.Scriptable
-		camera.FieldOfView = FIELD_OF_VIEW
+		camera.FieldOfView = Settings.get("fov")
 	end
 	if shot then
 		local glide = math.clamp(dt * 3.5, 0, 1)
@@ -87,7 +88,7 @@ local function updateCamera(dt: number)
 		focus = if focus and (focus - goal).Magnitude < 60 then focus:Lerp(goal, math.clamp(dt * FOLLOW_SPEED, 0, 1)) else goal
 	end
 	punchDegrees *= math.exp(-dt * 6)
-	local fov = FIELD_OF_VIEW - punchDegrees
+	local fov = Settings.get("fov") - punchDegrees
 	if focus then
 		local follow = CameraRig.cframeFor(focus, CameraRig.distance)
 		if settle > 0 and leftCFrame then
@@ -129,9 +130,10 @@ end
 local function updateRing(edge: CylinderHandleAdornment, fill: CylinderHandleAdornment)
 	local humanoid, root = character()
 	local alive = humanoid ~= nil and root ~= nil and humanoid.Health > 0
-	edge.Visible = alive
-	fill.Visible = alive
-	if not alive then
+	local shown = alive and Settings.get("rangeRing")
+	edge.Visible = shown
+	fill.Visible = shown
+	if not shown then
 		return
 	end
 	local weapon = WeaponData.weapons[Attrs.get("Weapon", "staff")] or WeaponData.weapons.staff

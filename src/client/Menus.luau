@@ -24,6 +24,8 @@ local QuestData = require(Shared:WaitForChild("QuestData"))
 local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local Cinematic = require(script.Parent.Cinematic)
+local Settings = require(script.Parent.Settings)
+local SettingsMenu = require(script.Parent.SettingsMenu)
 local UiKit = require(script.Parent.UiKit)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -69,11 +71,11 @@ function Menus.start()
 
 	local center = UiKit.region(gui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), Vector2.new(460, 400))
 
-	local function modal(titleKey: string, height: number): (Frame, Frame)
+	local function modal(titleKey: string, height: number, width: number?): (Frame, Frame)
 		local frame = UiKit.panel({
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromOffset(440, height),
+			Size = UDim2.fromOffset(width or 440, height),
 			Visible = false,
 			Corner = 18,
 		}, center)
@@ -1341,9 +1343,12 @@ function Menus.start()
 	end
 
 	-- Settings + performance overlay ---------------------------------------------------------
-	local settings, settingsBody = modal("settings_title", 360)
-	UiKit.create("UIListLayout", { Padding = UDim.new(0, 12), HorizontalAlignment = Enum.HorizontalAlignment.Center }, settingsBody)
-	local perfVisible = false
+	-- The window itself is client/SettingsMenu; every change goes to the server (validated and
+	-- saved with the profile) and comes back as Pref_<key> attributes (client/Settings).
+	local settings, settingsBody = modal("settings_title", 460, 640)
+	SettingsMenu.build(settingsBody, function(changes)
+		setSetting:FireServer(changes)
+	end)
 	local perfRegion = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 110))
 	local perfLabel = UiKit.label({
 		Position = UDim2.fromOffset(0, 86),
@@ -1354,37 +1359,15 @@ function Menus.start()
 		Visible = false,
 	}, perfRegion)
 	local frames, windowStart = 0, os.clock()
-	local soundButton, perfButton, shakeButton, scenesButton
-	local function refreshSettings()
-		local on, off = Strings.get("setting_on"), Strings.get("setting_off")
-		soundButton.Text = Strings.get("settings_sound", if Audio.isEnabled() then on else off)
-		perfButton.Text = Strings.get("settings_fps", if perfVisible then on else off)
-		shakeButton.Text = Strings.get("settings_shake", if Attrs.get("PrefShake", true) then on else off)
-		scenesButton.Text = Strings.get("settings_scenes", if Attrs.get("PrefCinematics", true) then on else off)
-	end
-	soundButton = UiKit.button({ Size = UDim2.fromOffset(340, 56) }, settingsBody, function()
-		Audio.setEnabled(not Audio.isEnabled())
-		refreshSettings()
+	local perfVisible = false
+	Settings.onChanged(function()
+		local wanted = Settings.get("perf")
+		if wanted ~= perfVisible then
+			perfVisible = wanted
+			frames, windowStart = 0, os.clock()
+			perfLabel.Visible = perfVisible
+		end
 	end)
-	perfButton = UiKit.button({ Size = UDim2.fromOffset(340, 56) }, settingsBody, function()
-		perfVisible = not perfVisible
-		frames, windowStart = 0, os.clock()
-		perfLabel.Visible = perfVisible
-		refreshSettings()
-	end)
-	-- Comfort settings are saved with the player (the server checks them).
-	shakeButton = UiKit.button({ Size = UDim2.fromOffset(340, 56) }, settingsBody, function()
-		setSetting:FireServer("shake", not Attrs.get("PrefShake", true))
-		Audio.play("ui")
-	end)
-	scenesButton = UiKit.button({ Size = UDim2.fromOffset(340, 56) }, settingsBody, function()
-		setSetting:FireServer("cinematics", not Attrs.get("PrefCinematics", true))
-		Audio.play("ui")
-	end)
-	for _, name in { "PrefShake", "PrefCinematics" } do
-		player:GetAttributeChangedSignal(name):Connect(refreshSettings)
-	end
-	refreshSettings()
 
 	RunService.RenderStepped:Connect(function()
 		if not perfVisible then

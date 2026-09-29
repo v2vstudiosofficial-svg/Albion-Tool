@@ -14,6 +14,8 @@ local Format = require(Shared:WaitForChild("Format"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 local CameraRig = require(script.Parent.CameraRig)
+local Settings = require(script.Parent.Settings)
+local SettingsData = require(Shared:WaitForChild("SettingsData"))
 
 local fxRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fx") :: RemoteEvent
 local player = Players.LocalPlayer
@@ -63,6 +65,8 @@ local function ringCFrame(position: Vector3): CFrame
 end
 
 function Effects.burst(position: Vector3, color: Color3, count: number, speed: number?)
+	-- Lower effect settings draw fewer sparks (at least a few, so a burst still reads).
+	count = math.max(3, math.floor(count * SettingsData.effectDensity[Settings.get("effects")] + 0.5))
 	local anchor = newPart({ Size = Vector3.new(0.2, 0.2, 0.2), Position = position, Transparency = 1 })
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Rate = 0
@@ -103,7 +107,7 @@ function Effects.popup(position: Vector3, text: string, color: Color3, textSize:
 end
 
 function Effects.shake(strength: number, seconds: number)
-	if player:GetAttribute("PrefShake") == false then
+	if not Settings.get("shake") then
 		return
 	end
 	local now = os.clock()
@@ -345,6 +349,10 @@ local function onHit(model: Model?, position: Vector3, amount: number, crit: boo
 		end
 	end
 	local jitter = Vector3.new(math.random() * 2 - 1, 0, math.random() * 2 - 1)
+	if not Settings.get("damageNumbers") then
+		Audio.play("hit")
+		return
+	end
 	if crit then
 		Effects.popup(position + jitter, Format.short(amount) .. "!", CRIT_COLOR, 34)
 	else
@@ -652,6 +660,7 @@ local function attachEnemyUi(model: Instance)
 		StudsOffset = Vector3.new(0, body.Size.Y * 0.5 + 1.6, 0),
 		MaxDistance = 90,
 		Adornee = body,
+		Enabled = Settings.get("enemyBars"),
 	}, billboards)
 	UiKit.label({
 		Size = UDim2.new(1, 0, 0, 18),
@@ -767,6 +776,16 @@ function Effects.start()
 	for _, child in enemies:GetChildren() do
 		task.spawn(attachEnemyUi, child)
 	end
+
+	-- Turning the creature name/health bars on or off applies to the ones already showing.
+	Settings.onChanged(function()
+		local show = Settings.get("enemyBars")
+		for _, gui in billboards:GetChildren() do
+			if gui:IsA("BillboardGui") then
+				gui.Enabled = show
+			end
+		end
+	end)
 
 	RunService.RenderStepped:Connect(updateProjectiles)
 	RunService.RenderStepped:Connect(spinPortals)
