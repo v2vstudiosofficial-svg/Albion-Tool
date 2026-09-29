@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M14 (hikâye, sinematik, animasyon, işaretçiler, kostümler) tamam. Studio testleri ertelendi.
+## Aşama: M20 (Kael epilogu; hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil arayüz.
@@ -20,21 +20,21 @@
   M14: işaretçiler, ipuçları, 6 kostüm; M15: profesyonel ayarlar penceresi + grafik
   ön ayarları/özelleştirme
   (Auto–Ultra, gölge, parlama, sis, FOV, ses, arayüz boyutu); M16: Players paneli, ses rehberi; M17: kule boss katları;
-  M18: 3 yeni yetenek; M19: fuzz testleri.
+  M18: 3 yeni yetenek; M19: fuzz testleri;
+  M20: Kael epilogu (Shadow King sonrası 2 görev, 200 arındırma + yeniden doğuş, köyde buluşma).
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah kademeleri, üstel düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 67, balance, api, scene 15, sim 55, client 45/46/46/1, place; hepsi geçti (sinematik akış,
+- logic 67, balance, api, scene 15, sim 56, client 46/47/47/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
-  Sv100 ≈ 6,2 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.
+  Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.
 - Roblox Studio'da HİÇ ÇALIŞTIRILMADI: görünüm, fizik, gerçek DataStore, ağ, performans ölçülmedi.
 
 ## Bilinen riskler
-- Silah/kostüm modelleri, açılar ve sandık konumları tahmini; denge bir model (gerçek veriyle ayarlanmalı).
-- Ses kimlikleri boş (SETUP'ta rehber); animasyonlar prosedürel.
+- Silah/kostüm modelleri, açılar, sandık konumları tahmini; denge bir model. Ses kimlikleri boş; animasyonlar prosedürel.
 - Mağaza ürün kimlikleri 0 (`StoreData`); sinematik kamera/PlayerModule kilidi Studio'da denenmedi.
 ## Bekleyen elle testler (kullanıcı isteğiyle ertelendi)
-`docs/SETUP.md` → "Elle test listesi" maddelerinin tamamı (1–16, 6b/6c, 10b–10p) oynanmadı.
+`docs/SETUP.md` → "Elle test listesi" maddelerinin tamamı (1–16, 6b/6c, 10b–10q) oynanmadı.
 
 ## Sonraki adım: Studio testleri → Output hatalarını düzelt.

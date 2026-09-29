@@ -21,6 +21,9 @@ local QuestData = {
 		"frost_titan",
 		"tower_climb",
 		"shadow_king",
+		-- Epilogue: Kael, the first Light Keeper, is home again.
+		"keepers_promise",
+		"begin_again",
 	},
 	quests = {
 		first_purify = {
@@ -139,6 +142,26 @@ local QuestData = {
 			minLevel = 92,
 			objective = { kind = "purify", enemyType = "ShadowKing", count = 1, area = "throne" },
 			reward = { xp = 0, levels = 3, coins = 8000 },
+		},
+		keepers_promise = {
+			id = "keepers_promise",
+			giver = "Kael",
+			titleKey = "quest_keepers_promise_title",
+			offerKey = "kael_offer_keepers_promise",
+			objectiveKey = "quest_keepers_promise_objective",
+			minLevel = 92,
+			objective = { kind = "counter", counter = "purifies", count = 200 },
+			reward = { xp = 0, levels = 1, coins = 3000, flag = "reunion" },
+		},
+		begin_again = {
+			id = "begin_again",
+			giver = "Kael",
+			titleKey = "quest_begin_again_title",
+			offerKey = "kael_offer_begin_again",
+			objectiveKey = "quest_begin_again_objective",
+			minLevel = 100,
+			objective = { kind = "counter", counter = "rebirths", count = 1, absolute = true },
+			reward = { xp = 0, coins = 2500 },
 		},
 	},
 }

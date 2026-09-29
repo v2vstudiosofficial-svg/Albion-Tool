@@ -474,7 +474,7 @@ test("quest data references existing enemies, world points, charms and strings",
 		elseif objective.kind == "upgrade" then
 			assert(WorldData.npcs[objective.npc], "missing npc")
 		elseif objective.kind == "counter" then
-			assert(objective.counter == "towerBest" or table.find(require("../src/server/AchievementLogic").COUNTERS, objective.counter), "unknown counter " .. objective.counter)
+			assert(objective.counter == "towerBest" or objective.counter == "rebirths" or table.find(require("../src/server/AchievementLogic").COUNTERS, objective.counter), "unknown counter " .. objective.counter)
 			assert(objective.count >= 1 and (not objective.area or WorldData.areas[objective.area]), "counter goal and area")
 		else
 			error("unknown objective kind " .. tostring(objective.kind))

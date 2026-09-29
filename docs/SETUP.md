@@ -126,6 +126,9 @@ Oyun içi tüm metinler İngilizce.
 10p. M18: **3 yeni yetenek kartı** (artık 13 yetenek): Healing Light (her arındırmada canın %2'si/rank iyileşir), Brave Heart
    (can yarıdan azken +%10/rank hasar), Treasure Hunter (sandık sikkesi +%15/rank). Seviye atlayınca kartlarda çıkar;
    `LvDebugLevel` ile çok seviye atlayıp denenebilir.
+10q. M20: **Kael the Keeper** (epilog): Shadow King arındırılana kadar köyde görünmez; sonra Elder/Wren onu işaret eder.
+   `keepers_promise` (Sv92, 200 arındırma) → köyde "reunion" süsü (Büyük Fener çevresinde 3 Bekçi); `begin_again` (Sv100,
+   1 rebirth). Test: `LvDebugLevel` ile Sv100'e çık, Kael'le konuş, arındır, Great Lantern'de rebirth yap.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

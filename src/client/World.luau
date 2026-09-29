@@ -356,12 +356,36 @@ end
 local nudgedTier: number? = nil
 local NUDGE_LEVELS = 3
 
+-- Kael only appears once the Shadow King has fallen; the model is on the server for everyone, so
+-- other players' worlds are not touched (local transparency and disabled prompts only).
+local kaelModel: Instance? = nil
+
+local function refreshKael()
+	if not kaelModel or not kaelModel.Parent then
+		local map = workspace:FindFirstChild("LanternValleyMap")
+		local village = map and map:FindFirstChild("Village")
+		kaelModel = village and village:FindFirstChild("Kael")
+	end
+	if not kaelModel then
+		return
+	end
+	local shown = isCompleted("shadow_king")
+	for _, item in kaelModel:GetDescendants() do
+		if item:IsA("BasePart") then
+			item.LocalTransparencyModifier = if shown then 0 else 1
+		elseif item:IsA("ProximityPrompt") or item:IsA("BillboardGui") then
+			item.Enabled = shown
+		end
+	end
+end
+
 local function refreshMarkers()
+	refreshKael()
 	-- The "!" shows over whoever gives the next quest.
 	local available = player:GetAttribute("QuestState") == "available"
 	local nextQuest = QuestData.quests[player:GetAttribute("QuestId") or ""]
 	local giver = (nextQuest and nextQuest.giver) or "Elder"
-	for _, npcName in { "Elder", "Wren" } do
+	for _, npcName in { "Elder", "Wren", "Kael" } do
 		local marker = markers[npcName]
 		if marker then
 			marker.Enabled = available and giver == npcName
@@ -624,6 +648,18 @@ function restorationBuilders.festival(parent: Instance)
 	end
 end
 
+-- Kael and two fellow Keepers stand at the Great Lantern, each holding a small light.
+function restorationBuilders.reunion(parent: Instance)
+	local robes = { Color3.fromRGB(215, 175, 70), Color3.fromRGB(150, 120, 210), Color3.fromRGB(90, 170, 190) }
+	for index, degrees in { 200, 240, 280 } do
+		local angle = math.rad(degrees)
+		local base = PLAZA + Vector3.new(math.cos(angle) * 9, 0, math.sin(angle) * 9)
+		pillar(parent, 3.4, 1.1, base, robes[index])
+		ball(parent, 1.7, base + Vector3.new(0, 4.2, 0), Color3.fromRGB(235, 200, 170), false)
+		ball(parent, 0.9, base + Vector3.new(1.4, 2.6, 0), WARM, true)
+	end
+end
+
 local function refreshRestoration(celebrate: boolean)
 	local flags = Attrs.set("Flags")
 	for flag, builder in restorationBuilders do
@@ -706,6 +742,7 @@ function World.start()
 	task.spawn(function()
 		markers.Elder = buildMarker("Elder")
 		markers.Wren = buildMarker("Wren")
+		markers.Kael = buildMarker("Kael")
 		markers.Smith = buildMarker("Smith")
 		markers.BountyBoard = buildMarker("BountyBoard")
 		markers.TowerGate = buildMarker("TowerGate")

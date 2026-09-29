@@ -1,4 +1,4 @@
--- Quest flow: starting quests at their giver (the Elder or Ranger Wren), turning validated world
+-- Quest flow: starting quests at their giver (the Elder, Ranger Wren or Kael), turning validated world
 -- events and counters into progress and paying each completion exactly once.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -108,10 +108,26 @@ local function activeObjective(profile, kind: string)
 end
 
 -- What each quest giver says (Strings keys): a quest is running, nothing is left, the player is
--- too low a level, or the next quest belongs to the other giver.
+-- too low a level, or the next quest belongs to another giver (go[giver]).
 local TALK = {
-	Elder = { active = "elder_quest_active", done = "elder_all_done", level = "elder_need_level", other = "elder_go_wren" },
-	Wren = { active = "wren_quest_active", done = "wren_all_done", level = "wren_need_level", other = "wren_go_elder" },
+	Elder = {
+		active = "elder_quest_active",
+		done = "elder_all_done",
+		level = "elder_need_level",
+		go = { Wren = "elder_go_wren", Kael = "elder_go_kael" },
+	},
+	Wren = {
+		active = "wren_quest_active",
+		done = "wren_all_done",
+		level = "wren_need_level",
+		go = { Elder = "wren_go_elder", Kael = "wren_go_kael" },
+	},
+	Kael = {
+		active = "kael_quest_active",
+		done = "kael_all_done",
+		level = "kael_need_level",
+		go = { Elder = "kael_go_elder", Wren = "kael_go_wren" },
+	},
 }
 
 local function onTalk(player: Player, npc: string, body: BasePart)
@@ -120,6 +136,9 @@ local function onTalk(player: Player, npc: string, body: BasePart)
 		return
 	end
 	local lines = TALK[npc]
+	if not lines then
+		return
+	end
 	local tracked = QuestLogic.tracked(profile, QuestData)
 	if tracked then
 		-- The quest giver tells the story of the running quest again; others just encourage.
@@ -140,8 +159,9 @@ local function onTalk(player: Player, npc: string, body: BasePart)
 		return
 	end
 	local def = QuestData.quests[nextId]
-	if (def.giver or "Elder") ~= npc then
-		npcSay:FireClient(player, npc, lines.other)
+	local giver = def.giver or "Elder"
+	if giver ~= npc then
+		npcSay:FireClient(player, npc, lines.go[giver])
 		return
 	end
 	local level = Progression.levelForXp(profile.xp)

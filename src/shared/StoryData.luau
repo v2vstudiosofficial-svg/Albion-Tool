@@ -12,6 +12,7 @@ StoryData.speakers = {
 	Smith = { nameKey = "npc_smith_name", color = { 255, 170, 100 } },
 	Wren = { nameKey = "npc_wren_name", color = { 140, 220, 150 } },
 	Narrator = { nameKey = nil, color = { 235, 225, 200 } },
+	Kael = { nameKey = "npc_kael_name", color = { 255, 215, 120 } },
 	Hero = { nameKey = "story_hero_name", color = { 255, 225, 120 } },
 }
 
@@ -232,6 +233,39 @@ StoryData.scenes = {
 			{ speaker = "Narrator", key = "story_shadow_king_end_2" },
 			{ speaker = "Elder", key = "story_shadow_king_end_3" },
 			{ speaker = "Elder", key = "story_shadow_king_end_4" },
+		},
+	},
+	keepers_promise = {
+		mode = "full",
+		focus = "Kael",
+		lines = {
+			{ speaker = "Kael", key = "story_keepers_promise_1" },
+			{ speaker = "Kael", key = "story_keepers_promise_2" },
+			{ speaker = "Kael", key = "story_keepers_promise_3" },
+			{ speaker = "Hero", key = "story_keepers_promise_4" },
+		},
+	},
+	keepers_promise_end = {
+		mode = "soft",
+		focus = "player",
+		lines = {
+			{ speaker = "Kael", key = "story_keepers_promise_end_1" },
+		},
+	},
+	begin_again = {
+		mode = "full",
+		focus = "Kael",
+		lines = {
+			{ speaker = "Kael", key = "story_begin_again_1" },
+			{ speaker = "Kael", key = "story_begin_again_2" },
+			{ speaker = "Kael", key = "story_begin_again_3" },
+		},
+	},
+	begin_again_end = {
+		mode = "soft",
+		focus = "player",
+		lines = {
+			{ speaker = "Kael", key = "story_begin_again_end_1" },
 		},
 	},
 }

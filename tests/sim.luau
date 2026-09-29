@@ -645,6 +645,98 @@ test("Ranger Wren: her quests come in the chain, counters follow the profile, pa
 	toVillage(alice)
 end)
 
+test("Kael the Keeper: the epilogue comes after the Shadow King and is paid once", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local QuestData = H.loadModule("src/shared/QuestData.luau")
+	local profile = PlayerProfiles.get(alice)
+	local saved = { xp = profile.xp, progress = profile.questProgress, flags = profile.restorationFlags, purifies = profile.counters.purifies, rebirths = profile.rebirths, coins = profile.coins }
+	local function said(npc: string, key: string): number
+		return logCount("NpcSay", function(e)
+			return e.target == alice and e.args[1] == npc and e.args[2] == key
+		end)
+	end
+	local function played(sceneId: string): number
+		return logCount("Cinematic", function(e)
+			return e.target == alice and e.args[1] == sceneId
+		end)
+	end
+	-- Everything before the epilogue is done, but the player is not strong enough yet.
+	profile.questProgress = {}
+	for _, questId in QuestData.order do
+		if questId == "keepers_promise" then
+			break
+		end
+		profile.questProgress[questId] = { state = "completed", count = 1 }
+	end
+	profile.restorationFlags = {}
+	profile.xp = Progression.thresholds[QuestData.quests.keepers_promise.minLevel - 1]
+	PlayerProfiles.sync(alice)
+	assert(workspace.LanternValleyMap.Village.Kael.Body.TalkPrompt, "Kael has a prompt")
+	talk(alice, "Elder")
+	eq(said("Elder", "elder_go_kael"), 1, "the Elder points to Kael")
+	talk(alice, "Wren")
+	eq(said("Wren", "wren_go_kael"), 1, "Wren points to Kael")
+	talk(alice, "Kael")
+	eq(said("Kael", "kael_need_level"), 1, "Kael asks for a stronger player")
+	eq(attr(alice, "QuestState"), "level")
+
+	profile.xp = Progression.thresholds[QuestData.quests.keepers_promise.minLevel]
+	PlayerProfiles.sync(alice)
+	talk(alice, "Kael")
+	eq(played("keepers_promise"), 1, "the Keeper's Promise plays as a scene")
+	eq(attr(alice, "QuestId"), "keepers_promise")
+	eq(attr(alice, "QuestState"), "active")
+	talk(alice, "Kael")
+	eq(played("keepers_promise"), 2, "talking to the giver again repeats the story")
+	talk(alice, "Kael")
+	eq(played("keepers_promise"), 2, "but not again right away")
+	eq(said("Kael", "kael_quest_active"), 1, "he just encourages")
+
+	-- Purifying anywhere counts; the reward (levels, coins, reunion) is paid exactly once.
+	local coins = attr(alice, "Coins")
+	local goal = QuestData.quests.keepers_promise.objective.count
+	profile.counters.purifies = (profile.counters.purifies or 0) + goal
+	PlayerProfiles.sync(alice)
+	advance(0.2)
+	eq(attr(alice, "QuestId"), "begin_again", "promise done")
+	eq(played("keepers_promise_end"), 1, "the ending is shown")
+	eq(attr(alice, "Coins") - coins, QuestData.quests.keepers_promise.reward.coins, "coins paid once")
+	assert(string.find(attr(alice, "Flags"), "reunion", 1, true), "the reunion is restored: " .. tostring(attr(alice, "Flags")))
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_restore_reunion"
+	end), 1, "told once")
+	PlayerProfiles.sync(alice)
+	eq(attr(alice, "Coins") - coins, QuestData.quests.keepers_promise.reward.coins, "a later sync pays nothing more")
+
+	-- The last quest needs the level and follows the rebirth count.
+	profile.xp = Progression.thresholds[QuestData.quests.begin_again.minLevel - 1]
+	PlayerProfiles.sync(alice)
+	talk(alice, "Kael")
+	eq(said("Kael", "kael_need_level"), 2)
+	profile.xp = Progression.thresholds[QuestData.quests.begin_again.minLevel]
+	PlayerProfiles.sync(alice)
+	talk(alice, "Kael")
+	eq(played("begin_again"), 1)
+	eq(attr(alice, "QuestId"), "begin_again")
+	eq(attr(alice, "QuestState"), "active")
+	profile.rebirths += 1
+	PlayerProfiles.sync(alice)
+	advance(0.2)
+	eq(played("begin_again_end"), 1, "the last scene plays")
+	eq(attr(alice, "QuestState"), "done", "the chain is finished")
+	talk(alice, "Kael")
+	eq(said("Kael", "kael_all_done"), 1)
+
+	profile.xp = saved.xp
+	profile.questProgress = saved.progress
+	profile.restorationFlags = saved.flags
+	profile.counters.purifies = saved.purifies
+	profile.rebirths = saved.rebirths
+	profile.coins = saved.coins
+	PlayerProfiles.sync(alice)
+	toVillage(alice)
+end)
+
 test("a defeated character is not revived by a level-up", function()
 	local CharacterService = H.loadModule("src/server/CharacterService.luau")
 	humanoid(alice).Health = 0

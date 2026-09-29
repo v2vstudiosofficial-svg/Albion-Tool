@@ -7,6 +7,8 @@ local QuestLogic = {}
 local function counterValue(profile, objective): number
 	if objective.counter == "towerBest" then
 		return profile.towerBest
+	elseif objective.counter == "rebirths" then
+		return profile.rebirths
 	end
 	return profile.counters[objective.counter] or 0
 end

@@ -399,6 +399,33 @@ test("quests from Ranger Wren: hint, marker and waypoint follow the giver", func
 	assert(markerOn("Elder"), "the Elder's ! is back")
 end)
 
+test("Kael the Keeper: hidden until the Shadow King falls, then the ! and the waypoint lead to him", function()
+	local kael = workspace.LanternValleyMap.Village.Kael
+	local function markerOn(npcName: string): boolean
+		for _, child in playerGui:GetChildren() do
+			if child:IsA("BillboardGui") and child.Enabled and child.Adornee == workspace.LanternValleyMap.Village[npcName].Body then
+				return true
+			end
+		end
+		return false
+	end
+	local function visible(): boolean
+		return H.read(kael.Body, "LocalTransparencyModifier") == 0 and kael.Body.TalkPrompt.Enabled
+	end
+	setAttributes({ QuestId = "shadow_king", QuestState = "active", QuestCount = 0, QuestGoal = 1, Level = 60 })
+	advance(0.5)
+	assert(not visible(), "Kael is not in the village yet")
+	assert(not markerOn("Kael"), "no ! over a hidden Kael")
+	setAttributes({ QuestId = "keepers_promise", QuestState = "available", Level = 95 })
+	advance(0.5)
+	assert(visible(), "Kael appears after the Shadow King")
+	assert(markerOn("Kael"), "! over Kael")
+	assert(not markerOn("Elder") and not markerOn("Wren"), "no ! over the others")
+	assert(shownText(Strings.get("quest_talk_to", Strings.get("npc_kael_name"))), "hint names Kael")
+	setAttributes({ QuestId = "first_purify", QuestState = "available", Level = 1 })
+	advance(0.5)
+end)
+
 test("signposts: a ! over the Bounty Board with a bounty to claim and over the Tower gate for newcomers", function()
 	local Balance = H.loadModule("src/shared/Balance.luau")
 	local function markerOn(name: string): boolean
@@ -594,8 +621,8 @@ test("exploration beacons, vine barrier and restoration follow progress", functi
 		assert(not (child:IsA("BasePart") and child.CanCollide), "barrier removed")
 	end
 
-	setAttributes({ Flags = "festival,gardens,lanterns" })
-	for _, flag in { "gardens", "lanterns", "festival" } do
+	setAttributes({ Flags = "festival,gardens,lanterns,reunion" })
+	for _, flag in { "gardens", "lanterns", "festival", "reunion" } do
 		assert(workspace.ClientWorld:FindFirstChild("Restoration_" .. flag), "restoration " .. flag)
 	end
 	teleport(vec(WorldData.spawn, 3))
