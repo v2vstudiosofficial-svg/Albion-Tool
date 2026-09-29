@@ -1,4 +1,5 @@
--- Staff upgrades at the Smith and charm equipping. Coins, ownership and distance are checked here.
+-- Forge upgrades at the Smith and charm equipping. Coins, levels, ownership and distance are
+-- checked here.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -10,7 +11,7 @@ local QuestService = require(script.Parent.QuestService)
 local Targets = require(script.Parent.Targets)
 
 local Remotes = ReplicatedStorage.Remotes
-local upgradeStaff = Remotes.UpgradeStaff :: RemoteEvent
+local buyUpgrade = Remotes.BuyUpgrade :: RemoteEvent
 local equipCharm = Remotes.EquipCharm :: RemoteEvent
 local openShop = Remotes.OpenShop :: RemoteEvent
 local npcSay = Remotes.NpcSay :: RemoteEvent
@@ -41,7 +42,10 @@ local function nearSmith(player: Player): boolean
 	return target ~= nil and (target.root.Position - smithBody.Position).Magnitude <= Balance.shopDistance
 end
 
-local function onUpgrade(player: Player)
+local function onUpgrade(player: Player, stat: unknown)
+	if typeof(stat) ~= "string" or not Balance.upgrades[stat :: string] then
+		return
+	end
 	if throttled(player, "upgrade") or not nearSmith(player) then
 		return
 	end
@@ -49,12 +53,15 @@ local function onUpgrade(player: Player)
 	if not profile then
 		return
 	end
-	local ok, reason, missing = Profile.tryUpgradeStaff(profile)
+	local ok, reason, missing = Profile.buyUpgrade(profile, stat :: string)
 	if ok then
 		PlayerProfiles.sync(player)
-		notice:FireClient(player, "notice_upgrade_done", profile.staffUpgrade + 1)
+		local upgrade = Balance.upgrades[stat :: string]
+		notice:FireClient(player, "notice_upgrade_done", upgrade.nameKey, Profile.upgradeLevel(profile, stat :: string))
 		fx:FireAllClients("upgrade", player, profile.staffUpgrade)
-		QuestService.onUpgrade(player)
+		if stat == "power" then
+			QuestService.onUpgrade(player)
+		end
 	elseif reason == "coins" then
 		notice:FireClient(player, "notice_upgrade_no_coins", missing)
 	else
@@ -85,7 +92,7 @@ function ShopService.start(map: Folder)
 			openShop:FireClient(player)
 		end
 	end)
-	upgradeStaff.OnServerEvent:Connect(onUpgrade)
+	buyUpgrade.OnServerEvent:Connect(onUpgrade)
 	equipCharm.OnServerEvent:Connect(onEquip)
 	Players.PlayerRemoving:Connect(function(player)
 		lastRequest[player] = nil

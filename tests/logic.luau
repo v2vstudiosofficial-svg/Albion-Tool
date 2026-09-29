@@ -15,6 +15,9 @@ local WeaponData = require("../src/shared/WeaponData")
 local WeaponLogic = require("../src/server/WeaponLogic")
 local ChestData = require("../src/shared/ChestData")
 local ChestLogic = require("../src/server/ChestLogic")
+local SkillData = require("../src/shared/SkillData")
+local SkillLogic = require("../src/server/SkillLogic")
+local Stats = require("../src/shared/Stats")
 
 local passed, failed = 0, 0
 
@@ -123,25 +126,29 @@ test("sanitize fills missing tables on an empty record", function()
 	eq(type(data.restorationFlags), "table")
 end)
 
-test("staff upgrade spends coins once per tier and stops at max", function()
-	local p = Profile.new()
-	local ok, reason, missing = Profile.tryUpgradeStaff(p)
-	eq(ok, false)
-	eq(reason, "coins")
-	eq(missing, Balance.staff.tiers[2].cost)
-	eq(p.staffUpgrade, 0)
-	p.coins = 10000
-	local spent = 0
-	for tier = 1, Progression.maxStaffUpgrade() do
-		eq(Profile.tryUpgradeStaff(p), true, "tier " .. tier)
-		spent += Balance.staff.tiers[tier + 1].cost
+test("forge upgrades spend coins once per level, prices rise, and stop at max", function()
+	for _, stat in Balance.upgradeOrder do
+		local upgrade = Balance.upgrades[stat]
+		assert(Strings.has(upgrade.nameKey) and Strings.has(upgrade.descKey), "upgrade strings " .. stat)
+		local p = Profile.new()
+		local ok, reason, missing = Profile.buyUpgrade(p, stat)
+		eq(ok, false)
+		eq(reason, "coins")
+		eq(missing, Progression.upgradeCost(stat, 0))
+		p.coins = 10 ^ 12
+		local spent, previousCost = 0, 0
+		for level = 1, upgrade.maxLevel do
+			local cost = Progression.upgradeCost(stat, level - 1) :: number
+			assert(cost >= previousCost, stat .. " prices never drop")
+			previousCost = cost
+			eq(Profile.buyUpgrade(p, stat), true, stat .. " level " .. level)
+			spent += cost
+		end
+		eq(Profile.upgradeLevel(p, stat), upgrade.maxLevel)
+		eq(select(2, Profile.buyUpgrade(p, stat)), "max")
+		eq(p.coins, 10 ^ 12 - spent, stat .. " charged exactly")
 	end
-	eq(p.staffUpgrade, Progression.maxStaffUpgrade())
-	eq(p.coins, 10000 - spent)
-	local okMax, reasonMax = Profile.tryUpgradeStaff(p)
-	eq(okMax, false)
-	eq(reasonMax, "max")
-	eq(p.coins, 10000 - spent, "no charge at max")
+	eq(select(2, Profile.buyUpgrade(Profile.new(), "nope")), "unknown")
 end)
 
 test("charms: grant once, auto-equip first, equip only owned", function()
@@ -205,9 +212,8 @@ test("derived stats: health, damage, wave, charms", function()
 end)
 
 test("post-story goals: affordable upgrade, then level cap, then remaining tiers, then done", function()
-	local tiers = Balance.staff.tiers
 	local maxXp = Progression.thresholds[Progression.MAX_LEVEL]
-	local g = Goals.next(0, tiers[2].cost, 0)
+	local g = Goals.next(0, Progression.upgradeCost("power", 0), 0)
 	eq(g.kind, "staff", "affordable upgrade first")
 	eq(g.affordable, true)
 	local levelGoal = Goals.next(0, 0, 0)
@@ -218,13 +224,13 @@ test("post-story goals: affordable upgrade, then level cap, then remaining tiers
 	local staffOnly = Goals.next(maxXp, 0, lastTier - 1)
 	eq(staffOnly.kind, "staff", "at max level, remaining tiers")
 	eq(staffOnly.affordable, false)
-	eq(staffOnly.missing, tiers[lastTier + 1].cost, "missing coins")
+	eq(staffOnly.missing, Progression.upgradeCost("power", lastTier - 1), "missing coins")
 	eq(Goals.next(maxXp, 0, lastTier).kind, "done")
 	eq(Goals.next(maxXp, 10 ^ 6, lastTier).kind, "done", "max tier with lots of coins")
-	local capped = Goals.next(maxXp, tiers[2].cost, 0)
-	eq(capped.kind, "staff", "affordable tier at the level cap")
+	local capped = Goals.next(maxXp, Progression.upgradeCost("power", 0), 0)
+	eq(capped.kind, "staff", "affordable power level at the level cap")
 	eq(capped.affordable, true)
-	eq(capped.target, 1, "tier index, not display number")
+	eq(capped.target, 1, "the next power level")
 end)
 
 -- Quests ----------------------------------------------------------------------------------------
@@ -331,7 +337,7 @@ test("full chain is completable with a short grind at most, paying each reward o
 		event({ kind = "explore", id = id })
 	end
 	start("first_upgrade")
-	assert(Profile.tryUpgradeStaff(p), "enough coins for the first upgrade without grinding")
+	assert(Profile.buyUpgrade(p, "power"), "enough coins for the first upgrade without grinding")
 	event({ kind = "upgrade", value = p.staffUpgrade })
 	start("ruin_vines")
 	for _, id in QuestData.quests.ruin_vines.objective.ids do
@@ -355,7 +361,7 @@ test("full chain is completable with a short grind at most, paying each reward o
 	eq(p.ownedCharms.swift and p.ownedCharms.guard and p.ownedCharms.glow, true, "all charms")
 	eq(p.restorationFlags.gardens and p.restorationFlags.lanterns and p.restorationFlags.festival, true, "all flags")
 
-	local expectedXp, expectedCoins = 0, -Balance.staff.tiers[2].cost
+	local expectedXp, expectedCoins = 0, -(Progression.upgradeCost("power", 0) :: number)
 	for _, questId in QuestData.order do
 		local reward = QuestData.quests[questId].reward
 		expectedXp += reward.xp or 0
@@ -369,8 +375,11 @@ test("full chain is completable with a short grind at most, paying each reward o
 	eq(p.coins, expectedCoins, "coins")
 	assert(level(p) >= 5, "reaches a satisfying level by the end of the chain")
 	assert(level(p) < Progression.MAX_LEVEL, "the level cap stays a post-game goal")
-	local topTiers = Balance.staff.tiers[3].cost + Balance.staff.tiers[4].cost
-	assert(p.coins < topTiers, "the last staff tiers stay a post-game goal")
+	local powerTen = 0
+	for level = 1, 9 do
+		powerTen += Progression.upgradeCost("power", level) :: number
+	end
+	assert(p.coins < powerTen, "weapon power 10 stays a post-game goal")
 end)
 
 -- Enemies ---------------------------------------------------------------------------------------
@@ -413,7 +422,7 @@ test("co-op: each participant gets one enemy reward and one quest reward", funct
 	local state = EnemyLogic.new(stats.maxHp)
 	for i = 1, 10 do
 		local who = if i % 2 == 0 then "a" else "b"
-		if EnemyLogic.applyHit(state, who, Balance.staff.tiers[1].damage, i) then
+		if EnemyLogic.applyHit(state, who, WeaponData.weapons.staff.damage, i) then
 			for _, name in EnemyLogic.participants(state, i, Balance.participationWindow, function()
 				return true
 			end) do
@@ -874,6 +883,146 @@ test("opening applies rewards: coins, new weapon, capped slot levels", function(
 	eq(p.slotLevels[1], WeaponData.maxSlotLevel, "slot level capped")
 	eq(reward.slots[0], 1, "only one level fit before the cap")
 	eq(Profile.equipWeapon(p, 0, "hammer"), true, "new weapon can be equipped")
+end)
+
+-- Crystals, forge stats and skill cards ---------------------------------------------------------
+
+test("pouch: crystals up to capacity, lantern turns them into coins one to one", function()
+	local p = Profile.new()
+	local added, lost = Profile.addCrystals(p, 50, 60)
+	eq(added, 50)
+	eq(lost, 0)
+	added, lost = Profile.addCrystals(p, 25, 60)
+	eq(added, 10, "only what fits")
+	eq(lost, 15)
+	eq(p.crystals, 60)
+	added = Profile.addCrystals(p, 5, 60)
+	eq(added, 0, "a full pouch takes nothing")
+	eq(Profile.depositCrystals(p), 60)
+	eq(p.crystals, 0)
+	eq(p.coins, 60)
+	eq(Profile.depositCrystals(p), 0, "empty pouch gives nothing")
+end)
+
+test("stats: upgrades and skill cards change the right numbers, within their caps", function()
+	local base = Stats.of({ xp = 0, staffUpgrade = 0 })
+	eq(base.damageMultiplier, 1)
+	eq(base.cooldownMultiplier, 1)
+	eq(base.critChance, 0)
+	eq(base.maxHealth, Progression.maxHealth(1))
+	eq(base.pouchCapacity, Balance.pouch.baseCapacity)
+	eq(base.regen, 0)
+	local strong = Stats.of({
+		xp = 0,
+		staffUpgrade = 0,
+		upgrades = { pouch = 2, health = 5, regen = 3, crit = 4 },
+		skills = { swift = 2, sharp = 1, reach = 1, lucky = 1, tough = 1, magnet = 1, feet = 1, wave = 2, wisdom = 1, echo = 1 },
+		equippedCharm = "swift",
+	})
+	assert(strong.damageMultiplier > 1 and strong.cooldownMultiplier < 1 and strong.rangeMultiplier > 1, "combat skills")
+	assert(math.abs(strong.critChance - (4 * Balance.upgrades.crit.perLevel + SkillData.skills.lucky.perRank)) < 1e-9, "crit adds up")
+	assert(strong.maxHealth > base.maxHealth, "health")
+	eq(strong.pouchCapacity, Balance.pouch.baseCapacity + 2 * Balance.upgrades.pouch.perLevel)
+	eq(strong.regen, 3 * Balance.upgrades.regen.perLevel)
+	assert(strong.walkSpeed > Progression.walkSpeed("swift"), "quick feet on top of the charm")
+	assert(strong.crystalMultiplier > 1 and strong.xpMultiplier > 1 and strong.companionMultiplier > 1, "economy skills")
+	eq(strong.waveRank, 2)
+	local wave = Progression.waveStats(0, 3, nil, strong.waveRank)
+	local plain = Progression.waveStats(0, 3, nil)
+	assert(wave.cooldown < plain.cooldown and wave.radius > plain.radius, "wave skill")
+	-- Tampered numbers are clamped to the caps.
+	local capped = Stats.of({ xp = 0, staffUpgrade = 0, skills = { swift = 999 }, upgrades = { crit = 999 } })
+	eq(capped.cooldownMultiplier, 1 - SkillData.skills.swift.maxRank * SkillData.skills.swift.perRank)
+	eq(capped.critChance, Balance.upgrades.crit.maxLevel * Balance.upgrades.crit.perLevel)
+	assert(capped.cooldownMultiplier > 0.5 and capped.critChance < 0.6, "caps stay sane")
+	-- Weapon power: the multiplier grows with every level.
+	assert(Progression.tierMultiplier(10) > Progression.tierMultiplier(1), "power levels")
+	eq(#Progression.powerColor(0), 3)
+	eq(#Progression.powerColor(Balance.upgrades.power.maxLevel), 3)
+end)
+
+test("skill cards: data, distinct offers, only offered picks, coin card when all maxed", function()
+	for _, skillId in SkillData.order do
+		local skill = SkillData.skills[skillId]
+		assert(skill, "skill " .. skillId)
+		assert(Strings.has(skill.nameKey) and Strings.has(skill.descKey), "skill strings " .. skillId)
+	end
+	local p = Profile.new()
+	local rng = sequence({ 0.1, 0.5, 0.9, 0.3 })
+	SkillLogic.grantPicks(p, 0, rng)
+	eq(#p.skillOffer, 0, "no level, no offer")
+	SkillLogic.grantPicks(p, 2, rng)
+	eq(p.pendingPicks, 2)
+	eq(#p.skillOffer, SkillData.offerCount)
+	local seen = {}
+	for _, skillId in p.skillOffer do
+		assert(not seen[skillId], "distinct cards")
+		seen[skillId] = true
+	end
+	local offered = p.skillOffer[1]
+	local notOffered = nil
+	for _, skillId in SkillData.order do
+		if not seen[skillId] then
+			notOffered = skillId
+			break
+		end
+	end
+	eq(SkillLogic.pick(p, notOffered, rng), false, "not offered")
+	eq(SkillLogic.pick(p, "coins", rng), false, "coin card only when offered")
+	eq(SkillLogic.pick(p, offered, rng), true)
+	eq(p.skills[offered], 1)
+	eq(p.pendingPicks, 1)
+	eq(#p.skillOffer, SkillData.offerCount, "a new offer for the remaining pick")
+	eq(SkillLogic.pick(p, p.skillOffer[1], rng), true)
+	eq(p.pendingPicks, 0)
+	eq(#p.skillOffer, 0, "no offer without picks")
+	eq(SkillLogic.pick(p, offered, rng), false, "no picks left")
+	-- Maxed skills never come back; with only one left the offer shrinks.
+	for _, skillId in SkillData.order do
+		p.skills[skillId] = SkillData.skills[skillId].maxRank
+	end
+	p.skills.echo -= 1
+	SkillLogic.grantPicks(p, 1, rng)
+	eq(table.concat(p.skillOffer, ","), "echo", "only the unfinished skill")
+	eq(SkillLogic.pick(p, "echo", rng), true)
+	SkillLogic.grantPicks(p, 1, rng)
+	eq(table.concat(p.skillOffer, ","), "coins", "everything maxed: coin card")
+	local coins = p.coins
+	local ok, given = SkillLogic.pick(p, "coins", rng)
+	eq(ok, true)
+	eq(given, SkillData.fallbackCoins)
+	eq(p.coins, coins + SkillData.fallbackCoins)
+	-- Enough ranks for a long adventure, fewer than 99 level-ups.
+	local total = 0
+	for _, skill in SkillData.skills do
+		total += skill.maxRank
+	end
+	assert(total >= 30 and total < Progression.MAX_LEVEL - 1, "rank budget " .. total)
+end)
+
+test("sanitize: upgrades, crystals, skills and offers are cleaned", function()
+	local p = Profile.sanitize({
+		xp = 0,
+		coins = 0,
+		staffUpgrade = 999,
+		upgrades = { pouch = 3, crit = 999, power = 5, nope = 2, health = -1 },
+		crystals = -5,
+		skills = { swift = 99, nope = 1, sharp = "x" },
+		skillOffer = { "swift", "nope", "coins", "sharp", "reach" },
+		pendingPicks = 2.5,
+	})
+	eq(p.staffUpgrade, Balance.upgrades.power.maxLevel, "power capped")
+	eq(p.upgrades.pouch, 3)
+	eq(p.upgrades.crit, Balance.upgrades.crit.maxLevel, "capped")
+	eq(p.upgrades.power, nil, "power lives in staffUpgrade")
+	eq(p.upgrades.nope, nil)
+	eq(p.upgrades.health, nil)
+	eq(p.crystals, 0)
+	eq(p.skills.swift, SkillData.skills.swift.maxRank)
+	eq(p.skills.nope, nil)
+	eq(p.skills.sharp, nil)
+	eq(table.concat(p.skillOffer, ","), "swift,coins,sharp", "unknown cards dropped, at most three")
+	eq(p.pendingPicks, 0)
 end)
 
 test("game content is English only (no Turkish letters in source)", function()

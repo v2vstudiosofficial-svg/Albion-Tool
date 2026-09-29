@@ -47,9 +47,10 @@ local remotes = replicated:FindFirstChild("Remotes")
 for _, name in {
 	"EquipWeapon",
 	"ChestAction",
+	"PickSkill",
 	"RequestWave",
 	"Interact",
-	"UpgradeStaff",
+	"BuyUpgrade",
 	"EquipCharm",
 	"RetryLoad",
 	"RewardGranted",

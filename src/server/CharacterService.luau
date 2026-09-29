@@ -8,6 +8,7 @@ local Progression = require(Shared.Progression)
 local Balance = require(Shared.Balance)
 local WorldData = require(Shared.WorldData)
 local WeaponModels = require(Shared.WeaponModels)
+local Stats = require(Shared.Stats)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
 local Profile = require(script.Parent.Profile)
 local Targets = require(script.Parent.Targets)
@@ -68,8 +69,8 @@ local function applyStats(player: Player, fullHeal: boolean)
 	if not humanoid or not profile or humanoid.Health <= 0 then
 		return
 	end
-	local level = Progression.levelForXp(profile.xp)
-	local maxHealth = Progression.maxHealth(level)
+	local stats = Stats.of(profile)
+	local maxHealth = stats.maxHealth
 	if humanoid.MaxHealth ~= maxHealth then
 		local ratio = if humanoid.MaxHealth > 0 then humanoid.Health / humanoid.MaxHealth else 1
 		humanoid.MaxHealth = maxHealth
@@ -77,14 +78,14 @@ local function applyStats(player: Player, fullHeal: boolean)
 	elseif fullHeal then
 		humanoid.Health = maxHealth
 	end
-	humanoid.WalkSpeed = Progression.walkSpeed(profile.equippedCharm)
+	humanoid.WalkSpeed = stats.walkSpeed
 
 	local main = Profile.loadout(profile)
 	local weapon = attachWeapon(character :: Model, main)
 	local glow = weapon and weapon:FindFirstChild("Glow")
 	local light = glow and glow:FindFirstChildOfClass("PointLight")
 	if light then
-		light.Color = rgb(Progression.staffTier(profile.staffUpgrade).color)
+		light.Color = rgb(Progression.powerColor(profile.staffUpgrade))
 	end
 end
 
@@ -120,13 +121,19 @@ end
 local HEAL_INTERVAL = 0.5
 local PLAZA = WorldData.vector(WorldData.plaza)
 
-local function healInVillage(dt: number)
+local function healPlayers(dt: number)
 	local village = Balance.village
 	for _, target in Targets.get() do
 		local humanoid = target.humanoid
 		local offset = target.root.Position - PLAZA
-		if humanoid.Health < humanoid.MaxHealth and Vector3.new(offset.X, 0, offset.Z).Magnitude <= village.radius then
-			humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + village.healPerSecond * dt)
+		if humanoid.Health < humanoid.MaxHealth then
+			-- Fast healing in the village; the regen upgrade heals a little everywhere else.
+			local inVillage = Vector3.new(offset.X, 0, offset.Z).Magnitude <= village.radius
+			local profile = PlayerProfiles.get(target.player)
+			local rate = if inVillage then village.healPerSecond elseif profile then Stats.of(profile).regen else 0
+			if rate > 0 then
+				humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + rate * dt)
+			end
 		end
 	end
 end
@@ -135,7 +142,7 @@ function CharacterService.start()
 	Players.RespawnTime = Balance.player.respawnTime
 	task.spawn(function()
 		while true do
-			healInVillage(task.wait(HEAL_INTERVAL))
+			healPlayers(task.wait(HEAL_INTERVAL))
 		end
 	end)
 	local function watch(player: Player)

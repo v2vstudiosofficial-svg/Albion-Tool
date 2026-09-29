@@ -94,7 +94,7 @@ local function updateRing(edge: CylinderHandleAdornment, fill: CylinderHandleAdo
 		return
 	end
 	local weapon = WeaponData.weapons[Attrs.get("Weapon", "staff")] or WeaponData.weapons.staff
-	local radius = weapon.range
+	local radius = weapon.range * Attrs.stats().rangeMultiplier
 	local drop = (root :: BasePart).Size.Y / 2 + (humanoid :: Humanoid).HipHeight - 0.1
 	local flat = CFrame.new(0, -drop, 0) * CFrame.Angles(math.rad(90), 0, 0)
 	for _, ring in { edge, fill } do

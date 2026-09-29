@@ -343,13 +343,21 @@ test("invalid client payloads are ignored safely", function()
 	end
 	remotes.EquipCharm.OnServerEvent:Fire(alice, 123)
 	remotes.EquipCharm.OnServerEvent:Fire(alice, "glow")
-	remotes.UpgradeStaff.OnServerEvent:Fire(alice)
+	for _, stat in { "power", "nope", 5, {} } do
+		remotes.BuyUpgrade.OnServerEvent:Fire(alice, stat)
+		advance(0.5)
+	end
+	for _, choice in { "sharp", 7, string.rep("a", 200), "coins" } do
+		remotes.PickSkill.OnServerEvent:Fire(alice, choice)
+		advance(0.4)
+	end
 	remotes.RequestWave.OnServerEvent:Fire(alice)
 	remotes.RetryLoad.OnServerEvent:Fire(alice)
 	advance(1)
 	eq(attr(alice, "XP"), xp, "xp unchanged")
 	eq(attr(alice, "Coins"), coins, "coins unchanged")
 	eq(attr(alice, "StaffTier"), 0, "no upgrade from afar")
+	eq(attr(alice, "Upgrades"), "", "no bogus upgrades")
 	eq(attr(alice, "Charm"), "", "cannot equip unowned charm")
 	eq(attr(alice, "Weapon"), "staff", "no locked or bogus weapons")
 	eq(attr(alice, "Companions"), "", "no floating slot opened")
@@ -433,16 +441,17 @@ test("quest 4: upgrade at the Smith once; throttled and priced correctly", funct
 	talk(alice, "Elder")
 	eq(attr(alice, "QuestId"), "first_upgrade")
 	local coins = attr(alice, "Coins")
-	assert(coins >= Balance.staff.tiers[2].cost, "enough coins without grinding: " .. coins)
+	local cost = Progression.upgradeCost("power", 0) :: number
+	assert(coins >= cost, "enough coins without grinding: " .. coins)
 	talk(alice, "Smith")
 	eq(logCount("OpenShop", function(e)
 		return e.target == alice
 	end), 1, "shop opened")
-	remotes.UpgradeStaff.OnServerEvent:Fire(alice)
-	remotes.UpgradeStaff.OnServerEvent:Fire(alice)
+	remotes.BuyUpgrade.OnServerEvent:Fire(alice, "power")
+	remotes.BuyUpgrade.OnServerEvent:Fire(alice, "power")
 	advance(0.2)
 	eq(attr(alice, "StaffTier"), 1, "single upgrade")
-	eq(attr(alice, "Coins"), coins - Balance.staff.tiers[2].cost, "charged once")
+	eq(attr(alice, "Coins"), coins - cost, "charged once")
 	eq(attr(alice, "QuestId"), "ruin_vines", "quest completed")
 	eq(attr(alice, "Charms"), "guard,swift")
 	eq(attr(alice, "Flags"), "gardens,lanterns")
@@ -740,6 +749,152 @@ test("every 25 levels a floating weapon joins the fight from behind the player",
 	toVillage(alice)
 end)
 
+test("crystals: purifies fill the pouch (not coins), the Great Lantern turns them into coins", function()
+	-- Earlier fights may have filled the pouch; empty it first.
+	teleport(alice, vec(WorldData.plaza, 3))
+	advance(1)
+	eq(attr(alice, "Crystals"), 0, "emptied at the lantern")
+	local coins = attr(alice, "Coins")
+	local crystals = attr(alice, "Crystals")
+	nearAnyEnemy(alice, "Gloomling", "glade")
+	local before = logCount("Fx", function(e)
+		return e.target == alice and e.args[1] == "crystals"
+	end)
+	local waited = 0
+	while logCount("Fx", function(e)
+		return e.target == alice and e.args[1] == "crystals"
+	end) == before and waited < 10 do
+		advance(0.2)
+		heal(alice)
+		waited += 0.2
+	end
+	assert(attr(alice, "Crystals") > crystals, "crystals in the pouch")
+	eq(attr(alice, "Coins"), coins, "purifies pay no coins directly")
+	local carried = attr(alice, "Crystals")
+	toVillage(alice)
+	teleport(alice, vec(WorldData.plaza, 3) + Vector3.new(3, 0, 0))
+	advance(1)
+	eq(attr(alice, "Crystals"), 0, "pouch emptied at the lantern")
+	eq(attr(alice, "Coins"), coins + carried, "one coin per crystal")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_deposit" and e.args[2] == carried
+	end), 1, "told about the deposit")
+end)
+
+test("a full pouch keeps its capacity and warns once", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local Stats = H.loadModule("src/shared/Stats.luau")
+	local profile = PlayerProfiles.get(alice)
+	local capacity = Stats.of(profile).pouchCapacity
+	advance(21) -- past the warning cooldown from earlier fights
+	profile.crystals = capacity - 1
+	PlayerProfiles.sync(alice)
+	local warnings = logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_pouch_full"
+	end)
+	for _ = 1, 3 do
+		nearAnyEnemy(alice, "Gloomling", "glade")
+		for _ = 1, 20 do
+			advance(0.2)
+			heal(alice)
+		end
+	end
+	eq(attr(alice, "Crystals"), capacity, "never above capacity")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_pouch_full"
+	end) - warnings, 1, "one warning, not spam")
+	toVillage(alice)
+	teleport(alice, vec(WorldData.plaza, 3))
+	advance(1)
+	eq(attr(alice, "Crystals"), 0)
+end)
+
+test("forge upgrades: levels, prices, health and regen take effect; far or unknown ignored", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local profile = PlayerProfiles.get(alice)
+	profile.coins += 5000
+	PlayerProfiles.sync(alice)
+	local coins = attr(alice, "Coins")
+	remotes.BuyUpgrade.OnServerEvent:Fire(alice, "health")
+	advance(0.5)
+	eq(attr(alice, "Upgrades"), "", "not near the Smith")
+	talk(alice, "Smith")
+	local maxHealth = humanoid(alice).MaxHealth
+	remotes.BuyUpgrade.OnServerEvent:Fire(alice, "health")
+	advance(0.5)
+	eq(attr(alice, "Upgrades"), "health:1")
+	eq(attr(alice, "Coins"), coins - Progression.upgradeCost("health", 0), "charged the listed price")
+	assert(humanoid(alice).MaxHealth > maxHealth, "more health")
+	for _ = 1, 2 do
+		remotes.BuyUpgrade.OnServerEvent:Fire(alice, "regen")
+		advance(0.5)
+	end
+	eq(attr(alice, "Upgrades"), "health:1,regen:2")
+	remotes.BuyUpgrade.OnServerEvent:Fire(alice, "teleport")
+	advance(0.5)
+	eq(attr(alice, "Upgrades"), "health:1,regen:2", "unknown upgrade ignored")
+	-- Regen heals slowly outside the village.
+	teleport(alice, vec(WorldData.areas.hollow.center, 3) + Vector3.new(0, 0, 60))
+	humanoid(alice).Health = 20
+	advance(2)
+	local healed = humanoid(alice).Health - 20
+	assert(healed > 0 and healed < Balance.village.healPerSecond, "slow regen outside: " .. healed)
+	toVillage(alice)
+end)
+
+test("level-ups earn skill picks; only offered cards can be taken, once each", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local profile = PlayerProfiles.get(alice)
+	local level = attr(alice, "Level")
+	local picksBefore = attr(alice, "PendingPicks")
+	PlayerProfiles.grant(alice, { xp = Progression.thresholds[level + 2] - profile.xp }, "quest")
+	advance(0.2)
+	eq(attr(alice, "PendingPicks"), picksBefore + 2, "one pick per level gained")
+	local offer = string.split(attr(alice, "SkillOffer"), ",")
+	eq(#offer, 3, "three cards")
+	eq(#{ table.unpack(offer) } == 3 and offer[1] ~= offer[2] and offer[2] ~= offer[3] and offer[1] ~= offer[3], true, "distinct cards")
+	local notOffered = nil
+	for _, skillId in { "swift", "sharp", "reach", "lucky", "tough", "magnet", "feet", "wave", "wisdom", "echo" } do
+		if not table.find(offer, skillId) then
+			notOffered = skillId
+			break
+		end
+	end
+	remotes.PickSkill.OnServerEvent:Fire(alice, notOffered)
+	advance(0.5)
+	eq(attr(alice, "PendingPicks"), picksBefore + 2, "a card that was not offered does nothing")
+	remotes.PickSkill.OnServerEvent:Fire(alice, offer[1])
+	remotes.PickSkill.OnServerEvent:Fire(alice, offer[1])
+	advance(0.5)
+	eq(attr(alice, "PendingPicks"), picksBefore + 1, "spam picks once")
+	assert(string.find(attr(alice, "Skills"), offer[1] .. ":", 1, true), "skill learned")
+	while attr(alice, "PendingPicks") > 0 do
+		remotes.PickSkill.OnServerEvent:Fire(alice, string.split(attr(alice, "SkillOffer"), ",")[1])
+		advance(0.5)
+	end
+	eq(attr(alice, "SkillOffer"), "", "no offer without picks")
+end)
+
+test("critical hits happen and are marked for clients", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local profile = PlayerProfiles.get(alice)
+	profile.upgrades.crit = Balance.upgrades.crit.maxLevel
+	profile.skills.lucky = 5
+	PlayerProfiles.sync(alice)
+	local crits = logCount("Fx", function(e)
+		return e.args[1] == "hit" and e.args[5] == true
+	end)
+	nearAnyEnemy(alice, "Rockling", "hollow")
+	for _ = 1, 20 do
+		advance(0.2)
+		heal(alice)
+	end
+	assert(logCount("Fx", function(e)
+		return e.args[1] == "hit" and e.args[5] == true
+	end) > crits, "some hits were critical")
+	toVillage(alice)
+end)
+
 test("Studio-only LvDebugLevel attribute moves loaded players to a level", function()
 	-- Lune does not fire attribute signals by itself; the harness signal stands in for Roblox's.
 	local changed = H.signalFor(workspace, "attr:LvDebugLevel")
@@ -760,7 +915,7 @@ end)
 
 test("leaving and rejoining restores the saved profile", function()
 	local snapshot = {}
-	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots" } do
+	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots", "Upgrades", "Crystals", "Skills", "SkillOffer", "PendingPicks" } do
 		snapshot[key] = attr(alice, key)
 	end
 	leave(alice)

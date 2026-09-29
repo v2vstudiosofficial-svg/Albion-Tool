@@ -10,6 +10,7 @@ local Progression = require(Shared:WaitForChild("Progression"))
 local Goals = require(Shared:WaitForChild("Goals"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
+local Attrs = require(script.Parent.Attrs)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -42,12 +43,12 @@ function Hud.start()
 
 	-- Player card ---------------------------------------------------------------------------
 	local isTouch = UiKit.isTouch()
-	local topLeft = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 90))
+	local topLeft = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 112))
 	local topCenter = UiKit.region(gui, Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 12), Vector2.new(440, 300))
 	local middle = UiKit.region(gui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.36), Vector2.new(460, 110))
 	local bottom = UiKit.region(gui, Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, if isTouch then -130 else -24), Vector2.new(460, 86))
 
-	local card = UiKit.panel({ Size = UDim2.fromOffset(232, 80) }, topLeft)
+	local card = UiKit.panel({ Size = UDim2.fromOffset(232, 104) }, topLeft)
 	local badge = UiKit.create("Frame", {
 		Position = UDim2.fromOffset(10, 10),
 		Size = UDim2.fromOffset(60, 60),
@@ -84,6 +85,22 @@ function Hud.start()
 		Position = UDim2.fromOffset(106, 47),
 		Size = UDim2.fromOffset(110, 26),
 		TextColor3 = colors.coin,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, card)
+
+	-- Light Crystal pouch: carried / capacity; turns into coins at the Great Lantern.
+	local crystalIcon = UiKit.create("Frame", {
+		Position = UDim2.fromOffset(82, 80),
+		Size = UDim2.fromOffset(15, 15),
+		Rotation = 45,
+		BackgroundColor3 = Color3.fromRGB(150, 210, 255),
+		BorderSizePixel = 0,
+	}, card)
+	UiKit.corner(crystalIcon, 3)
+	local crystalsLabel = UiKit.label({
+		Position = UDim2.fromOffset(106, 75),
+		Size = UDim2.fromOffset(110, 24),
+		TextColor3 = Color3.fromRGB(150, 210, 255),
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, card)
 
@@ -185,6 +202,10 @@ function Hud.start()
 			xpFill.Size = UDim2.fromScale(1, 1)
 		end
 		coinsLabel.Text = Strings.get("hud_coins", player:GetAttribute("Coins") or 0)
+		local capacity = Attrs.stats().pouchCapacity
+		local crystals = player:GetAttribute("Crystals") or 0
+		crystalsLabel.Text = Strings.get("hud_crystals", crystals, capacity)
+		crystalsLabel.TextColor3 = if crystals >= capacity then colors.bad else Color3.fromRGB(150, 210, 255)
 	end
 
 	local lastQuestText = ""
@@ -208,9 +229,9 @@ function Hud.start()
 			local goal = Goals.next(player:GetAttribute("XP") or 0, player:GetAttribute("Coins") or 0, player:GetAttribute("StaffTier") or 0)
 			title = Strings.get("goal_title")
 			if goal.kind == "staff" and goal.affordable then
-				text = Strings.get("goal_staff_ready", goal.target + 1)
+				text = Strings.get("goal_staff_ready", goal.target)
 			elseif goal.kind == "staff" then
-				text = Strings.get("goal_staff_coins", goal.target + 1, goal.missing)
+				text = Strings.get("goal_staff_coins", goal.target, goal.missing)
 			elseif goal.kind == "level" then
 				text = Strings.get("goal_level", goal.target, goal.current)
 			else
@@ -318,7 +339,7 @@ function Hud.start()
 		knownLevel = level
 	end
 
-	for _, name in { "XP", "Coins" } do
+	for _, name in { "XP", "Coins", "Crystals", "Upgrades" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshStats)
 	end
 	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState" } do

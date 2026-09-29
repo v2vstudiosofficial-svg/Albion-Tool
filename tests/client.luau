@@ -281,9 +281,13 @@ if returning then
 			Flags = "gardens,lanterns",
 			QuestId = "ruin_vines",
 			QuestState = "available",
+			SkillOffer = "swift,sharp,wave",
+			PendingPicks = 1,
 			DataState = "ready",
 		})
 		advance(0.3)
+		assert(not shownText(Strings.get("skills_title")), "a saved offer does not pop up by itself")
+		assert(shownText(Strings.get("skill_button", 1)), "but the pick button is there")
 		for _, flag in { "gardens", "lanterns" } do
 			assert(workspace.ClientWorld:FindFirstChild("Restoration_" .. flag), "restoration " .. flag)
 		end
@@ -522,7 +526,8 @@ test("exploration beacons, vine barrier and restoration follow progress", functi
 end)
 
 test("upgrade nudge and Smith marker appear when coins suffice", function()
-	setAttributes({ Coins = Balance.staff.tiers[2].cost })
+	local Progression = H.loadModule("src/shared/Progression.luau")
+	setAttributes({ Coins = Progression.upgradeCost("power", 0) })
 	assert(shownText(Strings.get("notice_can_upgrade")), "nudge toast")
 	local smithMarker = false
 	for _, child in playerGui:GetChildren() do
@@ -634,6 +639,61 @@ test("chests menu: slots by level, one unlock at a time, timers, open and reward
 	setAttributes({ Level = 3, Chests = "" })
 end)
 
+test("crystal pouch on the HUD; a full pouch guides back to the Great Lantern", function()
+	local Balance2 = H.loadModule("src/shared/Balance.luau")
+	local capacity = Balance2.pouch.baseCapacity
+	setAttributes({ Crystals = 12, Upgrades = "" })
+	assert(shownText(Strings.get("hud_crystals", 12, capacity)), "pouch count")
+	setAttributes({ Upgrades = "pouch:1" })
+	assert(shownText(Strings.get("hud_crystals", 12, capacity + Balance2.upgrades.pouch.perLevel)), "capacity follows the upgrade")
+	setAttributes({ Upgrades = "", Crystals = capacity })
+	advance(0.5)
+	local anchorPart = nil
+	for _, child in playerGui:GetChildren() do
+		if child:IsA("BillboardGui") and child.Enabled and child.Adornee and child.Adornee.Name == "WaypointAnchor" then
+			anchorPart = child.Adornee
+		end
+	end
+	assert(anchorPart, "waypoint shown")
+	local at = H.read(anchorPart, "Position")
+	local plaza = vec(WorldData.plaza)
+	assert(Vector3.new(at.X - plaza.X, 0, at.Z - plaza.Z).Magnitude < 1, "full pouch guides to the lantern")
+	remotes.Fx.OnClientEvent:Fire("crystals", plaza + Vector3.new(0, 0, -20), 5)
+	remotes.Fx.OnClientEvent:Fire("deposit", plaza, 60)
+	advance(1)
+	setAttributes({ Crystals = 0 })
+end)
+
+test("skill cards: open on a new offer, pick sends the card, later hides, button reopens", function()
+	local SkillData = H.loadModule("src/shared/SkillData.luau")
+	-- The server's first sync sends the (empty) saved offer; a later offer is new.
+	setAttributes({ Skills = "swift:1", SkillOffer = "", PendingPicks = 0 })
+	setAttributes({ SkillOffer = "swift,sharp,wave", PendingPicks = 2 })
+	assert(shownText(Strings.get("skills_title")), "cards open on a new offer")
+	assert(shownText(Strings.get(SkillData.skills.swift.nameKey)), "card name")
+	assert(shownText(Strings.get("skill_rank", 2, SkillData.skills.swift.maxRank)), "next rank shown")
+	click(findButton(Strings.get("skill_later")))
+	assert(not shownText(Strings.get("skills_title")), "later hides the cards")
+	click(findButton(Strings.get("skill_button", 2)))
+	assert(shownText(Strings.get("skills_title")), "button reopens them")
+	local cards = playerGui.SkillCards
+	local picked = nil
+	for _, object in cards:GetDescendants() do
+		if object:IsA("TextLabel") and object.Text == Strings.get(SkillData.skills.sharp.nameKey) then
+			picked = object.Parent
+		end
+	end
+	assert(picked, "sharp card")
+	click(picked)
+	eq(sent("PickSkill", function(args)
+		return args[1] == "sharp"
+	end), 1, "pick sent")
+	setAttributes({ Skills = "sharp:1,swift:1", SkillOffer = "coins", PendingPicks = 1 })
+	assert(shownText(Strings.get("skill_coins_name")), "coin card")
+	setAttributes({ SkillOffer = "", PendingPicks = 0 })
+	assert(not shownText(Strings.get("skills_title")), "closed when nothing is left")
+end)
+
 test("bag: equip an owned charm, locked ones do nothing", function()
 	setAttributes({ Charms = "swift", Charm = "" })
 	click(findButton(Strings.get("menu_bag")))
@@ -668,13 +728,22 @@ test("settings toggle sound and the performance overlay", function()
 	assert(perf, "perf overlay text")
 end)
 
-test("shop opens from the server, upgrades, and closes when walking away", function()
+test("forge opens from the server with every upgrade, buys, and closes when walking away", function()
+	local Progression = H.loadModule("src/shared/Progression.luau")
+	setAttributes({ Coins = 10000, StaffTier = 3, Upgrades = "pouch:2" })
 	teleport(vec(WorldData.npcs.Smith.position, 1.5) + Vector3.new(0, 0, 4))
 	remotes.OpenShop.OnClientEvent:Fire()
 	advance(0.2)
 	assert(shownText(Strings.get("shop_title")), "shop open")
-	click(findButton(Strings.get("shop_upgrade")))
-	eq(sent("UpgradeStaff"), 1, "upgrade requested")
+	for _, stat in Balance.upgradeOrder do
+		local upgrade = Balance.upgrades[stat]
+		local level = if stat == "power" then 3 elseif stat == "pouch" then 2 else 0
+		assert(shownText(Strings.get(upgrade.nameKey) .. "  " .. Strings.get("upgrade_level", level, upgrade.maxLevel)), stat .. " row")
+	end
+	click(findButton(Strings.get("hud_coins", Progression.upgradeCost("pouch", 2))))
+	eq(sent("BuyUpgrade", function(args)
+		return args[1] == "pouch"
+	end), 1, "pouch upgrade requested")
 	teleport(vec(WorldData.spawn, 3))
 	advance(1.2)
 	assert(not shownText(Strings.get("shop_title")), "shop closed after walking away")
@@ -734,14 +803,15 @@ test("after the story the panel and waypoint show the next personal goal", funct
 	local at = waypointAt()
 	assert(near(at, zones.glade.center) or near(at, zones.grove.center) or near(at, zones.hollow.center), "level goal guides to a creature zone")
 
-	setAttributes({ Coins = Balance.staff.tiers[3].cost })
+	local nextCost = Progression.upgradeCost("power", 1)
+	setAttributes({ Coins = nextCost })
 	advance(0.5)
-	assert(shownText(Strings.get("goal_staff_ready", 3)), "affordable staff goal shown")
+	assert(shownText(Strings.get("goal_staff_ready", 2)), "affordable power goal shown")
 	assert(near(waypointAt(), WorldData.npcs.Smith.position), "affordable upgrade guides to Smith")
 
 	setAttributes({ XP = Progression.thresholds[Progression.MAX_LEVEL], Coins = 0 })
 	advance(0.5)
-	assert(shownText(Strings.get("goal_staff_coins", 3, Balance.staff.tiers[3].cost)), "coins still needed")
+	assert(shownText(Strings.get("goal_staff_coins", 2, nextCost)), "coins still needed")
 	local farm = waypointAt()
 	assert(near(farm, zones.glade.center) or near(farm, zones.grove.center) or near(farm, zones.hollow.center), "coin goal guides to creatures")
 end)

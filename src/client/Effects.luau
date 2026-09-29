@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Balance = require(Shared:WaitForChild("Balance"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local WeaponData = require(Shared:WaitForChild("WeaponData"))
+local Progression = require(Shared:WaitForChild("Progression"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 
@@ -122,9 +123,8 @@ local function flash(model: Instance, color: Color3, seconds: number, startTrans
 	Debris:AddItem(highlight, seconds + 0.05)
 end
 
-local function tierColor(tier: number): Color3
-	local entry = Balance.staff.tiers[tier + 1] or Balance.staff.tiers[1]
-	return UiKit.rgb(entry.color)
+local function tierColor(power: number): Color3
+	return UiKit.rgb(Progression.powerColor(power))
 end
 
 local function swingArm(character: Model?)
@@ -321,12 +321,50 @@ function Effects.attack(attacker: Player?, weaponId: string, slot: number, origi
 	end
 end
 
-local function onHit(model: Model?, position: Vector3, amount: number)
+local CRIT_COLOR = Color3.fromRGB(255, 120, 90)
+local CRYSTAL_COLOR = Color3.fromRGB(150, 210, 255)
+
+local function onHit(model: Model?, position: Vector3, amount: number, crit: boolean?)
 	if model then
 		flash(model, Color3.new(1, 1, 1), 0.15, 0.2)
 	end
-	Effects.popup(position + Vector3.new(math.random() * 2 - 1, 0, math.random() * 2 - 1), tostring(amount), GOLD, 24)
+	local jitter = Vector3.new(math.random() * 2 - 1, 0, math.random() * 2 - 1)
+	if crit then
+		Effects.popup(position + jitter, tostring(amount) .. "!", CRIT_COLOR, 34)
+	else
+		Effects.popup(position + jitter, tostring(amount), GOLD, 24)
+	end
 	Audio.play("hit")
+end
+
+-- A few little crystals fly from the purified creature into the local player.
+local function onCrystals(from: Vector3, amount: number)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return
+	end
+	for index = 1, math.clamp(amount, 1, 6) do
+		local gem = newPart({
+			Size = Vector3.new(0.5, 0.5, 0.5),
+			CFrame = CFrame.new(from + Vector3.new(math.random() * 2 - 1, 1 + math.random(), math.random() * 2 - 1)) * CFrame.Angles(0, 0, math.rad(45)),
+			Color = CRYSTAL_COLOR,
+			Material = Enum.Material.Neon,
+		})
+		task.delay(0.1 + index * 0.05, function()
+			if root.Parent then
+				UiKit.tween(gem, 0.35, { CFrame = CFrame.new(root.Position + Vector3.new(0, 1, 0)), Size = Vector3.new(0.2, 0.2, 0.2) })
+			end
+			fadeOut(gem, 0.45)
+		end)
+	end
+	Audio.play("pickup")
+end
+
+local function onDeposit(lantern: Vector3, _coins: number)
+	Effects.burst(lantern + Vector3.new(0, 6, 0), GOLD, 40, 12)
+	Effects.burst(lantern + Vector3.new(0, 6, 0), CRYSTAL_COLOR, 20, 10)
+	Audio.play("levelUp")
 end
 
 local function onPurify(position: Vector3, kind: string, facing: Vector3?)
@@ -582,6 +620,8 @@ local handlers = {
 		end
 	end,
 	hit = onHit,
+	crystals = onCrystals,
+	deposit = onDeposit,
 	purify = onPurify,
 	projectile = onProjectile,
 	projectileEnd = onProjectileEnd,

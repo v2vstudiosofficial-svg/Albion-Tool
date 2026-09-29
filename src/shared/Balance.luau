@@ -16,16 +16,29 @@ return {
 		respawnTime = 3,
 	},
 
-	-- Weapon power tiers bought from the Smith; they multiply every weapon's damage.
-	staff = {
-		-- tiers[staffUpgrade + 1]
-		tiers = {
-			{ damage = 25, cost = 0, color = { 255, 236, 170 } },
-			{ damage = 34, cost = 40, color = { 150, 230, 255 } },
-			{ damage = 45, cost = 400, color = { 190, 160, 255 } },
-			{ damage = 60, cost = 1000, color = { 255, 190, 120 } },
-		},
+	-- Forge upgrades bought from the Smith. Going from level n to n + 1 costs
+	-- floor(baseCost * growth ^ n) coins. "power" is saved as profile.staffUpgrade (attribute
+	-- StaffTier) for save compatibility; the others live in profile.upgrades.
+	upgradeOrder = { "power", "pouch", "health", "regen", "crit" },
+	upgrades = {
+		-- Weapon damage +perLevel (fraction) per level.
+		power = { nameKey = "upgrade_power_name", descKey = "upgrade_power_desc", maxLevel = 50, baseCost = 40, growth = 1.2, perLevel = 0.12 },
+		-- Crystal pouch capacity +perLevel per level.
+		pouch = { nameKey = "upgrade_pouch_name", descKey = "upgrade_pouch_desc", maxLevel = 20, baseCost = 30, growth = 1.22, perLevel = 20 },
+		-- Max health +perLevel (fraction) per level.
+		health = { nameKey = "upgrade_health_name", descKey = "upgrade_health_desc", maxLevel = 50, baseCost = 35, growth = 1.2, perLevel = 0.06 },
+		-- Health per second outside the village.
+		regen = { nameKey = "upgrade_regen_name", descKey = "upgrade_regen_desc", maxLevel = 20, baseCost = 50, growth = 1.22, perLevel = 0.5 },
+		-- Critical hit chance +perLevel per level.
+		crit = { nameKey = "upgrade_crit_name", descKey = "upgrade_crit_desc", maxLevel = 20, baseCost = 80, growth = 1.25, perLevel = 0.015 },
 	},
+	-- Weapon glow color by power level band (every 10 levels).
+	powerColors = { { 255, 236, 170 }, { 150, 230, 255 }, { 190, 160, 255 }, { 255, 190, 120 }, { 255, 130, 200 }, { 255, 255, 255 } },
+	critDamage = 2,
+
+	-- Purified creatures drop Light Crystals into the pouch; the Great Lantern in the village
+	-- plaza turns them into coins (one coin each).
+	pouch = { baseCapacity = 60, lanternRadius = 14 },
 
 	wave = {
 		unlockLevel = 3,

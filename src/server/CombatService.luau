@@ -9,6 +9,8 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage.Shared
 local Progression = require(Shared.Progression)
 local WeaponData = require(Shared.WeaponData)
+local Balance = require(Shared.Balance)
+local Stats = require(Shared.Stats)
 local EnemyService = require(script.Parent.EnemyService)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
 local Profile = require(script.Parent.Profile)
@@ -30,6 +32,7 @@ local EQUIP_COOLDOWN = 0.3
 local nextAttack: { [Player]: { [number]: number } } = {}
 local lastWave: { [Player]: number } = {}
 local lastEquip: { [Player]: number } = {}
+local random = Random.new()
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
@@ -58,8 +61,12 @@ local function attackOrigin(root: BasePart, slot: number): Vector3
 end
 
 -- Returns true when the weapon found a target and attacked.
-local function attack(target: Targets.Target, profile: Profile.Profile, level: number, slot: number, weaponId: string, foes): boolean
+local function attack(target: Targets.Target, profile: Profile.Profile, stats: Stats.PlayerStats, slot: number, weaponId: string, foes): boolean
 	local weapon = WeaponData.weapons[weaponId]
+	if stats.rangeMultiplier ~= 1 then
+		weapon = table.clone(weapon)
+		weapon.range *= stats.rangeMultiplier
+	end
 	local origin = attackOrigin(target.root, slot)
 	local look = target.root.CFrame.LookVector
 	local accept = nil
@@ -75,13 +82,17 @@ local function attack(target: Targets.Target, profile: Profile.Profile, level: n
 		return false
 	end
 	local companion = slot > 0
-	local damage = Progression.weaponDamage(weaponId, profile.staffUpgrade, level, companion, profile.slotLevels[slot + 1])
+	local damage = Progression.weaponDamage(weaponId, profile.staffUpgrade, stats.level, companion, profile.slotLevels[slot + 1])
+		* stats.damageMultiplier
+		* (if companion then stats.companionMultiplier else 1)
 	local aim = primary.body.Position
 	fx:FireAllClients("attack", target.player, weaponId, slot, origin, aim, profile.staffUpgrade)
 	-- Heavy swings shove enemies back; other hits keep them in reach.
 	local pushFrom = if weapon.style == "spin" or weapon.style == "slam" then origin else nil
 	for _, id in plan.hits do
-		EnemyService.damage(id, target.player, damage, pushFrom)
+		local crit = random:NextNumber() < stats.critChance
+		local amount = math.max(1, math.floor(damage * (if crit then Balance.critDamage else 1) + 0.5))
+		EnemyService.damage(id, target.player, amount, pushFrom, crit)
 	end
 	return true
 end
@@ -96,13 +107,13 @@ local function update()
 			local timers = nextAttack[player] or {}
 			nextAttack[player] = timers
 			local main, companions = Profile.loadout(profile)
-			local level = Progression.levelForXp(profile.xp)
+			local stats = Stats.of(profile)
 			for slot = 0, #companions do
 				if now >= (timers[slot] or 0) then
 					local weaponId = if slot == 0 then main else companions[slot]
 					foes = foes or EnemyService.foes()
-					if attack(target, profile, level, slot, weaponId, foes) then
-						timers[slot] = now + Progression.weaponCooldown(weaponId, slot > 0)
+					if attack(target, profile, stats, slot, weaponId, foes) then
+						timers[slot] = now + Progression.weaponCooldown(weaponId, slot > 0) * stats.cooldownMultiplier
 						-- Hits may have purified enemies; look again for the next weapon.
 						foes = nil
 					else
@@ -125,7 +136,7 @@ local function onRequestWave(player: Player)
 	if not Progression.waveUnlocked(level) then
 		return
 	end
-	local stats = Progression.waveStats(profile.staffUpgrade, level, profile.equippedCharm)
+	local stats = Progression.waveStats(profile.staffUpgrade, level, profile.equippedCharm, Stats.of(profile).waveRank)
 	local last = lastWave[player]
 	if last and now - last < stats.cooldown - COOLDOWN_TOLERANCE then
 		return

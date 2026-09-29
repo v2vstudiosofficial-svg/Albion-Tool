@@ -46,7 +46,7 @@ export type Enemy = {
 local EnemyService = {}
 
 local enemies: { [number]: Enemy } = {}
-local purifiedListeners: { (string, any, { Player }) -> () } = {}
+local purifiedListeners: { (string, any, { Player }, Vector3) -> () } = {}
 local folder: Folder
 local nextId = 0
 
@@ -349,12 +349,13 @@ local function purify(enemy: Enemy)
 	local participants = EnemyLogic.participants(enemy.logic, os.clock(), window, function(player)
 		return player.Parent == Players
 	end)
+	local position = enemy.body.Position
 	enemy.model:SetAttribute("Alive", false)
-	fx:FireAllClients("purify", enemy.body.Position, enemy.kind, enemy.facing)
+	fx:FireAllClients("purify", position, enemy.kind, enemy.facing)
 	enemy.model:Destroy()
 	task.delay(enemy.stats.respawnDelay, spawnAt, enemy.spawnIndex)
 	for _, listener in purifiedListeners do
-		task.spawn(listener, enemy.kind, enemy.reward, participants)
+		task.spawn(listener, enemy.kind, enemy.reward, participants, position)
 	end
 end
 
@@ -377,7 +378,8 @@ function EnemyService.getFolder(): Folder
 	return folder
 end
 
-function EnemyService.connectPurified(listener: (string, any, { Player }) -> ())
+-- listener(enemyType, reward, participants, position)
+function EnemyService.connectPurified(listener: (string, any, { Player }, Vector3) -> ())
 	table.insert(purifiedListeners, listener)
 end
 
@@ -392,8 +394,9 @@ local function pushAway(enemy: Enemy, from: Vector3, distance: number)
 end
 
 -- Server-validated damage entry point; returns true when the hit was applied.
--- pushFrom (optional) nudges regular enemies away from the attacker for a punchier hit.
-function EnemyService.damage(id: number, player: Player, amount: number, pushFrom: Vector3?): boolean
+-- pushFrom (optional) nudges regular enemies away from the attacker for a punchier hit;
+-- crit only changes how the hit number looks on clients.
+function EnemyService.damage(id: number, player: Player, amount: number, pushFrom: Vector3?, crit: boolean?): boolean
 	local enemy = enemies[id]
 	if not enemy or not enemy.logic.alive then
 		return false
@@ -403,7 +406,7 @@ function EnemyService.damage(id: number, player: Player, amount: number, pushFro
 	end
 	local purified = EnemyLogic.applyHit(enemy.logic, player, amount, os.clock())
 	publishHp(enemy)
-	fx:FireAllClients("hit", enemy.model, enemy.body.Position, amount)
+	fx:FireAllClients("hit", enemy.model, enemy.body.Position, amount, crit == true)
 	if purified then
 		purify(enemy)
 	end

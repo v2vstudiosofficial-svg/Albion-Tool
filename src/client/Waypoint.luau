@@ -49,6 +49,10 @@ end
 -- Returns the world point to guide to and how close counts as "arrived".
 local function currentGoal(from: Vector3): (Vector3?, number)
 	local state = player:GetAttribute("QuestState")
+	-- A full crystal pouch comes first: bring it to the Great Lantern.
+	if Attrs.get("Crystals", 0) >= Attrs.stats().pouchCapacity then
+		return WorldData.vector(WorldData.plaza), HIDE_DISTANCE
+	end
 	if state == "available" then
 		return WorldData.vector(WorldData.npcs.Elder.position), HIDE_DISTANCE
 	elseif state == "level" then

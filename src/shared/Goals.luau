@@ -1,6 +1,6 @@
--- Post-story goals shown once every quest is done: an upgrade you can afford now, then the
--- next level milestone (new weapon or floating slot) up to the cap, then the remaining staff tiers. Pure so the HUD, waypoint and tests agree.
--- Staff values are StaffTier indices (0-based, like the profile); add 1 when displaying.
+-- Post-story goals shown once every quest is done: a weapon power level you can afford now,
+-- then the next level milestone (chest or floating slot) up to the cap, then the remaining power
+-- levels. Pure so the HUD, waypoint and tests agree. Power values are weapon power levels.
 local Progression = if script then require(script.Parent.Progression) else require("./Progression")
 
 local Goals = {}

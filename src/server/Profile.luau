@@ -4,6 +4,7 @@ local Balance = if Shared then require(Shared.Balance) else require("../shared/B
 local Progression = if Shared then require(Shared.Progression) else require("../shared/Progression")
 local WeaponData = if Shared then require(Shared.WeaponData) else require("../shared/WeaponData")
 local ChestData = if Shared then require(Shared.ChestData) else require("../shared/ChestData")
+local SkillData = if Shared then require(Shared.SkillData) else require("../shared/SkillData")
 
 export type QuestProgress = {
 	state: "active" | "completed",
@@ -18,7 +19,16 @@ export type Profile = {
 	schemaVersion: number,
 	xp: number,
 	coins: number,
+	-- Weapon power level (the "power" forge upgrade; named for save compatibility).
 	staffUpgrade: number,
+	-- Other forge upgrade levels: pouch, health, regen, crit.
+	upgrades: { [string]: number },
+	-- Light Crystals carried in the pouch (turned into coins at the Great Lantern).
+	crystals: number,
+	-- Skill card ranks, the current offer (skill ids, or "coins") and level-ups not yet spent.
+	skills: { [string]: number },
+	skillOffer: { string },
+	pendingPicks: number,
 	-- Main weapon, and explicit picks for floating slots (empty slots are auto-filled).
 	equippedWeapon: string,
 	companions: { string },
@@ -42,7 +52,7 @@ export type Reward = {
 local Profile = {}
 
 Profile.SCHEMA_VERSION = 1
-local MAX_UPGRADE = #Balance.staff.tiers - 1
+local MAX_UPGRADE = Balance.upgrades.power.maxLevel
 
 function Profile.new(): Profile
 	return {
@@ -50,6 +60,11 @@ function Profile.new(): Profile
 		xp = 0,
 		coins = 0,
 		staffUpgrade = 0,
+		upgrades = {},
+		crystals = 0,
+		skills = {},
+		skillOffer = {},
+		pendingPicks = 0,
 		equippedWeapon = "staff",
 		companions = {},
 		ownedWeapons = { staff = true },
@@ -83,6 +98,40 @@ function Profile.sanitize(data: any): Profile
 		data.staffUpgrade = 0
 	end
 	data.staffUpgrade = math.min(data.staffUpgrade, MAX_UPGRADE)
+
+	local upgrades = {}
+	for _, stat in Balance.upgradeOrder do
+		local value = type(data.upgrades) == "table" and data.upgrades[stat]
+		if stat ~= "power" and isValidAmount(value) and value > 0 then
+			upgrades[stat] = math.min(value, Balance.upgrades[stat].maxLevel)
+		end
+	end
+	data.upgrades = upgrades
+	if not isValidAmount(data.crystals) then
+		data.crystals = 0
+	end
+	local skills = {}
+	if type(data.skills) == "table" then
+		for skillId, value in data.skills do
+			local skill = SkillData.skills[skillId]
+			if skill and isValidAmount(value) and value > 0 then
+				skills[skillId] = math.min(value, skill.maxRank)
+			end
+		end
+	end
+	data.skills = skills
+	local offer = {}
+	if type(data.skillOffer) == "table" then
+		for _, skillId in data.skillOffer do
+			if (skillId == "coins" or SkillData.skills[skillId]) and #offer < SkillData.offerCount then
+				table.insert(offer, skillId)
+			end
+		end
+	end
+	data.skillOffer = offer
+	if not isValidAmount(data.pendingPicks) then
+		data.pendingPicks = 0
+	end
 
 	local weapons = {}
 	if type(data.ownedWeapons) == "table" then
@@ -178,18 +227,49 @@ function Profile.applyReward(profile: Profile, reward: Reward)
 	profile.coins += coins
 end
 
--- Returns ok, and on failure a reason: "max" or "coins" (with the missing amount).
-function Profile.tryUpgradeStaff(profile: Profile): (boolean, string?, number?)
-	if profile.staffUpgrade >= MAX_UPGRADE then
+function Profile.upgradeLevel(profile: Profile, stat: string): number
+	if stat == "power" then
+		return profile.staffUpgrade
+	end
+	return profile.upgrades[stat] or 0
+end
+
+-- Buys one level of a forge upgrade. Returns ok, and on failure a reason: "unknown", "max" or
+-- "coins" (with the missing amount).
+function Profile.buyUpgrade(profile: Profile, stat: string): (boolean, string?, number?)
+	if not Balance.upgrades[stat] then
+		return false, "unknown"
+	end
+	local level = Profile.upgradeLevel(profile, stat)
+	local cost = Progression.upgradeCost(stat, level)
+	if not cost then
 		return false, "max"
 	end
-	local cost = Balance.staff.tiers[profile.staffUpgrade + 2].cost
 	if profile.coins < cost then
 		return false, "coins", cost - profile.coins
 	end
 	profile.coins -= cost
-	profile.staffUpgrade += 1
+	if stat == "power" then
+		profile.staffUpgrade += 1
+	else
+		profile.upgrades[stat] = level + 1
+	end
 	return true
+end
+
+-- Puts crystals into the pouch up to its capacity; returns added, lost.
+function Profile.addCrystals(profile: Profile, amount: number, capacity: number): (number, number)
+	local added = math.clamp(capacity - profile.crystals, 0, amount)
+	profile.crystals += added
+	return added, amount - added
+end
+
+-- Empties the pouch into coins (one coin per crystal); returns the coins gained.
+function Profile.depositCrystals(profile: Profile): number
+	local amount = profile.crystals
+	profile.crystals = 0
+	profile.coins += amount
+	return amount
 end
 
 function Profile.ownsWeapon(profile: Profile, weaponId: string): boolean

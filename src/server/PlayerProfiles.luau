@@ -8,6 +8,7 @@ local ProfileStore = require(script.Parent.Packages.ProfileStore)
 local Profile = require(script.Parent.Profile)
 local QuestLogic = require(script.Parent.QuestLogic)
 local ChestLogic = require(script.Parent.ChestLogic)
+local SkillLogic = require(script.Parent.SkillLogic)
 local Shared = ReplicatedStorage.Shared
 local QuestData = require(Shared.QuestData)
 local Progression = require(Shared.Progression)
@@ -26,6 +27,21 @@ local RETRY_COOLDOWN = 5
 local store = ProfileStore.New(STORE_NAME, Profile.new())
 
 local sessions: { [Player]: any } = {}
+local random = Random.new()
+
+local function rng(): number
+	return random:NextNumber()
+end
+
+-- "id:value" pairs for small replicated tables (upgrade levels, skill ranks).
+local function pairsCsv(values: { [string]: number }): string
+	local list = {}
+	for key, value in values do
+		table.insert(list, key .. ":" .. value)
+	end
+	table.sort(list)
+	return table.concat(list, ",")
+end
 local loading: { [Player]: boolean } = {}
 local lastRetry: { [Player]: number } = {}
 local readyListeners: { (Player) -> () } = {}
@@ -79,6 +95,11 @@ function PlayerProfiles.sync(player: Player)
 	player:SetAttribute("XP", profile.xp)
 	player:SetAttribute("Coins", profile.coins)
 	player:SetAttribute("StaffTier", profile.staffUpgrade)
+	player:SetAttribute("Upgrades", pairsCsv(profile.upgrades))
+	player:SetAttribute("Crystals", profile.crystals)
+	player:SetAttribute("Skills", pairsCsv(profile.skills))
+	player:SetAttribute("SkillOffer", table.concat(profile.skillOffer, ","))
+	player:SetAttribute("PendingPicks", profile.pendingPicks)
 	local main, companions = Profile.loadout(profile)
 	player:SetAttribute("Weapon", main)
 	player:SetAttribute("Companions", table.concat(companions, ","))
@@ -138,6 +159,8 @@ function PlayerProfiles.grant(player: Player, reward: Profile.Reward, reason: st
 	local before = Progression.levelForXp(profile.xp)
 	Profile.applyReward(profile, reward)
 	local after = Progression.levelForXp(profile.xp)
+	-- Every level gained earns a skill card pick.
+	SkillLogic.grantPicks(profile, after - before, rng)
 	PlayerProfiles.sync(player)
 	rewardGranted:FireClient(player, reason, reward.xp or 0, reward.coins or 0)
 	if after > before then
@@ -171,6 +194,9 @@ local function load(player: Player)
 	session:AddUserId(player.UserId)
 	session:Reconcile()
 	Profile.sanitize(session.Data)
+	if session.Data.pendingPicks > 0 and #session.Data.skillOffer == 0 then
+		session.Data.skillOffer = SkillLogic.roll(session.Data, rng)
+	end
 
 	session.OnSessionEnd:Connect(function()
 		sessions[player] = nil

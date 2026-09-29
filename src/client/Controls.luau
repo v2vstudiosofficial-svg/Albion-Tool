@@ -38,7 +38,12 @@ local function localRoot(): BasePart?
 end
 
 local function waveStats()
-	return Progression.waveStats(Attrs.get("StaffTier", 0), Attrs.get("Level", 1), Attrs.get("Charm", "") ~= "" and Attrs.get("Charm", "") or nil)
+	return Progression.waveStats(
+		Attrs.get("StaffTier", 0),
+		Attrs.get("Level", 1),
+		Attrs.get("Charm", "") ~= "" and Attrs.get("Charm", "") or nil,
+		Attrs.stats().waveRank
+	)
 end
 
 function Controls.wave()

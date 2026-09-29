@@ -11,6 +11,9 @@ local WeaponData = if script
 local ChestData = if script
 	then require(script.Parent.ChestData)
 	else require("./ChestData")
+local SkillData = if script
+	then require(script.Parent.SkillData)
+	else require("./SkillData")
 
 local levels = Balance.levels
 Progression.MAX_LEVEL = levels.maxLevel
@@ -51,33 +54,42 @@ function Progression.maxHealth(level: number): number
 	return Balance.levels.baseHealth + Balance.levels.healthPerLevel * (level - 1)
 end
 
-function Progression.staffTier(staffUpgrade: number)
-	return Balance.staff.tiers[staffUpgrade + 1]
+-- Forge upgrade cost to go from `level` to `level + 1`; nil when already at max.
+function Progression.upgradeCost(stat: string, level: number): number?
+	local upgrade = Balance.upgrades[stat]
+	if not upgrade or level >= upgrade.maxLevel then
+		return nil
+	end
+	return math.floor(upgrade.baseCost * upgrade.growth ^ level)
 end
 
 function Progression.maxStaffUpgrade(): number
-	return #Balance.staff.tiers - 1
+	return Balance.upgrades.power.maxLevel
 end
 
--- Coins needed for the next staff tier, or nil when the staff is already at its best.
-function Progression.nextStaffCost(staffUpgrade: number): number?
-	local nextTier = Balance.staff.tiers[staffUpgrade + 2]
-	return nextTier and nextTier.cost
+-- Coins for the next weapon power level, or nil at max.
+function Progression.nextStaffCost(power: number): number?
+	return Progression.upgradeCost("power", power)
+end
+
+-- Weapon glow color for a power level ({r, g, b}).
+function Progression.powerColor(power: number): { number }
+	local colors = Balance.powerColors
+	return colors[math.clamp(power // 10 + 1, 1, #colors)]
 end
 
 local function levelMultiplier(level: number): number
 	return 1 + Balance.levels.damageBonusPerLevel * (level - 1)
 end
 
--- Weapon power tier multiplier (tier 0 = 1).
-function Progression.tierMultiplier(staffUpgrade: number): number
-	return Progression.staffTier(staffUpgrade).damage / Balance.staff.tiers[1].damage
+-- Weapon power multiplier (power level 0 = 1).
+function Progression.tierMultiplier(power: number): number
+	return 1 + Balance.upgrades.power.perLevel * power
 end
 
--- Damage of the light wave's base (the staff's power at this tier and level).
-function Progression.staffDamage(staffUpgrade: number, level: number): number
-	local tier = Progression.staffTier(staffUpgrade)
-	return math.floor(tier.damage * levelMultiplier(level) + 0.5)
+-- Damage of the light wave's base (the staff's damage at this power and level).
+function Progression.staffDamage(power: number, level: number): number
+	return math.floor(WeaponData.weapons.staff.damage * Progression.tierMultiplier(power) * levelMultiplier(level) + 0.5)
 end
 
 -- Bonus from a weapon slot's level (slot levels come from chests).
@@ -151,10 +163,12 @@ function Progression.waveUnlocked(level: number): boolean
 	return level >= Balance.wave.unlockLevel
 end
 
-function Progression.waveStats(staffUpgrade: number, level: number, charmId: string?)
+-- waveRank: rank of the "wave" skill card (shorter cooldown, bigger radius).
+function Progression.waveStats(staffUpgrade: number, level: number, charmId: string?, waveRank: number?)
 	local charm = charmId and Balance.charms[charmId]
-	local cooldown = Balance.wave.cooldown * (charm and charm.waveCooldownMultiplier or 1)
-	local radius = Balance.wave.radius * (charm and charm.waveRadiusMultiplier or 1)
+	local skill = (waveRank or 0) * SkillData.skills.wave.perRank
+	local cooldown = Balance.wave.cooldown * (charm and charm.waveCooldownMultiplier or 1) * (1 - skill)
+	local radius = Balance.wave.radius * (charm and charm.waveRadiusMultiplier or 1) * (1 + skill)
 	local damage = math.floor(Progression.staffDamage(staffUpgrade, level) * Balance.wave.damageMultiplier + 0.5)
 	return { cooldown = cooldown, radius = radius, damage = damage, knockback = Balance.wave.knockback }
 end

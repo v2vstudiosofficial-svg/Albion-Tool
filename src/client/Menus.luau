@@ -17,7 +17,7 @@ local UiKit = require(script.Parent.UiKit)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local equipCharm = Remotes:WaitForChild("EquipCharm") :: RemoteEvent
-local upgradeStaff = Remotes:WaitForChild("UpgradeStaff") :: RemoteEvent
+local upgradeStaff = Remotes:WaitForChild("BuyUpgrade") :: RemoteEvent
 local equipWeapon = Remotes:WaitForChild("EquipWeapon") :: RemoteEvent
 local chestAction = Remotes:WaitForChild("ChestAction") :: RemoteEvent
 local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
@@ -148,7 +148,7 @@ function Menus.start()
 
 	local function refreshBag()
 		local tier = Attrs.get("StaffTier", 0)
-		staffLine.Text = Strings.get("bag_staff", tier + 1, Progression.staffDamage(tier, Attrs.get("Level", 1)))
+		staffLine.Text = Strings.get("bag_staff", tier, Progression.staffDamage(tier, Attrs.get("Level", 1)))
 		local owned = Attrs.set("Charms")
 		local equipped = Attrs.get("Charm", "")
 		for charmId, view in charmRows do
@@ -480,40 +480,70 @@ function Menus.start()
 		end
 	end)
 
-	-- Shop ----------------------------------------------------------------------------------
-	local shop, shopBody = modal("shop_title", 300)
-	local shopTier = UiKit.label({ Size = UDim2.new(1, 0, 0, 30) }, shopBody)
-	local shopDamage = UiKit.label({ Position = UDim2.fromOffset(0, 34), Size = UDim2.new(1, 0, 0, 30), TextColor3 = colors.xp }, shopBody)
-	local shopCost = UiKit.label({ Position = UDim2.fromOffset(0, 68), Size = UDim2.new(1, 0, 0, 30), TextColor3 = colors.coin }, shopBody)
-	local shopButton = UiKit.button({
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -6),
-		Size = UDim2.fromOffset(220, 64),
-		Text = Strings.get("shop_upgrade"),
-		TextSize = 28,
-	}, shopBody, function()
-		upgradeStaff:FireServer()
-	end)
+	-- Forge (the Smith's shop) ------------------------------------------------------------
+	-- One row per upgrade: level, what it does and the price of the next level.
+	local shop, shopBody = modal("shop_title", 420)
+	UiKit.create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, shopBody)
+	local upgradeRows = {}
+	local function upgradeLevel(stat: string): number
+		if stat == "power" then
+			return Attrs.get("StaffTier", 0)
+		end
+		return Attrs.pairs("Upgrades")[stat] or 0
+	end
+	for order, stat in Balance.upgradeOrder do
+		local upgrade = Balance.upgrades[stat]
+		local row = UiKit.create("Frame", {
+			LayoutOrder = order,
+			Size = UDim2.new(1, 0, 0, 62),
+			BackgroundColor3 = colors.panelLight,
+			BorderSizePixel = 0,
+		}, shopBody)
+		UiKit.corner(row, 12)
+		local name = UiKit.label({
+			Position = UDim2.fromOffset(12, 4),
+			Size = UDim2.new(1, -140, 0, 26),
+			TextSize = 19,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+		UiKit.label({
+			Position = UDim2.fromOffset(12, 32),
+			Size = UDim2.new(1, -140, 0, 24),
+			Text = Strings.get(upgrade.descKey),
+			TextSize = 14,
+			TextWrapped = true,
+			TextColor3 = colors.muted,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+		local button = UiKit.button({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -8, 0.5, 0),
+			Size = UDim2.fromOffset(112, 46),
+			TextSize = 20,
+		}, row, function()
+			upgradeStaff:FireServer(stat)
+		end)
+		upgradeRows[stat] = { name = name, button = button }
+	end
 
 	local function refreshShop()
-		local tier = Attrs.get("StaffTier", 0)
-		local level = Attrs.get("Level", 1)
-		local maxTier = Progression.maxStaffUpgrade()
-		shopTier.Text = Strings.get("shop_tier", tier + 1, maxTier + 1)
-		if tier >= maxTier then
-			shopDamage.Text = Strings.get("shop_max")
-			shopCost.Text = ""
-			shopButton.Visible = false
-			return
+		local coins = Attrs.get("Coins", 0)
+		for stat, view in upgradeRows do
+			local upgrade = Balance.upgrades[stat]
+			local level = upgradeLevel(stat)
+			view.name.Text = Strings.get(upgrade.nameKey) .. "  " .. Strings.get("upgrade_level", level, upgrade.maxLevel)
+			local cost = Progression.upgradeCost(stat, level)
+			if not cost then
+				view.button.Text = Strings.get("upgrade_max")
+				view.button.BackgroundColor3 = colors.panel
+				view.button.TextColor3 = colors.muted
+			else
+				local affordable = coins >= cost
+				view.button.Text = Strings.get("hud_coins", cost)
+				view.button.BackgroundColor3 = if affordable then colors.accent else colors.panel
+				view.button.TextColor3 = if affordable then colors.panel else colors.muted
+			end
 		end
-		local cost = Progression.nextStaffCost(tier) :: number
-		local weaponId = Attrs.get("Weapon", "staff")
-		shopDamage.Text = Strings.get("shop_damage", Progression.weaponDamage(weaponId, tier, level), Progression.weaponDamage(weaponId, tier + 1, level))
-		shopCost.Text = Strings.get("shop_cost", cost)
-		shopButton.Visible = true
-		local affordable = Attrs.get("Coins", 0) >= cost
-		shopButton.BackgroundColor3 = if affordable then colors.accent else colors.panelLight
-		shopButton.TextColor3 = if affordable then colors.panel else colors.muted
 	end
 
 	-- Settings + performance overlay ---------------------------------------------------------
@@ -622,7 +652,7 @@ function Menus.start()
 			end
 		end
 	end)
-	for _, name in { "StaffTier", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests" } do
+	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			refreshBadge()
 			if openModal == chestsModal then

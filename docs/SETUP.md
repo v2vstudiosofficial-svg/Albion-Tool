@@ -32,7 +32,15 @@ Oyun içi tüm metinler İngilizce.
 3. Yaratıkların üstünde "Lv.N Ad" ve can çubuğu; ormanın derinlerinde seviye 3–6 sürüler.
 4. Görev 2: 5 Lantern Flower (yalnızca bu oyuncuya görünür) → köyde çiçek tarhları/bayraklar.
 5. Görev 3: 3 altın ışık sütunu → keşif bildirimi.
-6. Görev 4: Smith Bram → Forge → Upgrade (yetersiz sikkede uyarı) → köy fenerleri yanar, Shell Charm gelir.
+6. Görev 4: Smith Bram → Forge: 5 satır (Weapon Power, Crystal Pouch, Big Heart, Healing, Lucky Strike),
+   her birinde "Lv x/max" ve fiyat; Weapon Power al (yetersiz sikkede uyarı) → köy fenerleri yanar,
+   Shell Charm gelir. Big Heart can çubuğunu uzatır, Healing köy dışında yavaş iyileştirir.
+6b. Kristaller: yaratıklar sikke değil **kristal** verir, küçük kristaller oyuncuya uçar; sol üstte
+   "12/60" kese göstergesi. Kese dolunca sayı kırmızı olur, bir kez uyarı gelir ve elmas işaret köy
+   meydanındaki Büyük Fener'i gösterir; fenerin yanına gelince kristaller sikkeye döner (1 kristal = 1 sikke).
+6c. Seviye atlayınca ortada 3 yetenek kartı açılır (adı, açıklaması, "Rank 2/5"); birine dokun → seçilir.
+   "Later" kapatır; sol üstte "Pick a skill (n)" butonu kalır. Kartların etkisi (ör. Swift Strikes ile
+   daha sık saldırı, Long Reach ile daha geniş menzil halkası) hissedilmeli. Kritik vuruşlar kırmızı "123!".
 7. Seviye 3'te WAVE/Q açılır. Görev 5: harabe kapısında dalga → sarmaşıklar temizlenir.
 8. Görev 6: arenada Shadow Warden: kırmızı halkalardan çık, küre halkasındaki boşluktan geç.
 9. **Sandıklar**: ormanda parlayan sandıklar (Wooden/Silver/Golden/Mystic) → "Take" → sağ üstte

@@ -22,10 +22,13 @@
         "Interact": {
           "$className": "RemoteEvent"
         },
-        "UpgradeStaff": {
+        "BuyUpgrade": {
           "$className": "RemoteEvent"
         },
         "EquipCharm": {
+          "$className": "RemoteEvent"
+        },
+        "PickSkill": {
           "$className": "RemoteEvent"
         },
         "ChestAction": {

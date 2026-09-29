@@ -304,14 +304,19 @@ mark("3 Orman Keşfi", t)
 
 -- 4: upgrade
 t = startQuest("first_upgrade")
-local cost = Balance.staff.tiers[2].cost
+local cost = Progression.upgradeCost("power", 0)
+-- Creatures pay crystals, so the bot empties its pouch at the Great Lantern on the way.
+walkTo(vec(WorldData.plaza, 3), 4)
+H.advance(1)
 if (attr("Coins") or 0) < cost then
 	grind("glade", function()
-		return (attr("Coins") or 0) >= cost
+		return (attr("Coins") or 0) + (attr("Crystals") or 0) >= cost
 	end)
+	walkTo(vec(WorldData.plaza, 3), 4)
+	H.advance(1)
 end
 talk("Smith")
-remotes.UpgradeStaff.OnServerEvent:Fire(bot)
+remotes.BuyUpgrade.OnServerEvent:Fire(bot, "power")
 H.advance(0.5)
 assert(questId() ~= "first_upgrade", "upgrade quest done")
 mark("4 Asanı Güçlendir", t)
@@ -356,7 +361,13 @@ for _, row in timeline do
 	print(string.format("%-26s %5.1f dk  %2d  %5d  %4d", row.label, row.seconds / 60, row.level, row.coins, row.deaths))
 end
 print(string.format("Toplam (bot, alt sınır):   %5.1f dk", (H.now() - startAll) / 60))
-print(string.format("Seviye 25'e (ilk yüzen silah) kalan XP: %d, güç kademe 3-4 için kalan sikke: %d",
+local powerTen = 0
+for level = 1, 9 do
+	powerTen += Progression.upgradeCost("power", level)
+end
+print(string.format("Seviye 25'e (ilk yüzen silah) kalan XP: %d, güç 10 için kalan sikke: %d, kesede kristal: %d, bekleyen kart: %d",
 	math.max(0, Progression.thresholds[25] - (attr("XP") or 0)),
-	math.max(0, Balance.staff.tiers[3].cost + Balance.staff.tiers[4].cost - (attr("Coins") or 0))))
+	math.max(0, powerTen - (attr("Coins") or 0)),
+	attr("Crystals") or 0,
+	attr("PendingPicks") or 0))
 assert(#H.threadErrors == 0, "server thread errors:\n" .. (H.threadErrors[1] or ""))

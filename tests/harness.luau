@@ -212,9 +212,10 @@ Harness.remoteLog = {} :: { { remote: string, direction: string, target: any, ar
 local remoteNames = {
 	"EquipWeapon",
 	"ChestAction",
+	"PickSkill",
 	"RequestWave",
 	"Interact",
-	"UpgradeStaff",
+	"BuyUpgrade",
 	"EquipCharm",
 	"RetryLoad",
 	"RewardGranted",
