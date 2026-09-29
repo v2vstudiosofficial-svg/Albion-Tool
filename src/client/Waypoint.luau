@@ -53,6 +53,10 @@ end
 
 -- Returns the world point to guide to and how close counts as "arrived".
 local function currentGoal(from: Vector3): (Vector3?, number)
+	-- Inside the Shadow Tower nothing in the valley is reachable: no arrow.
+	if Attrs.get("TowerFloor", 0) > 0 then
+		return nil, 0
+	end
 	local state = player:GetAttribute("QuestState")
 	-- A full crystal pouch comes first: bring it to the Great Lantern.
 	if Attrs.get("Crystals", 0) >= Attrs.stats().pouchCapacity then

@@ -367,7 +367,9 @@ Balance.tower = {
 	ringRadius = 9,
 	leaveMargin = 12,
 	chestEvery = 5,
-	floorMinutes = { base = 0.4, perFloor = 0.02, max = 0.9 },
+	floorMinutes = { base = 0.15, perFloor = 0.01, max = 0.35 },
+	-- Creatures a strong party defeats per minute (used to keep floor coins a bonus, see tests/logic).
+	killsPerMinute = 30,
 	recordMinutes = 2,
 }
 

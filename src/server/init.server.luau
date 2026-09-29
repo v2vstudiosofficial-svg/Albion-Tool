@@ -80,7 +80,8 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 		if enemy.elite then
 			AchievementService.count(player, "elites")
 		end
-		if table.find(Balance.legends, enemyType) then
+		-- Bounties count the level-scaled Legendary Shadows, not the intro Warden.
+		if Balance.enemies[enemyType].scales then
 			AchievementService.count(player, "legendWins")
 		end
 		-- Elites may drop a chest for everyone who helped.

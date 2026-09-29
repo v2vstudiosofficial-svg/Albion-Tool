@@ -1086,6 +1086,13 @@ test("after the story the panel and waypoint show the next personal goal", funct
 	assert(shownText(Strings.get("goal_staff_coins", 2, nextCost)), "coins still needed")
 	local farm = waypointAt()
 	assert(near(farm, zones.glade.center) or near(farm, zones.grove.center) or near(farm, zones.hollow.center), "coin goal guides to creatures")
+	-- Inside the Shadow Tower there is no arrow (the valley is out of reach).
+	setAttributes({ TowerFloor = 2 })
+	advance(0.5)
+	eq(waypointAt(), nil, "no waypoint inside the tower")
+	setAttributes({ TowerFloor = 0 })
+	advance(0.5)
+	assert(waypointAt() ~= nil, "waypoint returns after leaving")
 end)
 
 test("level-gated quest points to a creature zone and explains why", function()

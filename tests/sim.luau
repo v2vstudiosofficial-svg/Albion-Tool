@@ -542,6 +542,7 @@ test("quest 6: boss fight with telegraphed attacks, rewards, festival", function
 	eq(attr(alice, "QuestState"), "level", "and waits for a stronger player")
 	eq(attr(alice, "Flags"), "festival,gardens,lanterns")
 	eq(attr(alice, "Legends"), "Warden", "first Legendary Shadow")
+	eq(H.loadModule("src/server/PlayerProfiles.luau").get(alice).counters.legendWins, nil, "the intro Warden does not count for legend bounties")
 	eq(attr(alice, "Chests"), "mystic:0", "a Mystic chest for the first win")
 	eq(logCount("Notice", function(e)
 		return e.target == alice and e.args[1] == "notice_legend"

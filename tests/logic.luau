@@ -1480,13 +1480,10 @@ end)
 test("bounty board: rewards stay small, saved bounties are cleaned", function()
 	local BountyData = require("../src/shared/BountyData")
 	for kind, def in BountyData.kinds do
-		assert(def.minutes <= 8 and def.goal >= 1, kind .. " reward and goal")
+		assert(def.goal >= 1 and def.minutes > 0, kind .. " reward and goal")
+		-- Doing the work already earns income; the bounty is a bonus well under that (max 60%).
+		assert(def.minutes <= def.effort * 0.6, kind .. " pays " .. def.minutes .. " minutes for " .. def.effort .. " minutes of play")
 	end
-	local total = 0
-	for _, kind in BountyData.order do
-		total += BountyData.kinds[kind].minutes
-	end
-	assert(total / #BountyData.order <= 5, "an average bounty pays at most five minutes of income")
 	assert(BountyData.passAction and require("../src/shared/PassData").xp[BountyData.passAction], "bounties give Pass XP")
 	local cleaned = Profile.sanitize({
 		xp = 0, coins = 0, staffUpgrade = 0,
@@ -1577,6 +1574,12 @@ test("shadow tower: floor levels, scaling past level 100, counts, kinds, chests,
 	eq(reason, "low", "a much lower level cannot join a high run")
 	eq(TowerLogic.canEnter(100 - tower.joinRange, 100), true)
 	assert(TowerLogic.floorCoins(50, 1000) <= Progression.incomeCoins(50, tower.floorMinutes.max), "floor coins are capped")
+	-- A floor's coins stay a bonus on top of what its creatures already give.
+	for floor = 1, 300 do
+		local minutes = math.min(tower.floorMinutes.max, tower.floorMinutes.base + tower.floorMinutes.perFloor * floor)
+		local effort = TowerLogic.count(floor, 1) / tower.killsPerMinute + tower.floorDelay / 60
+		assert(minutes <= effort * 0.85, `floor {floor} pays {minutes} minutes for about {effort} minutes of play`)
+	end
 	assert(TowerLogic.recordCoins(50) > TowerLogic.floorCoins(50, 1), "a new best pays more than a floor")
 	local p = Profile.new()
 	eq(TowerLogic.record(p, 3), true)
