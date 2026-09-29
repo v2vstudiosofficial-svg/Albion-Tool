@@ -1,6 +1,5 @@
 # Durum
-
-## Aşama: M12 (hikâye, sinematik sahneler, animasyonlar) tamam. Studio testleri ertelendi.
+## Aşama: M14 (hikâye, sinematik, animasyon, işaretçiler, kostümler) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil arayüz.
