@@ -1833,6 +1833,31 @@ test("shadow tower: a Legendary Shadow guards every tenth floor", function()
 	toVillage(alice)
 end)
 
+test("tower bosses do not count as the story's Legendary Shadow victories", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local EnemyService = H.loadModule("src/server/EnemyService.luau")
+	local profile = PlayerProfiles.get(alice)
+	local legendsBefore = attr(alice, "Legends")
+	local chestsBefore = attr(alice, "Chests")
+	local xpBefore = attr(alice, "XP")
+	local at = vec(WorldData.areas.tower.center)
+	-- A boss from the tower (tagged like TowerService does) and the same boss from the world.
+	local towerBoss = EnemyService.spawnTemporary("FrostTitan", 20, at, "tower", "tower")
+	assert(EnemyService.damage(towerBoss, alice, 1e12, nil), "hit")
+	advance(0.3)
+	eq(attr(alice, "Legends"), legendsBefore, "no first-victory record from the tower")
+	eq(attr(alice, "Chests"), chestsBefore, "no first-victory chest from the tower")
+	assert(attr(alice, "XP") > xpBefore, "but the fight still pays XP")
+	profile.legends.FrostTitan = nil
+	local worldBoss = EnemyService.spawnTemporary("FrostTitan", 20, vec(WorldData.areas.summit.center), "summit", "test-world")
+	assert(EnemyService.damage(worldBoss, alice, 1e12, nil), "hit")
+	advance(0.3)
+	assert(string.find(attr(alice, "Legends"), "FrostTitan", 1, true), "a win in its own arena is recorded")
+	profile.legends.FrostTitan = nil
+	PlayerProfiles.sync(alice)
+	advance(0.2)
+end)
+
 test("robux store: receipts granted once and only after saving; unknown ones wait", function()
 	local StoreData = H.loadModule("src/shared/StoreData.luau")
 	local MarketplaceService = H.services.MarketplaceService

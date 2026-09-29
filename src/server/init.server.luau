@@ -116,8 +116,13 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 		if not isBoss then
 			PouchService.give(player, math.floor(reward.coins * teamBonus + 0.5), position)
 		end
-		QuestService.onPurified(player, enemyType)
-		if profile and Profile.recordLegend(profile, enemyType) then
+		-- Shadow Tower bosses are extra fights: they never count for the story quests or the
+		-- first-victory rewards of the Legendary Shadows (those belong to their own arenas).
+		local fromTower = enemy.tag == "tower"
+		if not fromTower then
+			QuestService.onPurified(player, enemyType)
+		end
+		if profile and not fromTower and Profile.recordLegend(profile, enemyType) then
 			PassService.award(player, "legend")
 			for _, id in CosmeticLogic.grantEarned(profile) do
 				notice:FireClient(player, "notice_costume_new", CosmeticData.costumes[id].nameKey)
