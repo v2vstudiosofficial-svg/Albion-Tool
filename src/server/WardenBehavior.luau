@@ -1,4 +1,4 @@
--- Gölge Bekçisi boss: two readable, telegraphed attacks that alternate with vulnerable rests.
+-- Shadow Warden boss: two readable, telegraphed attacks that alternate with vulnerable rests.
 --  * Slam: warning circles appear under players, then burst after a delay (step out to dodge).
 --  * Orb ring: a wind-up glow, then a ring of slow orbs with a visible gap to walk through.
 -- Phase 2 (below phase2At health) shortens warnings/rests and adds circles and a second ring.

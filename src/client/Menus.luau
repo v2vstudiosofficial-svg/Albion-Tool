@@ -278,15 +278,15 @@ function Menus.start()
 		end)
 	end
 
-	-- Close the shop when walking away from Usta Demir.
-	local demir = WorldData.vector(WorldData.npcs.Demir.position)
+	-- Close the shop when walking away from the Smith.
+	local smith = WorldData.vector(WorldData.npcs.Smith.position)
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
 			if openModal == shop then
 				local character = player.Character
 				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-				if not root or (root.Position - demir).Magnitude > Balance.shopDistance + 4 then
+				if not root or (root.Position - smith).Magnitude > Balance.shopDistance + 4 then
 					closeModal()
 				end
 			end

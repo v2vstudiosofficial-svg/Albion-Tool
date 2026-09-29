@@ -152,7 +152,7 @@ local function load(player: Player)
 		sessions[player] = nil
 		if player.Parent == Players then
 			player:SetAttribute("DataState", "ended")
-			player:Kick(Strings.getIn(Strings.languageFor(player.LocaleId), "data_session_ended"))
+			player:Kick(Strings.get("data_session_ended"))
 		end
 	end)
 

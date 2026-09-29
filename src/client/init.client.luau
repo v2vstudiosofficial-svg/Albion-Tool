@@ -1,10 +1,4 @@
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
-
--- Pick the UI language before any module builds text.
-local Strings = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Strings"))
-Strings.setLanguage(Strings.languageFor(Players.LocalPlayer.LocaleId))
 
 -- No tools are used, and our Bag/Settings buttons live where the player list would sit on PC.
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)

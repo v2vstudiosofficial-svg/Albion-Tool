@@ -1,4 +1,4 @@
--- Staff upgrades at Usta Demir and charm equipping. Coins, ownership and distance are checked here.
+-- Staff upgrades at the Smith and charm equipping. Coins, ownership and distance are checked here.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -20,7 +20,7 @@ local fx = Remotes.Fx :: RemoteEvent
 local REQUEST_COOLDOWN = 0.4
 
 local lastRequest: { [Player]: { [string]: number } } = {}
-local demirBody: BasePart
+local smithBody: BasePart
 
 local ShopService = {}
 
@@ -36,13 +36,13 @@ local function throttled(player: Player, kind: string): boolean
 	return false
 end
 
-local function nearDemir(player: Player): boolean
+local function nearSmith(player: Player): boolean
 	local target = Targets.of(player)
-	return target ~= nil and (target.root.Position - demirBody.Position).Magnitude <= Balance.shopDistance
+	return target ~= nil and (target.root.Position - smithBody.Position).Magnitude <= Balance.shopDistance
 end
 
 local function onUpgrade(player: Player)
-	if throttled(player, "upgrade") or not nearDemir(player) then
+	if throttled(player, "upgrade") or not nearSmith(player) then
 		return
 	end
 	local profile = PlayerProfiles.get(player)
@@ -77,11 +77,11 @@ local function onEquip(player: Player, charmId: unknown)
 end
 
 function ShopService.start(map: Folder)
-	demirBody = map.Village.Demir.Body :: BasePart
-	local prompt = demirBody.TalkPrompt :: ProximityPrompt
+	smithBody = map.Village.Smith.Body :: BasePart
+	local prompt = smithBody.TalkPrompt :: ProximityPrompt
 	prompt.Triggered:Connect(function(player)
-		if nearDemir(player) and PlayerProfiles.get(player) then
-			npcSay:FireClient(player, "Demir", "demir_greet")
+		if nearSmith(player) and PlayerProfiles.get(player) then
+			npcSay:FireClient(player, "Smith", "smith_greet")
 			openShop:FireClient(player)
 		end
 	end)

@@ -312,7 +312,7 @@ if (attr("Coins") or 0) < cost then
 		return (attr("Coins") or 0) >= cost
 	end)
 end
-talk("Demir")
+talk("Smith")
 remotes.UpgradeStaff.OnServerEvent:Fire(bot)
 H.advance(0.5)
 assert(questId() ~= "first_upgrade", "upgrade quest done")

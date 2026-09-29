@@ -237,20 +237,6 @@ end
 
 local markers: { [string]: BillboardGui? } = {}
 
--- The server writes Turkish texts plus their keys; show them in this player's language.
-local function localizeNpc(body: Instance)
-	local prompt = body:WaitForChild("TalkPrompt", 5) :: ProximityPrompt?
-	if prompt then
-		prompt.ObjectText = Strings.get(prompt:GetAttribute("NameKey") or "")
-		prompt.ActionText = Strings.get(prompt:GetAttribute("ActionKey") or "")
-	end
-	local tag = body:WaitForChild("NameTag", 5)
-	local label = tag and tag:WaitForChild("Label", 5) :: TextLabel?
-	if label then
-		label.Text = Strings.get(label:GetAttribute("NameKey") or "")
-	end
-end
-
 local function buildMarker(npcName: string): BillboardGui?
 	local map = workspace:WaitForChild("LanternValleyMap", 10)
 	local npc = map and map:WaitForChild("Village"):WaitForChild(npcName, 10)
@@ -258,7 +244,6 @@ local function buildMarker(npcName: string): BillboardGui?
 	if not body then
 		return nil
 	end
-	localizeNpc(body)
 	local gui = UiKit.create("BillboardGui", {
 		Size = UDim2.fromOffset(60, 70),
 		StudsOffset = Vector3.new(0, 6.2, 0),
@@ -284,7 +269,7 @@ local function buildMarker(npcName: string): BillboardGui?
 	return gui
 end
 
--- True when the next staff tier is affordable; used to nudge players toward Usta Demir early,
+-- True when the next staff tier is affordable; used to nudge players toward the Smith early,
 -- so the quest -> reward -> upgrade loop is visible within the first minutes.
 local function canAffordUpgrade(): boolean
 	local cost = Progression.nextStaffCost(Attrs.get("StaffTier", 0))
@@ -299,9 +284,9 @@ local function refreshMarkers()
 		elder.Enabled = player:GetAttribute("QuestState") == "available"
 	end
 	local affordable = canAffordUpgrade() and isCompleted("first_purify")
-	local demir = markers.Demir
-	if demir then
-		demir.Enabled = isActive("first_upgrade") or affordable
+	local smith = markers.Smith
+	if smith then
+		smith.Enabled = isActive("first_upgrade") or affordable
 	end
 	local tier = player:GetAttribute("StaffTier") or 0
 	if affordable and nudgedTier ~= tier then
@@ -569,7 +554,7 @@ function World.start()
 
 	task.spawn(function()
 		markers.Elder = buildMarker("Elder")
-		markers.Demir = buildMarker("Demir")
+		markers.Smith = buildMarker("Smith")
 		refreshMarkers()
 	end)
 	task.spawn(animateNpcs)

@@ -39,7 +39,7 @@ return {
 			titleKey = "quest_first_upgrade_title",
 			offerKey = "elder_offer_first_upgrade",
 			objectiveKey = "quest_first_upgrade_objective",
-			objective = { kind = "upgrade", count = 1, npc = "Demir" },
+			objective = { kind = "upgrade", count = 1, npc = "Smith" },
 			reward = { xp = 100, coins = 0, charm = "guard", flag = "lanterns" },
 		},
 		ruin_vines = {

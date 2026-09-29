@@ -24,9 +24,6 @@ local Players = { list = {} }
 local hero = H.newPlayer("Hero", 1, Players)
 local friend = H.newPlayer("Friend", 2, Players)
 Players.LocalPlayer = hero
--- Desktop runs in Turkish, touch modes in English, so both languages go through the real UI.
-local expectedLanguage = if touchMode then "en" else "tr"
-hero.LocaleId = if touchMode then "en-us" else "tr-tr"
 Players.list = { hero, friend }
 function Players:GetPlayers()
 	return table.clone(self.list)
@@ -334,11 +331,6 @@ test("data ready: HUD, quest panel, Elder marker, waypoint", function()
 	assert(not shownText(Strings.get("data_loading")), "loading hidden")
 	assert(shownText(Strings.get("quest_talk_to_elder")), "quest hint")
 	assert(shownText(Strings.get("hud_level", 1)), "level badge")
-	eq(Strings.language, expectedLanguage, "language follows the player's locale")
-	local elderBody = workspace.LanternValleyMap.Village.Elder.Body
-	eq(elderBody.TalkPrompt.ObjectText, Strings.getIn(expectedLanguage, "npc_elder_name"), "localized NPC prompt")
-	eq(elderBody.TalkPrompt.ActionText, Strings.getIn(expectedLanguage, "npc_talk_action"), "localized NPC action")
-	eq(elderBody.NameTag.Label.Text, Strings.getIn(expectedLanguage, "npc_elder_name"), "localized NPC name tag")
 	local elderMarker = false
 	for _, child in playerGui:GetChildren() do
 		if child:IsA("BillboardGui") and child.Enabled and child.Adornee == workspace.LanternValleyMap.Village.Elder.Body then
@@ -508,16 +500,16 @@ test("exploration beacons, vine barrier and restoration follow progress", functi
 	assert(wing.CFrame ~= before, "butterflies flutter near the village")
 end)
 
-test("upgrade nudge and Demir marker appear when coins suffice", function()
+test("upgrade nudge and Smith marker appear when coins suffice", function()
 	setAttributes({ Coins = Balance.staff.tiers[2].cost })
 	assert(shownText(Strings.get("notice_can_upgrade")), "nudge toast")
-	local demirMarker = false
+	local smithMarker = false
 	for _, child in playerGui:GetChildren() do
-		if child:IsA("BillboardGui") and child.Enabled and child.Adornee == workspace.LanternValleyMap.Village.Demir.Body then
-			demirMarker = true
+		if child:IsA("BillboardGui") and child.Enabled and child.Adornee == workspace.LanternValleyMap.Village.Smith.Body then
+			smithMarker = true
 		end
 	end
-	assert(demirMarker, "Demir ! marker")
+	assert(smithMarker, "Smith ! marker")
 end)
 
 test("bag: equip an owned charm, locked ones do nothing", function()
@@ -555,7 +547,7 @@ test("settings toggle sound and the performance overlay", function()
 end)
 
 test("shop opens from the server, upgrades, and closes when walking away", function()
-	teleport(vec(WorldData.npcs.Demir.position, 1.5) + Vector3.new(0, 0, 4))
+	teleport(vec(WorldData.npcs.Smith.position, 1.5) + Vector3.new(0, 0, 4))
 	remotes.OpenShop.OnClientEvent:Fire()
 	advance(0.2)
 	assert(shownText(Strings.get("shop_title")), "shop open")
@@ -622,7 +614,7 @@ test("after the story the panel and waypoint show the next personal goal", funct
 	setAttributes({ Coins = Balance.staff.tiers[3].cost })
 	advance(0.5)
 	assert(shownText(Strings.get("goal_staff_ready", 3)), "affordable staff goal shown")
-	assert(near(waypointAt(), WorldData.npcs.Demir.position), "affordable upgrade guides to Demir")
+	assert(near(waypointAt(), WorldData.npcs.Smith.position), "affordable upgrade guides to Smith")
 
 	setAttributes({ XP = 10 ^ 6, Coins = 0 })
 	advance(0.5)

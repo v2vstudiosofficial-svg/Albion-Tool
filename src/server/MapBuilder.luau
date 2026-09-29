@@ -228,22 +228,19 @@ local function buildNpc(parent: Instance, name: string, robe: Color3, hat: Color
 	if not npc.PrimaryPart then
 		npc.PrimaryPart = body
 	end
-	local prompt = ensure(body, "TalkPrompt", "ProximityPrompt", {
+	ensure(body, "TalkPrompt", "ProximityPrompt", {
 		ActionText = Strings.get(actionKey),
 		ObjectText = Strings.get(spec.nameKey),
 		MaxActivationDistance = 10,
 		HoldDuration = 0,
 		RequiresLineOfSight = false,
 	})
-	-- Keys let each client show these texts in its own language.
-	prompt:SetAttribute("NameKey", spec.nameKey)
-	prompt:SetAttribute("ActionKey", actionKey)
 	local tag = ensure(body, "NameTag", "BillboardGui", {
 		Size = UDim2.fromScale(6, 1),
 		StudsOffset = Vector3.new(0, 4.4, 0),
 		MaxDistance = 70,
 	})
-	local label = ensure(tag, "Label", "TextLabel", {
+	ensure(tag, "Label", "TextLabel", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		Text = Strings.get(spec.nameKey),
@@ -252,7 +249,6 @@ local function buildNpc(parent: Instance, name: string, robe: Color3, hat: Color
 		TextColor3 = Color3.new(1, 1, 1),
 		TextStrokeTransparency = 0.4,
 	})
-	label:SetAttribute("NameKey", spec.nameKey)
 end
 
 local function buildForge(parent: Instance)
@@ -391,7 +387,7 @@ local function buildVillage(map: Instance)
 		buildHouse(village, "House" .. index, v(house))
 	end
 	buildNpc(village, "Elder", Color3.fromRGB(95, 115, 205), Color3.fromRGB(95, 115, 205), "npc_talk_action")
-	buildNpc(village, "Demir", Color3.fromRGB(190, 115, 60), Color3.fromRGB(80, 70, 80), "npc_shop_action")
+	buildNpc(village, "Smith", Color3.fromRGB(190, 115, 60), Color3.fromRGB(80, 70, 80), "npc_shop_action")
 	buildForge(village)
 	buildVillageProps(village)
 

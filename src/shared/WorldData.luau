@@ -10,7 +10,7 @@ WorldData.houses = { { -35, 0, 0 }, { 35, 0, 0 }, { -35, 0, 32 }, { 35, 0, 32 } 
 
 WorldData.npcs = {
 	Elder = { nameKey = "npc_elder_name", position = { 8, 1.6, 28 }, lookAt = { 0, 1.6, 40 } },
-	Demir = { nameKey = "npc_demir_name", position = { -22, 1.6, -36 }, lookAt = { 0, 1.6, -28 } },
+	Smith = { nameKey = "npc_smith_name", position = { -22, 1.6, -36 }, lookAt = { 0, 1.6, -28 } },
 }
 
 -- Enemy zones; enemies in a zone sleep while no player is within radius + WorldData.wakeMargin.

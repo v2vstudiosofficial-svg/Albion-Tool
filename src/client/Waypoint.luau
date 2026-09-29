@@ -55,10 +55,10 @@ local function currentGoal(from: Vector3): (Vector3?, number)
 		-- Guide to the nearest creature zone so players know where to grow stronger.
 		return nearestCreatureZone(from)
 	elseif state == "done" then
-		-- After the story: an affordable upgrade at Demir, otherwise creatures for XP and coins.
+		-- After the story: an affordable upgrade at Smith, otherwise creatures for XP and coins.
 		local goal = Goals.next(Attrs.get("XP", 0), Attrs.get("Coins", 0), Attrs.get("StaffTier", 0))
 		if goal.kind == "staff" and goal.affordable then
-			return WorldData.vector(WorldData.npcs.Demir.position), HIDE_DISTANCE
+			return WorldData.vector(WorldData.npcs.Smith.position), HIDE_DISTANCE
 		elseif goal.kind ~= "done" then
 			return nearestCreatureZone(from)
 		end

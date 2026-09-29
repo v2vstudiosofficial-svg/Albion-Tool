@@ -63,6 +63,12 @@ M4 — Sunum ve performans: animasyon, ses, saldırı geri bildirimi, mobil aray
 
 M5 — Yayına hazırlık: önemli hataları kapat, özel test sürümünü ve mağaza metinlerini hazırla; güncel yayınlama ve çocuklara erişim koşullarını resmi kaynaklardan kontrol et. Maturity & Compliance yanıtları gerçek içeriğe dayanmalı; yaş etiketini önceden garanti etme. Bitiş: test sonuçları ve kalan engeller belli. Herkese açık yayınlama ve ücretli ürün etkinleştirme için ayrıca talimatımı bekle.
 
+M6 — Otomatik savaş dönüşümü (kullanıcı isteği, XP Hero tarzı). Oyun içi tüm metinler İngilizce; kullanıcıya raporlar Türkçe.
+- M6a: çapraz yukarıdan takip kamerası; menzil halkası ve sunucu tarafında otomatik saldırı; 8 silah türü (asa, yay, arbalet, fırlatma hançerleri, kılıç, balta, mızrak, savaş çekici), seviyeyle açılır ve Çanta'dan seçilir; seviye sınırı 100, her yaratık XP verir; her 25 seviyede karakterin arkasında havada süzülen ek bir silah yuvası (en fazla 4); seviyeli, yeniden doğan yaratık sürüleri, üstlerinde seviye ve can çubuğu.
+- M6b: Işık Kristali ganimeti ve sınırlı fener kesesi, Büyük Fener'de sikkeye çevirme; çok seviyeli yükseltme paneli (Güç, Kese, Can, Can yenileme, Kritik); seviye atlayınca 3 karttan yetenek seçimi (sunucu doğrular).
+- M6c: "Efsane Gölgeler" boss koleksiyonu, yeni zorlu bölgeler (seviye 100'e kadar içerik); mevcut 6 görev giriş bölümü olarak kalır.
+Bitiş (her parça): `lune run tests/all` geçer, sim senaryoları yeni sunucu davranışını kapsar, Studio'da elle test listesi güncellenir.
+
 6. TOKEN VE ÇALIŞMA KURALLARI
 
 - Bu planı MASTER_PLAN.md’ye bir kez kaydet; her mesajda yeniden yazma ve yeniden tasarlama.
