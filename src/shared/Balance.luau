@@ -391,9 +391,10 @@ Balance.story = { xpPerQuest = 0.01 }
 -- levels, chests, charms, costumes, pets, quests, the log, the pass and the tower record stay.
 -- Every rebirth adds `xpPerRebirth` XP from creatures (up to `maxBonusRebirths` rebirths) and
 -- keeps all five chest slots open. Rewards are cosmetic (see CosmeticData sources).
+Balance.rebirth = { xpPerRebirth = 0.1, maxBonusRebirths = 5, startCoins = 300 }
+
 -- Daily gift: coins worth this many minutes of income at the player's level, once per day.
 Balance.daily = { coinMinutes = 8 }
-Balance.rebirth = { xpPerRebirth = 0.1, maxBonusRebirths = 5, startCoins = 300 }
 
 -- Rough income of a player fighting same-level creatures (used to size coin rewards that should
 -- feel the same at every level: Light Pass coins and store coin packs).

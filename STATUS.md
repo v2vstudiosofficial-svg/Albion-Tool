@@ -22,7 +22,7 @@
   M18: 3 yeni yetenek; M19: fuzz testleri;
   M20: Kael epilogu (2 görev, köyde buluşma);
   M21: 11 kazanılan unvan (Bag → Titles); M22: mini harita; M23: oyuncu etiketleri;
-  M24: günlük hediye (UTC günde 1, ≈8 dk gelir; seri/ceza yok).
+  M24: günlük hediye (UTC günde 1, ≈8 dk gelir); M20–24 kod incelemesi düzeltmeleri.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

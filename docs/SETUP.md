@@ -137,7 +137,7 @@ Oyun içi tüm metinler İngilizce.
    Telefonda sağ üst düğmelerle ve joystick/atlama tuşlarıyla çakışıp çakışmadığına bak.
 10t. M23: **Oyuncu etiketleri**: diğer oyuncuların başında unvan (altın), ad ve "Lv N  Rebirth M" görünür; Roblox'un kendi ad etiketi
    gizlenir. Kendi karakterinde etiket yok. Settings → Interface → Player tags ile kapanınca varsayılan etiket geri gelir. İki kişiyle dene.
-10u. M24: **Günlük hediye**: oyuna girince mini haritanın solunda altın "Daily gift" düğmesi + "ready" bildirimi çıkar; basınca
+10u. M24 (+inceleme düzeltmeleri: Kael Büyük Fener'den uzakta (-14,18); yeniden doğmuş oyuncu Kael görevlerinde seviye kapısına takılmaz; hediye düğmesi mini haritayla aynı bölgede): **Günlük hediye**: oyuna girince mini haritanın solunda altın "Daily gift" düğmesi + "ready" bildirimi çıkar; basınca
    ≈8 dakikalık sikke gelir (seviyeye göre), aynı UTC gününde bir daha çıkmaz. Seri/ceza yok. Ertesi gün (veya gece yarısını aşan oturumda
    ≤1 dk içinde) yeniden görünür. Kayıt/rejoin sonrası aynı gün tekrar verilmediğini de kontrol et.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;

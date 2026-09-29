@@ -13,7 +13,7 @@ WorldData.npcs = {
 	Smith = { nameKey = "npc_smith_name", position = { -22, 1.6, -36 }, lookAt = { 0, 1.6, -28 } },
 	-- The first Light Keeper, back by the Great Lantern once the Shadow King is purified (only shown
 	-- to players who have finished that quest).
-	Kael = { nameKey = "npc_kael_name", position = { -7, 1.6, 6 }, lookAt = { 0, 1.6, 12 } },
+	Kael = { nameKey = "npc_kael_name", position = { -14, 1.6, 18 }, lookAt = { 0, 1.6, 12 } },
 	-- Just inside the east lands, beside the first opening in the rock ridge.
 	Wren = { nameKey = "npc_wren_name", position = { 100, 1.6, 30 }, lookAt = { 90, 1.6, 14 } },
 }

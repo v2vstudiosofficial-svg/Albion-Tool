@@ -1,9 +1,35 @@
 -- Pure minimap maths: where a world point lands on the map. North is up (-Z), east is right (+X).
 -- "near" follows the player over a small area; "world" shows the whole valley.
+local WorldData = if script then require(script.Parent.WorldData) else require("./WorldData")
+
 local MapLogic = {}
 
--- The area the "world" view covers (studs); the Shadow Tower is the far west, the Keep the far east.
-MapLogic.bounds = { minX = -375, maxX = 275, minZ = -345, maxZ = 90 }
+-- The area the "world" view covers (studs): every enemy zone (center +- radius), the spawn and the
+-- NPCs, plus a margin. Derived from WorldData so new zones are never cropped.
+local BOUNDS_MARGIN = 15
+local function computeBounds()
+	local bounds = { minX = math.huge, maxX = -math.huge, minZ = math.huge, maxZ = -math.huge }
+	local function include(x: number, z: number, radius: number)
+		bounds.minX = math.min(bounds.minX, x - radius)
+		bounds.maxX = math.max(bounds.maxX, x + radius)
+		bounds.minZ = math.min(bounds.minZ, z - radius)
+		bounds.maxZ = math.max(bounds.maxZ, z + radius)
+	end
+	for _, area in WorldData.areas do
+		include(area.center[1], area.center[3], area.radius)
+	end
+	include(WorldData.spawn[1], WorldData.spawn[3], 0)
+	for _, npc in WorldData.npcs do
+		include(npc.position[1], npc.position[3], 0)
+	end
+	return {
+		minX = bounds.minX - BOUNDS_MARGIN,
+		maxX = bounds.maxX + BOUNDS_MARGIN,
+		minZ = bounds.minZ - BOUNDS_MARGIN,
+		maxZ = bounds.maxZ + BOUNDS_MARGIN,
+	}
+end
+MapLogic.bounds = computeBounds()
 -- How many studs the "near" view shows from the player to each edge.
 MapLogic.nearRadius = 90
 
@@ -29,6 +55,11 @@ end
 
 function MapLogic.inside(size: number, px: number, py: number, margin: number): boolean
 	return px >= margin and px <= size - margin and py >= margin and py <= size - margin
+end
+
+-- Does a disc of `radius` pixels centered at (px, py) touch the square map at all?
+function MapLogic.circleVisible(size: number, px: number, py: number, radius: number): boolean
+	return px >= -radius and px <= size + radius and py >= -radius and py <= size + radius
 end
 
 -- A point outside the map is pulled onto its edge along the line from the center (so a goal that is

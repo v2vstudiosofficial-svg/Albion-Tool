@@ -1,4 +1,4 @@
--- The daily gift button: appears left of the mini map while today's gift is waiting (the server
+-- The daily gift button: appears left of the mini map (same region) while today's gift is waiting (the server
 -- replicates DailyReady). Taking it is validated on the server; nothing is lost by skipping a day.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,6 +8,7 @@ local Strings = require(Shared:WaitForChild("Strings"))
 local Audio = require(script.Parent.Audio)
 local Cinematic = require(script.Parent.Cinematic)
 local Hud = require(script.Parent.Hud)
+local Minimap = require(script.Parent.Minimap)
 local UiKit = require(script.Parent.UiKit)
 
 local player = Players.LocalPlayer
@@ -16,10 +17,14 @@ local claimDaily = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Claim
 local DailyGift = {}
 
 function DailyGift.start()
-	local gui = UiKit.create("ScreenGui", { Name = "DailyGift", ResetOnSpawn = false, DisplayOrder = 3 }, player:WaitForChild("PlayerGui"))
-	local region = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -152, 0, 236), Vector2.new(96, 56))
+	-- Shares the mini map's region (left edge), so the two scale together and never overlap.
+	local region = Minimap.region
+	if not region then
+		return
+	end
 	local button = UiKit.button({
-		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromOffset(0, 0),
+		Size = UDim2.fromOffset(Minimap.giftWidth, 56),
 		Text = Strings.get("daily_gift_button"),
 		TextSize = 17,
 		TextWrapped = true,
@@ -32,7 +37,7 @@ function DailyGift.start()
 	local announced = false
 	local function refresh()
 		local ready = player:GetAttribute("DataState") == "ready" and player:GetAttribute("DailyReady") == true
-		region.Visible = ready and not Cinematic.playing()
+		button.Visible = ready and not Cinematic.playing()
 		if ready and not announced then
 			announced = true
 			Hud.toast(Strings.get("notice_daily_ready"), UiKit.colors.coin)

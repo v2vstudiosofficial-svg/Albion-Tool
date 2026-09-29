@@ -6,7 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Strings = require(Shared:WaitForChild("Strings"))
-local TitleData = require(Shared:WaitForChild("TitleData"))
+local PlayerBoard = require(script.Parent.PlayerBoard)
 local Settings = require(script.Parent.Settings)
 local UiKit = require(script.Parent.UiKit)
 
@@ -33,10 +33,9 @@ function PlayerTags.levelLine(other: Player): string
 	return line
 end
 
--- The chosen title's text, or "" when none is shown.
+-- The chosen title's text, or "" when none is shown (the same text as the Players panel).
 function PlayerTags.titleLine(other: Player): string
-	local title = TitleData.titles[other:GetAttribute("Title") or ""]
-	return if title then Strings.get(title.nameKey) else ""
+	return PlayerBoard.titleOf(other)
 end
 
 local function build(head: BasePart): BillboardGui

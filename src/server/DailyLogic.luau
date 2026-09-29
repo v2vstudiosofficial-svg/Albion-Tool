@@ -13,8 +13,10 @@ function DailyLogic.dayOf(now: number): number
 	return math.floor(now / DAY_SECONDS)
 end
 
+-- A saved day that is still ahead of tomorrow (a bad clock when it was saved) never blocks gifts.
 function DailyLogic.ready(profile: any, now: number): boolean
-	return profile.dailyDay < DailyLogic.dayOf(now)
+	local today = DailyLogic.dayOf(now)
+	return profile.dailyDay < today or profile.dailyDay > today + 1
 end
 
 function DailyLogic.reward(level: number): number

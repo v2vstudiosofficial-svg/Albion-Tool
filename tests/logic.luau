@@ -1752,6 +1752,29 @@ test("mini map: north is up, the near view follows the player, the world view fi
 	eq(MapLogic.heading(1, 0), 90, "looking east")
 	eq(MapLogic.heading(0, 1), 180, "looking south")
 	eq(MapLogic.heading(-1, 0), 270, "looking west")
+	-- The world view is derived from the world data: every zone edge is on the map.
+	for name, area in WorldData.areas do
+		for _, sign in { -1, 1 } do
+			local ex, ey = MapLogic.toMap(world, size, area.center[1] + sign * area.radius, area.center[3] + sign * area.radius)
+			assert(MapLogic.inside(size, ex, ey, 0), name .. " edge is on the world map")
+		end
+	end
+	eq(MapLogic.circleVisible(size, 200, 66, 60), false, "a disc far to the right is off the map")
+	eq(MapLogic.circleVisible(size, 150, 66, 40), true, "a big disc reaching in is drawn")
+	eq(MapLogic.circleVisible(size, 66, -30, 20), false)
+	eq(MapLogic.circleVisible(size, 66, 66, 5), true)
+	-- Quests with a level gate do not hold back a reborn player.
+	local reborn = Profile.new()
+	for _, questId in QuestData.order do
+		if questId == "keepers_promise" then
+			break
+		end
+		reborn.questProgress[questId] = { state = "completed", count = 1 }
+	end
+	local QuestLogicForMap = require("../src/server/QuestLogic")
+	eq(select(2, QuestLogicForMap.canStart(reborn, QuestData, "keepers_promise", 5)), "level", "a new climber must reach the level")
+	reborn.rebirths = 1
+	eq(QuestLogicForMap.canStart(reborn, QuestData, "keepers_promise", 5), true, "a reborn player has reached every level")
 	local SettingsData = require("../src/shared/SettingsData")
 	assert(SettingsData.settings.minimap and SettingsData.settings.minimap.default == true, "the mini map setting is on by default")
 end)
@@ -1773,8 +1796,10 @@ test("daily gift: one per UTC day, skipping days gives nothing extra, reward fol
 	eq(DailyLogic.reward(50), Progression.incomeCoins(50, Balance.daily.coinMinutes), "worth a few minutes of income")
 	assert(DailyLogic.reward(60) > DailyLogic.reward(10), "grows with the level")
 	assert(Balance.daily.coinMinutes >= 1 and Balance.daily.coinMinutes <= 15, "a small gift, not a shortcut")
+	p.dailyDay = 5 + 1
+	eq(DailyLogic.ready(p, 5 * day), false, "a saved tomorrow (small clock drift) still counts as taken")
 	p.dailyDay = 99999999
-	eq(DailyLogic.ready(p, 5 * day), false, "a future day (tampered save) does not pay")
+	eq(DailyLogic.ready(p, 5 * day), true, "a far-future day (bad clock) never blocks the gifts")
 	local function saved(value: any): number
 		return Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, dailyDay = value }).dailyDay
 	end

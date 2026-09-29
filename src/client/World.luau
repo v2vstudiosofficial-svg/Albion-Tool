@@ -359,6 +359,7 @@ local NUDGE_LEVELS = 3
 -- Kael only appears once the Shadow King has fallen; the model is on the server for everyone, so
 -- other players' worlds are not touched (local transparency and disabled prompts only).
 local kaelModel: Instance? = nil
+local kaelCollide: { [Instance]: boolean } = {}
 
 local function refreshKael()
 	if not kaelModel or not kaelModel.Parent then
@@ -373,6 +374,11 @@ local function refreshKael()
 	for _, item in kaelModel:GetDescendants() do
 		if item:IsA("BasePart") then
 			item.LocalTransparencyModifier = if shown then 0 else 1
+			-- Unseen for players who have not met him, so also not solid for them.
+			if kaelCollide[item] == nil then
+				kaelCollide[item] = item.CanCollide
+			end
+			item.CanCollide = shown and kaelCollide[item]
 		elseif item:IsA("ProximityPrompt") or item:IsA("BillboardGui") then
 			item.Enabled = shown
 		end
@@ -651,7 +657,7 @@ end
 -- Kael and two fellow Keepers stand at the Great Lantern, each holding a small light.
 function restorationBuilders.reunion(parent: Instance)
 	local robes = { Color3.fromRGB(215, 175, 70), Color3.fromRGB(150, 120, 210), Color3.fromRGB(90, 170, 190) }
-	for index, degrees in { 200, 240, 280 } do
+	for index, degrees in { 330, 10, 50 } do
 		local angle = math.rad(degrees)
 		local base = PLAZA + Vector3.new(math.cos(angle) * 9, 0, math.sin(angle) * 9)
 		pillar(parent, 3.4, 1.1, base, robes[index])

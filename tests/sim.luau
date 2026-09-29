@@ -727,6 +727,21 @@ test("Kael the Keeper: the epilogue comes after the Shadow King and is paid once
 	talk(alice, "Kael")
 	eq(said("Kael", "kael_all_done"), 1)
 
+	-- A player who already rebirthed (before the epilogue existed) is not held back by the level.
+	profile.questProgress = {}
+	for _, questId in QuestData.order do
+		if questId == "keepers_promise" then
+			break
+		end
+		profile.questProgress[questId] = { state = "completed", count = 1 }
+	end
+	profile.xp = Progression.thresholds[5]
+	PlayerProfiles.sync(alice)
+	eq(attr(alice, "QuestState"), "available", "a reborn player is not held back by the level")
+	talk(alice, "Kael")
+	eq(attr(alice, "QuestId"), "keepers_promise")
+	eq(attr(alice, "QuestState"), "active")
+
 	profile.xp = saved.xp
 	profile.questProgress = saved.progress
 	profile.restorationFlags = saved.flags

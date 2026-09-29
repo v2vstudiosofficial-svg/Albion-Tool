@@ -40,7 +40,8 @@ function QuestLogic.canStart(profile, questData, questId: string, level: number)
 			return false, "locked"
 		end
 	end
-	if def.minLevel and level < def.minLevel then
+	-- A reborn player has already reached every level (like pets and titles).
+	if def.minLevel and level < def.minLevel and (profile.rebirths or 0) == 0 then
 		return false, "level"
 	end
 	return true
