@@ -1810,6 +1810,56 @@ test("daily gift: one per UTC day, skipping days gives nothing extra, reward fol
 	eq(saved(nil), 0)
 end)
 
+test("creature codex: every kind is listed, milestones pay once, saves are cleaned", function()
+	local BestiaryLogic = require("../src/server/BestiaryLogic")
+	local BestiaryData = require("../src/shared/BestiaryData")
+	local listed = {}
+	for _, kind in BestiaryData.order do
+		listed[kind] = true
+		assert(Balance.enemies[kind] and Strings.has(Balance.enemies[kind].nameKey), kind .. " is a real creature")
+	end
+	for kind in Balance.enemies do
+		assert(listed[kind], kind .. " is in the codex")
+	end
+	for name, tiers in BestiaryData.tiers do
+		local last = 0
+		for _, tier in tiers do
+			assert(tier.goal > last and tier.minutes > 0, name .. " tiers rise")
+			last = tier.goal
+		end
+	end
+	local p = Profile.new()
+	eq(BestiaryLogic.record(p, "Dragon", 5), nil, "unknown kinds are not counted")
+	eq(BestiaryLogic.count(p, "Dragon"), 0)
+	local coins = p.coins
+	for _ = 1, 9 do
+		eq(BestiaryLogic.record(p, "Gloomling", 5), nil, "nothing before the first milestone")
+	end
+	eq(p.coins, coins)
+	local reached = BestiaryLogic.record(p, "Gloomling", 5)
+	assert(reached and reached.index == 1 and reached.goal == 10, "the first milestone")
+	eq(reached.coins, Progression.incomeCoins(5, BestiaryData.tiers.regular[1].minutes), "worth a few minutes of income")
+	eq(p.coins, coins + reached.coins, "paid once")
+	eq(BestiaryLogic.record(p, "Gloomling", 5), nil, "the next creature pays nothing")
+	eq(BestiaryLogic.count(p, "Gloomling"), 11)
+	eq(BestiaryLogic.count(p, "Sporeling"), 0, "kinds count separately")
+	local boss = BestiaryLogic.record(p, "Warden", 1)
+	assert(boss and boss.goal == 1, "a boss pays at its first purification")
+	eq(BestiaryLogic.encode(p), "Gloomling:11,Warden:1")
+	p.bestiary.Gloomling = BestiaryData.maxCount
+	eq(BestiaryLogic.record(p, "Gloomling", 5), nil, "counts stop at the cap")
+	eq(BestiaryLogic.count(p, "Gloomling"), BestiaryData.maxCount)
+	local cleaned = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, bestiary = { Gloomling = 5, Dragon = 9, Shade = -2, Hexcap = "x", Mudling = 1.5, Rockling = 1e12 } }).bestiary
+	eq(cleaned.Gloomling, 5)
+	eq(cleaned.Dragon, nil, "unknown kinds are dropped")
+	eq(cleaned.Shade, nil)
+	eq(cleaned.Hexcap, nil)
+	eq(cleaned.Mudling, nil, "fractions are not counts")
+	eq(cleaned.Rockling, BestiaryData.maxCount, "absurd counts are capped")
+	eq(next(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, bestiary = "x" }).bestiary), nil, "bad table")
+	eq(next(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).bestiary), nil, "missing value")
+end)
+
 test("counter quests: count from the day they start; records use the best value; paid once", function()
 	local function ready(): any
 		local p = Profile.new()

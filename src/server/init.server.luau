@@ -29,6 +29,7 @@ local TowerService = require(script.TowerService)
 local PetService = require(script.PetService)
 local TitleService = require(script.TitleService)
 local DailyService = require(script.DailyService)
+local BestiaryService = require(script.BestiaryService)
 local RebirthService = require(script.RebirthService)
 local SettingsService = require(script.SettingsService)
 local Targets = require(script.Targets)
@@ -118,6 +119,7 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 				living.humanoid.Health = math.min(living.humanoid.MaxHealth, living.humanoid.Health + living.humanoid.MaxHealth * healer)
 			end
 		end
+		BestiaryService.onPurified(player, enemyType)
 		PassService.award(player, "purify")
 		if enemy.elite then
 			PassService.award(player, "elite")

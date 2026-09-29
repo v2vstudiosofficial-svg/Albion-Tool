@@ -140,6 +140,8 @@ Oyun içi tüm metinler İngilizce.
 10u. M24 (+inceleme düzeltmeleri: Kael Büyük Fener'den uzakta (-14,18); yeniden doğmuş oyuncu Kael görevlerinde seviye kapısına takılmaz; hediye düğmesi mini haritayla aynı bölgede): **Günlük hediye**: oyuna girince mini haritanın solunda altın "Daily gift" düğmesi + "ready" bildirimi çıkar; basınca
    ≈8 dakikalık sikke gelir (seviyeye göre), aynı UTC gününde bir daha çıkmaz. Seri/ceza yok. Ertesi gün (veya gece yarısını aşan oturumda
    ≤1 dk içinde) yeniden görünür. Kayıt/rejoin sonrası aynı gün tekrar verilmediğini de kontrol et.
+10v. M25: **Yaratık Kodeksi** (Adventure Log → Creatures sekmesi): 14 yaratık türü için arındırma sayacı; karşılaşılmayanlar "???".
+   Kilometre taşlarında (10/50/250/1000; boss'larda 1/5/25) birkaç dakikalık sikke otomatik ödenir ve bildirim gelir. Sayaç rebirth'te silinmez.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

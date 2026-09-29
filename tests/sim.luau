@@ -752,6 +752,38 @@ test("Kael the Keeper: the epilogue comes after the Shadow King and is paid once
 	toVillage(alice)
 end)
 
+test("creature codex: purified creatures are counted per kind and a milestone pays once", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local profile = PlayerProfiles.get(alice)
+	local savedCount, savedCoins = profile.bestiary.Gloomling, profile.coins
+	profile.bestiary.Gloomling = 8
+	PlayerProfiles.sync(alice)
+	toVillage(alice)
+	local function announced(): number
+		return logCount("Notice", function(e)
+			return e.target == alice and e.args[1] == "notice_codex_tier"
+		end)
+	end
+	local before = announced()
+	assert(purifyOne(alice, "Gloomling", 40), "a Gloomling was purified")
+	assert(string.find(attr(alice, "Bestiary"), "Gloomling:9", 1, true) or string.find(attr(alice, "Bestiary"), "Gloomling:1", 1, true), "the count follows: " .. attr(alice, "Bestiary"))
+	local guard = 0
+	while (profile.bestiary.Gloomling or 0) < 10 and guard < 6 do
+		purifyOne(alice, "Gloomling", 40)
+		guard += 1
+	end
+	assert((profile.bestiary.Gloomling or 0) >= 10, "reached the milestone")
+	eq(announced(), before + 1, "the milestone was announced once")
+	local count = profile.bestiary.Gloomling
+	purifyOne(alice, "Gloomling", 40)
+	eq(announced(), before + 1, "the next creature pays nothing more")
+	assert(profile.bestiary.Gloomling > count, "but is counted")
+	assert(string.find(attr(alice, "Bestiary"), "Gloomling:" .. profile.bestiary.Gloomling, 1, true), "replicated")
+	profile.bestiary.Gloomling, profile.coins = savedCount, savedCoins
+	PlayerProfiles.sync(alice)
+	toVillage(alice)
+end)
+
 test("a defeated character is not revived by a level-up", function()
 	local CharacterService = H.loadModule("src/server/CharacterService.luau")
 	humanoid(alice).Health = 0
@@ -986,6 +1018,10 @@ test("crystals: purifies fill the pouch (not coins), the Great Lantern turns the
 	eq(attr(alice, "Crystals"), 0, "emptied at the lantern")
 	local coins = attr(alice, "Coins")
 	local crystals = attr(alice, "Crystals")
+	-- Creature Codex milestones pay coins directly; keep this fight between two of them.
+	local codexProfile = H.loadModule("src/server/PlayerProfiles.luau").get(alice)
+	local savedCodex = table.clone(codexProfile.bestiary)
+	codexProfile.bestiary = { Gloomling = 100, Sporeling = 100, Rockling = 100 }
 	nearAnyEnemy(alice, "Gloomling", "glade")
 	local before = logCount("Fx", function(e)
 		return e.target == alice and e.args[1] == "crystals"
@@ -1000,6 +1036,7 @@ test("crystals: purifies fill the pouch (not coins), the Great Lantern turns the
 	end
 	assert(attr(alice, "Crystals") > crystals, "crystals in the pouch")
 	eq(attr(alice, "Coins"), coins, "purifies pay no coins directly")
+	codexProfile.bestiary = savedCodex
 	toVillage(alice)
 	advance(1) -- let rewards from the last fight arrive
 	local carried = attr(alice, "Crystals")

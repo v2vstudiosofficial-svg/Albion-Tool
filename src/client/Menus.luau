@@ -20,6 +20,7 @@ local PassData = require(Shared:WaitForChild("PassData"))
 local BountyData = require(Shared:WaitForChild("BountyData"))
 local PetData = require(Shared:WaitForChild("PetData"))
 local TitleData = require(Shared:WaitForChild("TitleData"))
+local BestiaryData = require(Shared:WaitForChild("BestiaryData"))
 local StoryData = require(Shared:WaitForChild("StoryData"))
 local QuestData = require(Shared:WaitForChild("QuestData"))
 local Audio = require(script.Parent.Audio)
@@ -802,8 +803,21 @@ function Menus.start()
 	-- Adventure Log ------------------------------------------------------------------------
 	-- One row per achievement: next tier's goal and progress, and a Claim button when reached.
 	local log, logBody = modal("log_title", 430)
+	local logTab = "goals"
+	local logTabButtons = {}
+	local refreshLog: () -> ()
+	local logTabRow = UiKit.create("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, logBody)
+	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, logTabRow)
+	local LOG_TAB_KEYS = { goals = "log_tab_goals", creatures = "log_tab_creatures" }
+	for order, tab in { "goals", "creatures" } do
+		logTabButtons[tab] = UiKit.button({ Size = UDim2.fromOffset(130, 40), TextSize = 18, LayoutOrder = order, Text = Strings.get(LOG_TAB_KEYS[tab]) }, logTabRow, function()
+			logTab = tab
+			refreshLog()
+		end)
+	end
 	local logList = UiKit.create("ScrollingFrame", {
-		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromOffset(0, 46),
+		Size = UDim2.new(1, 0, 1, -46),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollBarThickness = 6,
@@ -885,7 +899,70 @@ function Menus.start()
 		end
 		return ready
 	end
-	local function refreshLog()
+
+	-- Creature Codex: what each creature kind is called, how many were purified and the next
+	-- milestone (rewards are paid automatically by the server when the count reaches them).
+	local creatureList = UiKit.create("ScrollingFrame", {
+		Position = UDim2.fromOffset(0, 46),
+		Size = UDim2.new(1, 0, 1, -46),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Visible = false,
+	}, logBody)
+	UiKit.create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, creatureList)
+	local creatureRows = {}
+	for order, kind in BestiaryData.order do
+		local row = UiKit.create("Frame", { LayoutOrder = order, Size = UDim2.new(1, -10, 0, 58), BackgroundColor3 = colors.panelLight, BorderSizePixel = 0 }, creatureList)
+		UiKit.corner(row, 12)
+		local name = UiKit.label({ Position = UDim2.fromOffset(12, 4), Size = UDim2.new(0.55, 0, 0, 24), TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		local count = UiKit.label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 6), Size = UDim2.new(0.42, 0, 0, 20), TextSize = 14, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Right }, row)
+		local info = UiKit.label({ Position = UDim2.fromOffset(12, 28), Size = UDim2.new(1, -24, 0, 16), TextSize = 13, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		local barBack = UiKit.create("Frame", { Position = UDim2.fromOffset(12, 46), Size = UDim2.new(1, -24, 0, 6), BackgroundColor3 = Color3.fromRGB(30, 26, 48), BorderSizePixel = 0 }, row)
+		UiKit.corner(barBack, 3)
+		local fill = UiKit.create("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = colors.xp, BorderSizePixel = 0 }, barBack)
+		UiKit.corner(fill, 3)
+		creatureRows[kind] = { name = name, count = count, info = info, fill = fill }
+	end
+	local function refreshCreatures()
+		local counts = Attrs.pairs("Bestiary")
+		for kind, view in creatureRows do
+			local enemy = Balance.enemies[kind]
+			local tiers = if enemy.isBoss then BestiaryData.tiers.boss else BestiaryData.tiers.regular
+			local seen = counts[kind] or 0
+			view.name.Text = if seen > 0 then Strings.get(enemy.nameKey) else Strings.get("codex_unknown")
+			view.name.TextTransparency = if seen > 0 then 0 else 0.5
+			view.count.Text = if seen > 0 then Strings.get("codex_count", Format.short(seen)) else ""
+			local nextTier = nil
+			for _, tier in tiers do
+				if seen < tier.goal then
+					nextTier = tier
+					break
+				end
+			end
+			if seen == 0 then
+				view.info.Text = Strings.get("codex_unknown_desc")
+			elseif nextTier then
+				local coins = Format.short(Progression.incomeCoins(Attrs.get("Level", 1), nextTier.minutes))
+				view.info.Text = Strings.get("codex_next", Format.short(nextTier.goal), coins)
+			else
+				view.info.Text = Strings.get("codex_done")
+			end
+			view.fill.Size = UDim2.fromScale(if nextTier then math.clamp(seen / nextTier.goal, 0, 1) else 1, 1)
+		end
+	end
+	refreshLog = function()
+		logList.Visible = logTab == "goals"
+		creatureList.Visible = logTab == "creatures"
+		for tab, button in logTabButtons do
+			button.BackgroundColor3 = if tab == logTab then colors.accent else colors.panelLight
+			button.TextColor3 = if tab == logTab then colors.panel else colors.text
+		end
+		if logTab == "creatures" then
+			refreshCreatures()
+		end
 		local entries = logEntries()
 		for id, view in logRows do
 			local def = AchievementData.achievements[id]
@@ -1535,6 +1612,11 @@ function Menus.start()
 		end
 	end
 	player:GetAttributeChangedSignal("Achievements"):Connect(refreshLogBadge)
+	player:GetAttributeChangedSignal("Bestiary"):Connect(function()
+		if openModal == log then
+			refreshLog()
+		end
+	end)
 	refreshLogBadge()
 	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_bag"), LayoutOrder = 3 }, topRight, function()
 		refreshBag()
