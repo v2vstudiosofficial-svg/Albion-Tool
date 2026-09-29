@@ -29,7 +29,8 @@ local COOLDOWN_TOLERANCE = 0.1
 local RETRY_DELAY = 0.12
 local EQUIP_COOLDOWN = 0.3
 
-local nextAttack: { [Player]: { [number]: number } } = {}
+-- Per player: next attack time per weapon slot, plus `due` = the earliest of them.
+local nextAttack: { [Player]: { [any]: number } } = {}
 local lastWave: { [Player]: number } = {}
 local lastEquip: { [Player]: number } = {}
 local random = Random.new()
@@ -103,9 +104,10 @@ local function update()
 	for _, target in Targets.get() do
 		local player = target.player
 		local profile = PlayerProfiles.get(player)
-		if profile then
-			local timers = nextAttack[player] or {}
-			nextAttack[player] = timers
+		local timers = nextAttack[player] or {}
+		nextAttack[player] = timers
+		-- Nothing to do until one of this player's weapons is ready again.
+		if profile and now >= (timers.due or 0) then
 			local main, companions = Profile.loadout(profile)
 			local stats = Stats.of(profile)
 			for slot = 0, #companions do
@@ -121,6 +123,11 @@ local function update()
 					end
 				end
 			end
+			local due = math.huge
+			for slot = 0, #companions do
+				due = math.min(due, timers[slot] or 0)
+			end
+			timers.due = due
 		end
 	end
 end
@@ -136,7 +143,15 @@ local function onRequestWave(player: Player)
 	if not Progression.waveUnlocked(level) then
 		return
 	end
-	local stats = Progression.waveStats(profile.staffUpgrade, level, profile.equippedCharm, Stats.of(profile).waveRank)
+	local playerStats = Stats.of(profile)
+	local stats = Progression.waveStats(profile.staffUpgrade, level, profile.equippedCharm, playerStats.waveRank)
+	-- The wave hits like the main weapon (slot level and skills included) times the wave bonus, so
+	-- it stays useful at every level.
+	local main = Profile.loadout(profile)
+	local waveDamage = Progression.weaponDamage(main, profile.staffUpgrade, level, false, profile.slotLevels[1])
+		* playerStats.damageMultiplier
+		* Balance.wave.damageMultiplier
+	stats.damage = math.max(stats.damage, math.floor(waveDamage + 0.5))
 	local last = lastWave[player]
 	if last and now - last < stats.cooldown - COOLDOWN_TOLERANCE then
 		return

@@ -622,7 +622,7 @@ local function attachEnemyUi(model: Instance)
 	end
 	local gui = UiKit.create("BillboardGui", {
 		Size = UDim2.fromOffset(140, 34),
-		StudsOffset = Vector3.new(0, stats.size * 0.5 + 1.6, 0),
+		StudsOffset = Vector3.new(0, body.Size.Y * 0.5 + 1.6, 0),
 		MaxDistance = 90,
 		Adornee = body,
 	}, billboards)

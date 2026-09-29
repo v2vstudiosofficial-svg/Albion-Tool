@@ -53,8 +53,12 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 			end
 		end
 		local xpMultiplier = if profile then Stats.of(profile).xpMultiplier else 1
-		PlayerProfiles.grant(player, { xp = math.floor(reward.xp * xpMultiplier + 0.5), coins = 0 }, "purify")
-		PouchService.give(player, reward.coins, position)
+		-- Bosses pay coins straight away (a boss payout would overflow an early pouch).
+		local isBoss = Balance.enemies[enemyType].isBoss == true
+		PlayerProfiles.grant(player, { xp = math.floor(reward.xp * xpMultiplier + 0.5), coins = if isBoss then reward.coins else 0 }, "purify")
+		if not isBoss then
+			PouchService.give(player, reward.coins, position)
+		end
 		QuestService.onPurified(player, enemyType)
 		if profile and Profile.recordLegend(profile, enemyType) then
 			local nameKey = Balance.enemies[enemyType].nameKey

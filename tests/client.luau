@@ -360,8 +360,16 @@ test("server events render: rewards, notices, dialog, effects", function()
 	remotes.Notice.OnClientEvent:Fire("notice_charm_gained", "charm_swift_name")
 	remotes.NpcSay.OnClientEvent:Fire("Elder", "elder_need_level", 3)
 	advance(0.2)
-	assert(shownText(Strings.get("reward_purify", 10, 5)), "purify toast")
 	assert(shownText(Strings.get("reward_quest", 50, 20)), "quest toast")
+	assert(not shownText(Strings.get("reward_purify", 10)), "purify toasts wait to be summed")
+	advance(1.2)
+	assert(shownText(Strings.get("reward_purify", 10)), "one purify, one toast")
+	-- A whole pack melts: one summed toast, not five.
+	for _ = 1, 5 do
+		remotes.RewardGranted.OnClientEvent:Fire("purify", 12, 0)
+	end
+	advance(1.3)
+	assert(shownText(Strings.get("reward_purify_many", 5, 60)), "pack summed into one toast")
 	assert(shownText(Strings.get("notice_charm_gained", Strings.get("charm_swift_name"))), "translated notice")
 	assert(shownText(Strings.get("elder_need_level", 3)), "dialog line")
 

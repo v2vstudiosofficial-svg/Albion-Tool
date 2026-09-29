@@ -336,6 +336,7 @@ local function canAffordUpgrade(): boolean
 end
 
 local nudgedTier: number? = nil
+local NUDGE_LEVELS = 3
 
 local function refreshMarkers()
 	local elder = markers.Elder
@@ -348,7 +349,8 @@ local function refreshMarkers()
 		smith.Enabled = isActive("first_upgrade") or affordable
 	end
 	local tier = player:GetAttribute("StaffTier") or 0
-	if affordable and nudgedTier ~= tier then
+	-- Only the first few power levels get a toast; later the "!" marker is enough.
+	if affordable and nudgedTier ~= tier and tier < NUDGE_LEVELS then
 		nudgedTier = tier
 		Hud.toast(Strings.get("notice_can_upgrade"), Color3.fromRGB(255, 200, 70))
 	end

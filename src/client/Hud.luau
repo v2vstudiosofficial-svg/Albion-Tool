@@ -13,6 +13,8 @@ local UiKit = require(script.Parent.UiKit)
 local Attrs = require(script.Parent.Attrs)
 local Format = require(Shared:WaitForChild("Format"))
 
+local PURIFY_TOAST_WINDOW = 1.2
+
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
 local colors = UiKit.colors
@@ -359,11 +361,27 @@ function Hud.start()
 	refreshQuest()
 	onLevelChanged()
 
+	-- Auto-battle purifies whole packs at once, so purify rewards are summed into one toast.
+	local pendingXp, pendingCount, flushScheduled = 0, 0, false
+	local function flushPurifies()
+		flushScheduled = false
+		if pendingCount == 1 then
+			showToast(Strings.get("reward_purify", Format.short(pendingXp)))
+		elseif pendingCount > 1 then
+			showToast(Strings.get("reward_purify_many", pendingCount, Format.short(pendingXp)))
+		end
+		pendingXp, pendingCount = 0, 0
+	end
 	Remotes:WaitForChild("RewardGranted").OnClientEvent:Connect(function(reason, xp, coins)
 		if reason == "quest" then
 			showToast(Strings.get("reward_quest", xp, coins), colors.good)
 		else
-			showToast(Strings.get("reward_purify", xp, coins))
+			pendingXp += if typeof(xp) == "number" then xp else 0
+			pendingCount += 1
+			if not flushScheduled then
+				flushScheduled = true
+				task.delay(PURIFY_TOAST_WINDOW, flushPurifies)
+			end
 		end
 		if typeof(coins) == "number" then
 			flyCoins(coins)

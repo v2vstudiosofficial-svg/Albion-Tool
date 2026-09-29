@@ -955,6 +955,7 @@ test("east lands: packs roll levels in their range; the Bog Mother is a legend",
 	assert(boss, "Bog Mother waits in the bog")
 	eq(boss:GetAttribute("Level"), 25)
 	assert(boss:GetAttribute("MaxHp") > Balance.enemies.BogMother.maxHp, "scaled to its level")
+	local coinsBefore = attr(alice, "Coins")
 	local elapsed = 0
 	while isAlive(boss) and elapsed < 240 do
 		local bossPosition = positionOf(boss.Body)
@@ -965,6 +966,7 @@ test("east lands: packs roll levels in their range; the Bog Mother is a legend",
 	end
 	assert(not isAlive(boss), "Bog Mother purified in " .. elapsed .. " s")
 	advance(0.3)
+	assert(attr(alice, "Coins") - coinsBefore >= Balance.enemies.BogMother.reward.coins, "boss coins paid directly, not into the pouch")
 	assert(string.find(attr(alice, "Legends"), "BogMother", 1, true), "second legend recorded")
 	eq(attr(alice, "Chests"), "mystic:0", "legend chest")
 	toVillage(alice)
@@ -1124,6 +1126,30 @@ test("east creatures: hexcaps fire fans of spores, shades blink closer", functio
 		return e.args[1] == "blink"
 	end) > blinksBefore, "a shade blinked")
 	toVillage(bob)
+end)
+
+test("the light wave hits like the main weapon at any level", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local Profile = H.loadModule("src/server/Profile.luau")
+	local profile = PlayerProfiles.get(alice)
+	local main = Profile.loadout(profile)
+	local level = attr(alice, "Level")
+	local expected = Progression.weaponDamage(main, profile.staffUpgrade, level, false, profile.slotLevels[1]) * Balance.wave.damageMultiplier
+	advance(Balance.wave.cooldown + 1)
+	nearAnyEnemy(alice, "Rockling", "hollow")
+	local hits = #H.remoteLog
+	remotes.RequestWave.OnServerEvent:Fire(alice)
+	advance(0.05)
+	local biggest = 0
+	for index = hits + 1, #H.remoteLog do
+		local entry = H.remoteLog[index]
+		if entry.remote == "Fx" and entry.args[1] == "hit" then
+			biggest = math.max(biggest, entry.args[4])
+		end
+	end
+	assert(biggest >= math.floor(expected * 0.99), `wave hit {biggest}, main weapon wave {expected}`)
+	assert(biggest > Progression.staffDamage(profile.staffUpgrade, level) * Balance.wave.damageMultiplier, "stronger than the old staff-only wave")
+	toVillage(alice)
 end)
 
 test("leaving and rejoining restores the saved profile", function()
