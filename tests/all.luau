@@ -9,6 +9,7 @@ end
 
 local steps = {
 	{ "lune", { "run", "tests/logic" } },
+	{ "lune", { "run", "tests/balance" } },
 	{ "lune", { "run", "tests/api" } },
 	{ "lune", { "run", "tests/scene" } },
 	{ "lune", { "run", "tests/sim" } },

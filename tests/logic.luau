@@ -196,8 +196,8 @@ test("levels follow the thresholds and cap at max", function()
 end)
 
 test("derived stats: health, damage, wave, charms", function()
-	eq(Progression.maxHealth(1), 100)
-	eq(Progression.maxHealth(10), 190)
+	eq(Progression.maxHealth(1), Balance.levels.baseHealth)
+	eq(Progression.maxHealth(10), Balance.levels.baseHealth + 9 * Balance.levels.healthPerLevel)
 	eq(Progression.staffDamage(0, 1), 25)
 	assert(Progression.staffDamage(3, 10) > Progression.staffDamage(0, 1), "damage grows")
 	eq(Progression.waveUnlocked(2), false)
@@ -349,7 +349,7 @@ test("full chain is completable with a short grind at most, paying each reward o
 		purify("Gloomling", 5)
 		extraFights += 1
 	end
-	assert(extraFights <= 8, "grind before the boss stays short: " .. extraFights .. " Gloomlings")
+	assert(extraFights <= 12, "grind before the boss stays short: " .. extraFights .. " Gloomlings")
 	start("warden")
 	purify("Warden", 8)
 	purify("Warden", 8)
@@ -664,7 +664,8 @@ test("enemy levels scale health, damage and rewards; bosses keep their tuning", 
 	local one = Progression.enemyStats(gloom, 1)
 	eq(one.maxHp, gloom.maxHp)
 	eq(one.damageMultiplier, 1)
-	eq(one.reward.xp, gloom.reward.xp)
+	local oneSpan = Progression.thresholds[2] - Progression.thresholds[1]
+	eq(one.reward.xp, math.floor(oneSpan / Progression.killsPerLevel(1) + 0.5), "a level-1 level takes killsPerLevel(1) purifies")
 	local five = Progression.enemyStats(gloom, 5)
 	assert(five.maxHp > one.maxHp and five.damageMultiplier > 1, "tougher")
 	assert(five.reward.xp > one.reward.xp and five.reward.coins > one.reward.coins, "more rewarding")
@@ -674,11 +675,16 @@ test("enemy levels scale health, damage and rewards; bosses keep their tuning", 
 	for _, spawn in WorldData.spawns do
 		assert(type(spawn.level) == "number" and spawn.level >= 1, "spawn level set")
 	end
-	-- Fighting same-level creatures, a level never needs an absurd number of purifies.
+	-- Fighting same-level reference creatures, every level takes the designed number of purifies,
+	-- and health keeps growing.
+	local previousHp = 0
 	for level = 1, Progression.MAX_LEVEL - 1 do
 		local span = Progression.thresholds[level + 1] - Progression.thresholds[level]
-		local kills = span / Progression.enemyStats(gloom, level).reward.xp
-		assert(kills >= 1 and kills <= 40, `level {level} needs {kills} same-level purifies`)
+		local stats = Progression.enemyStats(gloom, level)
+		local kills = span / stats.reward.xp
+		assert(math.abs(kills - Progression.killsPerLevel(level)) < 1, `level {level} needs {kills} same-level purifies`)
+		assert(stats.maxHp > previousHp, "health grows every level")
+		previousHp = stats.maxHp
 	end
 end)
 

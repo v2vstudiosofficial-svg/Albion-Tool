@@ -61,7 +61,9 @@ function Stats.of(input: Input): PlayerStats
 		walkSpeed = Progression.walkSpeed(input.equippedCharm) * (1 + bonus(input, "feet")),
 		crystalMultiplier = 1 + bonus(input, "magnet"),
 		xpMultiplier = 1 + bonus(input, "wisdom"),
-		pouchCapacity = Balance.pouch.baseCapacity + upgrade(input, "pouch") * ups.pouch.perLevel,
+		pouchCapacity = math.floor(
+			(Balance.pouch.baseCapacity + upgrade(input, "pouch") * ups.pouch.perLevel) * (1 + Balance.pouch.perLevel * (level - 1)) + 0.5
+		),
 		waveRank = rank(input, "wave"),
 	}
 end

@@ -640,12 +640,16 @@ test("chests menu: slots by level, one unlock at a time, timers, open and reward
 end)
 
 test("crystal pouch on the HUD; a full pouch guides back to the Great Lantern", function()
-	local Balance2 = H.loadModule("src/shared/Balance.luau")
-	local capacity = Balance2.pouch.baseCapacity
+	local Stats = H.loadModule("src/shared/Stats.luau")
+	local function capacityWith(upgrades)
+		return Stats.of({ xp = hero:GetAttribute("XP") or 0, staffUpgrade = 0, upgrades = upgrades }).pouchCapacity
+	end
+	local capacity = capacityWith({})
 	setAttributes({ Crystals = 12, Upgrades = "" })
 	assert(shownText(Strings.get("hud_crystals", 12, capacity)), "pouch count")
 	setAttributes({ Upgrades = "pouch:1" })
-	assert(shownText(Strings.get("hud_crystals", 12, capacity + Balance2.upgrades.pouch.perLevel)), "capacity follows the upgrade")
+	assert(capacityWith({ pouch = 1 }) > capacity, "upgrade adds room")
+	assert(shownText(Strings.get("hud_crystals", 12, capacityWith({ pouch = 1 }))), "capacity follows the upgrade")
 	setAttributes({ Upgrades = "", Crystals = capacity })
 	advance(0.5)
 	local anchorPart = nil

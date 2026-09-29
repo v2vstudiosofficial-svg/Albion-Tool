@@ -142,18 +142,35 @@ function Progression.nextMilestone(level: number): number
 	return math.max(best, math.min(level + 1, Progression.MAX_LEVEL))
 end
 
--- Level-scaled stats for a regular enemy; bosses keep their hand-tuned values.
+-- How many same-level reference creatures one level takes.
+function Progression.killsPerLevel(level: number): number
+	local scaling = Balance.enemyScaling
+	return scaling.killsBase + scaling.killsPerLevel * (level - 1)
+end
+
+-- Level-scaled stats for an enemy. Bosses without `scales` (the intro Warden) keep their
+-- hand-tuned values; scaling bosses grow like creatures but keep their fixed reward.
 function Progression.enemyStats(stats: any, level: number)
 	local scaling = Balance.enemyScaling
-	if stats.isBoss then
+	if stats.isBoss and not stats.scales then
 		return { maxHp = stats.maxHp, damageMultiplier = 1, reward = stats.reward }
 	end
 	local steps = level - 1
+	local early = math.min(level, scaling.lateFrom) - 1
+	local late = math.max(0, level - scaling.lateFrom)
+	local maxHp = math.floor(stats.maxHp * scaling.hpGrowth ^ early * scaling.hpGrowthLate ^ late + 0.5)
+	local damageMultiplier = 1 + scaling.damagePerLevel * steps
+	if stats.isBoss then
+		return { maxHp = maxHp, damageMultiplier = damageMultiplier, reward = stats.reward }
+	end
+	local capped = math.min(level, Progression.MAX_LEVEL - 1)
+	local span = thresholds[capped + 1] - thresholds[capped]
+	local xp = span / Progression.killsPerLevel(level) * stats.reward.xp / scaling.referenceXp
 	return {
-		maxHp = math.floor(stats.maxHp * (1 + scaling.hpPerLevel * steps) + 0.5),
-		damageMultiplier = 1 + scaling.damagePerLevel * steps,
+		maxHp = maxHp,
+		damageMultiplier = damageMultiplier,
 		reward = {
-			xp = math.floor(stats.reward.xp * level ^ scaling.xpPower + 0.5),
+			xp = math.max(1, math.floor(xp + 0.5)),
 			coins = math.floor(stats.reward.coins * (1 + scaling.coinsPerLevel * steps) + 0.5),
 		},
 	}

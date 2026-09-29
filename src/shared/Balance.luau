@@ -6,9 +6,9 @@ return {
 		xpBase = 40,
 		xpScale = 30,
 		xpPower = 1.5,
-		baseHealth = 100,
-		healthPerLevel = 10,
-		damageBonusPerLevel = 0.06,
+		baseHealth = 150,
+		healthPerLevel = 12,
+		damageBonusPerLevel = 0.05,
 	},
 
 	player = {
@@ -22,7 +22,7 @@ return {
 	upgradeOrder = { "power", "pouch", "health", "regen", "crit" },
 	upgrades = {
 		-- Weapon damage +perLevel (fraction) per level.
-		power = { nameKey = "upgrade_power_name", descKey = "upgrade_power_desc", maxLevel = 50, baseCost = 40, growth = 1.2, perLevel = 0.12 },
+		power = { nameKey = "upgrade_power_name", descKey = "upgrade_power_desc", maxLevel = 50, baseCost = 40, growth = 1.22, perLevel = 0.1 },
 		-- Crystal pouch capacity +perLevel per level.
 		pouch = { nameKey = "upgrade_pouch_name", descKey = "upgrade_pouch_desc", maxLevel = 20, baseCost = 30, growth = 1.22, perLevel = 20 },
 		-- Max health +perLevel (fraction) per level.
@@ -38,7 +38,9 @@ return {
 
 	-- Purified creatures drop Light Crystals into the pouch; the Great Lantern in the village
 	-- plaza turns them into coins (one coin each).
-	pouch = { baseCapacity = 60, lanternRadius = 14 },
+	-- Capacity also grows with the player's level (like creature crystals), so a pouch always
+	-- holds about the same number of fights.
+	pouch = { baseCapacity = 60, perLevel = 0.2, lanternRadius = 14 },
 
 	wave = {
 		unlockLevel = 3,
@@ -72,12 +74,20 @@ return {
 		},
 	},
 
-	-- Regular enemies get tougher and more rewarding with their level (bosses keep their tuning).
+	-- Creatures get tougher and more rewarding with their level (tuned with `lune run tests/balance`).
+	-- Health grows by hpGrowth per level up to lateFrom and by hpGrowthLate after it, keeping up
+	-- with the player's multiplying power (rarer weapons and floating slots arrive mid-game); XP is set
+	-- so a same-level reference creature (reward.xp = referenceXp) is worth 1 / kills of a level,
+	-- kills = killsBase + killsPerLevel * (level - 1). Bosses with `scales` follow the same curve.
 	enemyScaling = {
-		hpPerLevel = 0.2,
+		hpGrowth = 1.11,
+		hpGrowthLate = 1.06,
+		lateFrom = 50,
 		damagePerLevel = 0.08,
-		xpPower = 1.25,
-		coinsPerLevel = 0.2,
+		referenceXp = 10,
+		killsBase = 10,
+		killsPerLevel = 2,
+		coinsPerLevel = 0.12,
 	},
 
 	enemies = {
@@ -91,7 +101,7 @@ return {
 			aggroRadius = 28,
 			leashRadius = 40,
 			contactRange = 4,
-			contactDamage = 10,
+			contactDamage = 8,
 			contactCooldown = 1.5,
 			respawnDelay = 10,
 			reward = { xp = 10, coins = 5 },

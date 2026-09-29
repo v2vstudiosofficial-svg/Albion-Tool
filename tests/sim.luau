@@ -248,7 +248,7 @@ test("players load profiles (ProfileStore mock) and hold their weapon", function
 	eq(weapon:GetAttribute("WeaponId"), "staff", "starter weapon")
 	eq(attr(alice, "Weapon"), "staff")
 	eq(attr(alice, "Companions"), "", "no floating weapons at level 1")
-	eq(humanoid(alice).MaxHealth, 100)
+	eq(humanoid(alice).MaxHealth, Balance.levels.baseHealth)
 	eq(humanoid(alice).BreakJointsOnDeath, false, "kid-friendly defeat")
 end)
 
