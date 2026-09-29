@@ -231,6 +231,8 @@ enemies.Mudling = variant("Gloomling", {
 })
 enemies.Bubbler = variant("Sporeling", {
 	nameKey = "enemy_bubbler_name",
+	shots = 3,
+	spread = 16,
 	reward = { xp = 14, coins = 8 },
 	color = { 90, 175, 110 },
 	friendColor = { 200, 255, 210 },
@@ -251,6 +253,7 @@ enemies.Frostling = variant("Rockling", {
 })
 enemies.Shade = variant("Gloomling", {
 	nameKey = "enemy_shade_name",
+	blink = { range = 12, cooldown = 4, distance = 9, windup = 0.45 },
 	maxHp = 80,
 	speed = 11,
 	reward = { xp = 12, coins = 7 },
@@ -259,12 +262,16 @@ enemies.Shade = variant("Gloomling", {
 })
 enemies.Hexcap = variant("Sporeling", {
 	nameKey = "enemy_hexcap_name",
+	shots = 5,
+	spread = 12,
 	reward = { xp = 15, coins = 8 },
 	color = { 125, 60, 165 },
 	friendColor = { 255, 210, 250 },
 })
 enemies.Obsidian = variant("Rockling", {
 	nameKey = "enemy_obsidian_name",
+	dashSpeed = 52,
+	windup = 0.75,
 	maxHp = 150,
 	reward = { xp = 20, coins = 11 },
 	color = { 55, 50, 65 },

@@ -419,6 +419,11 @@ local function spinPortals()
 	end
 end
 
+local function onBlink(from: Vector3, to: Vector3)
+	Effects.burst(from, RIFT_COLOR, 14, 8)
+	Effects.burst(to, RIFT_COLOR, 14, 8)
+end
+
 local function onDespawn(position: Vector3)
 	Effects.burst(position, RIFT_COLOR, 12, 6)
 end
@@ -691,6 +696,7 @@ local handlers = {
 	riftOpened = onRiftOpened,
 	riftClosed = onRiftClosed,
 	despawn = onDespawn,
+	blink = onBlink,
 	deposit = onDeposit,
 	purify = onPurify,
 	projectile = onProjectile,

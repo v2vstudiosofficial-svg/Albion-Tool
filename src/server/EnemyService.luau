@@ -155,12 +155,49 @@ end
 
 local behaviors = {}
 
+-- Blinking chasers (stats.blink = { range, cooldown, distance, windup }): when the target is
+-- far, a short visible wind-up, then a hop toward it.
+local function tryBlink(enemy: Enemy, target: Target?, now: number): boolean
+	local blink = enemy.stats.blink
+	local memory = enemy.memory
+	if not blink then
+		return false
+	end
+	if memory.blinkAt then
+		if now < memory.blinkAt then
+			return true -- winding up: stand still
+		end
+		memory.blinkAt = nil
+		if target then
+			local from = enemy.position
+			local offset = flat(target.root.Position - from)
+			local hop = math.min(blink.distance, math.max(0, offset.Magnitude - enemy.stats.contactRange))
+			if offset.Magnitude > 0.1 and hop > 0 then
+				enemy.position += offset.Unit * hop
+				ctx.clampToLeash(enemy)
+				ctx.fx("blink", from, enemy.position)
+			end
+		end
+		memory.nextBlink = now + blink.cooldown
+		return true
+	end
+	if target and now >= (memory.nextBlink or 0) and flatDistance(target.root.Position, enemy.position) > blink.range then
+		memory.blinkAt = now + blink.windup
+		ctx.fx("windup", enemy.model, blink.windup)
+		return true
+	end
+	return false
+end
+
 function behaviors.chaser(enemy: Enemy, dt: number, now: number)
 	if staggered(enemy, now) then
 		return
 	end
 	local stats = enemy.stats
 	local target = ctx.nearest(enemy, stats.aggroRadius)
+	if tryBlink(enemy, target, now) then
+		return
+	end
 	local goal = if target then target.root.Position else enemy.home
 	ctx.moveToward(enemy, goal, stats.speed, dt, if target then stats.contactRange * 0.6 else 0.2)
 	ctx.face(enemy, goal)
@@ -188,14 +225,20 @@ function behaviors.shooter(enemy: Enemy, dt: number, now: number)
 			local origin = enemy.body.Position
 			local direction = (targetPosition - origin)
 			if direction.Magnitude > 0.1 then
-				ctx.projectiles.fire(
-					origin + direction.Unit * stats.size * 0.6,
-					direction.Unit * stats.projectileSpeed,
-					stats.projectileRadius,
-					stats.projectileDamage * enemy.damageMultiplier,
-					stats.projectileLifetime,
-					"spore"
-				)
+				-- Several spores fan out evenly (stats.shots, stats.spread degrees apart).
+				local shots = stats.shots or 1
+				for index = 1, shots do
+					local angle = math.rad((index - (shots + 1) / 2) * (stats.spread or 0))
+					local aim = (CFrame.Angles(0, angle, 0) * CFrame.lookAt(Vector3.zero, direction.Unit)).LookVector
+					ctx.projectiles.fire(
+						origin + aim * stats.size * 0.6,
+						aim * stats.projectileSpeed,
+						stats.projectileRadius,
+						stats.projectileDamage * enemy.damageMultiplier,
+						stats.projectileLifetime,
+						"spore"
+					)
+				end
 			end
 			memory.nextShot = now + stats.fireInterval
 			enemy.state = "idle"

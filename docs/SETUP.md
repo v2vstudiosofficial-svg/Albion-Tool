@@ -62,6 +62,11 @@ Oyun içi tüm metinler İngilizce.
 10c. Efsane boss'lar (Bog Mother, Frost Titan, Shadow King): yaklaşınca "X woke up!" afişi ve seviyeli boss
    çubuğu; ilk zaferde Mistik sandık (yuva doluysa sikke). Sağ üstte **Legends**: yenilenler renkli ve adıyla,
    diğerleri "???" siluet. Yüksek seviyeyi hızlı denemek için `LvDebugLevel` + `LvDebugAllWeapons`.
+10d. M7: büyük sayılar kısalır (hasar "12.3K", sikke "4.5M"). Nadiren altın taçlı **Elite** yaratık doğar
+   (etiket "Elite Lv.N", 4 kat can, 3 kat ödül, sandık düşürebilir). **Gölge Yarığı**: bir bölgede dolaşırken
+   ara sıra mor dönen portal açılır, "Wave 1 of 3" afişi; 90 sn'de 3 dalgayı temizleyince Silver Chest,
+   süre biterse kalanlar kaybolur. Hemen denemek için (Studio): Workspace'e `LvDebugRift` (string) = `glade`.
+   Doğuda Bubbler/Hexcap yelpaze şeklinde çoklu mermi atar, Shade kısa uyarıdan sonra ışınlanarak yaklaşır.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

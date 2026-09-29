@@ -1079,6 +1079,53 @@ test("shadow rift: running out of time fades the rest away without rewards", fun
 	end), notices, "no rewards")
 end)
 
+test("east creatures: hexcaps fire fans of spores, shades blink closer", function()
+	local function spores(): number
+		return logCount("Fx", function(e)
+			return e.args[1] == "projectile" and e.args[7] == "spore"
+		end)
+	end
+	local before = spores()
+	local blinksBefore = logCount("Fx", function(e)
+		return e.args[1] == "blink"
+	end)
+	local function packCenter(kind: string): any
+		local sum, count = Vector3.new(0, 0, 0), 0
+		for _, spawn in WorldData.spawns do
+			if spawn.kind == kind and spawn.area == "citadel" then
+				sum += vec(spawn.position)
+				count += 1
+			end
+		end
+		return sum / count
+	end
+	-- Hexcaps shoot at a player a little outside their preferred distance.
+	teleport(bob, packCenter("Hexcap") + Vector3.new(0, 3, 16))
+	local fanSeen = false
+	for _ = 1, 80 do
+		local previous = spores()
+		advance(0.1)
+		heal(bob)
+		if spores() - previous >= Balance.enemies.Hexcap.shots then
+			fanSeen = true
+		end
+	end
+	assert(spores() > before, "hexcaps fired")
+	assert(fanSeen, "a whole fan of spores at once")
+	-- Shades hop toward a player standing beyond their blink range.
+	toVillage(bob)
+	advance(1)
+	teleport(bob, packCenter("Shade") + Vector3.new(0, 3, 20))
+	for _ = 1, 60 do
+		advance(0.1)
+		heal(bob)
+	end
+	assert(logCount("Fx", function(e)
+		return e.args[1] == "blink"
+	end) > blinksBefore, "a shade blinked")
+	toVillage(bob)
+end)
+
 test("leaving and rejoining restores the saved profile", function()
 	local snapshot = {}
 	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots", "Upgrades", "Crystals", "Skills", "SkillOffer", "PendingPicks" } do
