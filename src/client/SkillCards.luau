@@ -89,7 +89,7 @@ function SkillCards.start()
 	end)
 
 	-- Reopens the cards later; sits just under the player card in the top-left corner.
-	local corner = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 128), Vector2.new(210, 46))
+	local corner = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 146), Vector2.new(210, 46))
 	local reopen = UiKit.button({ Size = UDim2.fromOffset(200, 42), TextSize = 18, BackgroundColor3 = colors.good, Visible = false }, corner, function()
 		panel.Visible = true
 		UiKit.pop(panel)

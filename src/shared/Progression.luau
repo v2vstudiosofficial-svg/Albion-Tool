@@ -142,6 +142,12 @@ function Progression.nextMilestone(level: number): number
 	return math.max(best, math.min(level + 1, Progression.MAX_LEVEL))
 end
 
+-- Team bonus multiplier for this many nearby allies.
+function Progression.coopMultiplier(allies: number): number
+	local coop = Balance.coop
+	return 1 + math.min(coop.maxBonus, coop.bonusPerAlly * math.max(0, allies))
+end
+
 -- Turns level-scaled creature stats into an elite's (Balance.elite).
 function Progression.eliteStats(scaled: any)
 	local elite = Balance.elite

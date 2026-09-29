@@ -72,6 +72,8 @@ Bitiş (her parça): `lune run tests/all` geçer, sim senaryoları yeni sunucu d
 
 M7 — Eğlence turu (kullanıcı isteği): büyük sayıların kısaltılması (K/M); nadir elit yaratıklar (güçlü, altın taçlı, sandık şansı); bölgelerde zaman zaman açılan 3 dalgalık Gölge Yarığı olayları (katılanlara ödül sandığı); doğu yaratıklarına özel saldırılar (çoklu atış, ışınlanma). Bitiş: `lune run tests/all` geçer, sim yeni sunucu davranışlarını kapsar.
 
+M8 — Kalite ve bağlılık (kullanıcı isteği): kod/mantık hatalarının taranıp düzeltilmesi, sunucu ve istemci performansı, Macera Günlüğü (kademeli başarımlar, alınabilir ödüller) ve takım bonusu (yakındaki oyuncularla daha çok XP/kristal). Baskı kuran mekanikler (günlük seri, ücretli hızlandırma) yok.
+
 6. TOKEN VE ÇALIŞMA KURALLARI
 
 - Bu planı MASTER_PLAN.md’ye bir kez kaydet; her mesajda yeniden yazma ve yeniden tasarlama.

@@ -7,7 +7,8 @@ local Targets = require(script.Parent.Targets)
 
 local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
 
-local MAX_ACTIVE = 48
+-- Boss orb rings (up to 2 x 16), fanned spores and rifts can overlap; keep room for all of them.
+local MAX_ACTIVE = 160
 local PLAYER_RADIUS = 1.6
 
 type Projectile = {

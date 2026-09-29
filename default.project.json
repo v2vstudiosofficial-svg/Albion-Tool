@@ -28,6 +28,9 @@
         "EquipCharm": {
           "$className": "RemoteEvent"
         },
+        "ClaimAchievement": {
+          "$className": "RemoteEvent"
+        },
         "PickSkill": {
           "$className": "RemoteEvent"
         },

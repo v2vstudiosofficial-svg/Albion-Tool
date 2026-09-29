@@ -48,6 +48,7 @@ for _, name in {
 	"EquipWeapon",
 	"ChestAction",
 	"PickSkill",
+	"ClaimAchievement",
 	"RequestWave",
 	"Interact",
 	"BuyUpgrade",

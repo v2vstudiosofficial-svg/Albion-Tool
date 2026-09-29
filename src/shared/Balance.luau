@@ -345,6 +345,10 @@ Balance.rifts = {
 	coinsPerLevel = 20,
 }
 
+-- Playing together: every other player within `radius` adds bonusPerAlly to purify XP and
+-- crystals, up to maxBonus.
+Balance.coop = { radius = 60, bonusPerAlly = 0.1, maxBonus = 0.3 }
+
 -- Elite creatures: a rare, bigger, golden-crowned version of a regular creature. Everyone who
 -- helped gets a chestChance roll for one of `chests` (when a chest slot is free).
 Balance.elite = {

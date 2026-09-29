@@ -46,7 +46,7 @@ function Hud.start()
 
 	-- Player card ---------------------------------------------------------------------------
 	local isTouch = UiKit.isTouch()
-	local topLeft = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 112))
+	local topLeft = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 132))
 	local topCenter = UiKit.region(gui, Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 12), Vector2.new(440, 300))
 	local middle = UiKit.region(gui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.36), Vector2.new(460, 110))
 	local bottom = UiKit.region(gui, Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, if isTouch then -130 else -24), Vector2.new(460, 86))
@@ -106,6 +106,36 @@ function Hud.start()
 		TextColor3 = Color3.fromRGB(150, 210, 255),
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, card)
+
+	-- Team bonus: shown while other players are close by (the server applies the same rule).
+	local teamLabel = UiKit.label({
+		Position = UDim2.fromOffset(4, 108),
+		Size = UDim2.fromOffset(228, 20),
+		TextSize = 16,
+		TextColor3 = colors.good,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextStrokeTransparency = 0.4,
+		Visible = false,
+	}, topLeft)
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local allies = 0
+			if root then
+				for _, other in Players:GetPlayers() do
+					local otherRoot = other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+					if otherRoot and (otherRoot.Position - root.Position).Magnitude <= Balance.coop.radius then
+						allies += 1
+					end
+				end
+			end
+			local bonus = Progression.coopMultiplier(allies) - 1
+			teamLabel.Visible = bonus > 0
+			teamLabel.Text = Strings.get("hud_team_bonus", math.floor(bonus * 100 + 0.5))
+		end
+	end)
 
 	-- Quest panel ---------------------------------------------------------------------------
 	local quest = UiKit.panel({

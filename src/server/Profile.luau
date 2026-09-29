@@ -5,6 +5,7 @@ local Progression = if Shared then require(Shared.Progression) else require("../
 local WeaponData = if Shared then require(Shared.WeaponData) else require("../shared/WeaponData")
 local ChestData = if Shared then require(Shared.ChestData) else require("../shared/ChestData")
 local SkillData = if Shared then require(Shared.SkillData) else require("../shared/SkillData")
+local AchievementData = if Shared then require(Shared.AchievementData) else require("../shared/AchievementData")
 
 export type QuestProgress = {
 	state: "active" | "completed",
@@ -40,6 +41,9 @@ export type Profile = {
 	chestSpots: { [string]: number },
 	-- Legendary Shadows purified at least once (boss kind -> true).
 	legends: { [string]: boolean },
+	-- Adventure Log: counters (purifies, elites, rifts, chests, crystals) and claimed tiers.
+	counters: { [string]: number },
+	achievements: { [string]: number },
 	ownedCharms: { [string]: boolean },
 	equippedCharm: string?,
 	questProgress: { [string]: QuestProgress },
@@ -74,6 +78,8 @@ function Profile.new(): Profile
 		chests = {},
 		chestSpots = {},
 		legends = {},
+		counters = {},
+		achievements = {},
 		ownedCharms = {},
 		equippedCharm = nil,
 		questProgress = {},
@@ -186,6 +192,26 @@ function Profile.sanitize(data: any): Profile
 		end
 	end
 	data.legends = legends
+
+	local counters = {}
+	if type(data.counters) == "table" then
+		for key, value in data.counters do
+			if type(key) == "string" and isValidAmount(value) then
+				counters[key] = value
+			end
+		end
+	end
+	data.counters = counters
+	local achievements = {}
+	if type(data.achievements) == "table" then
+		for id, tier in data.achievements do
+			local def = AchievementData.achievements[id]
+			if def and isValidAmount(tier) and tier > 0 then
+				achievements[id] = math.min(tier, #def.tiers)
+			end
+		end
+	end
+	data.achievements = achievements
 	local companions = {}
 	if type(data.companions) == "table" then
 		for slot = 1, WeaponData.maxCompanions do

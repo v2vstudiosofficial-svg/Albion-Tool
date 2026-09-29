@@ -12,6 +12,7 @@ local WorldData = require(Shared:WaitForChild("WorldData"))
 local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local ChestData = require(Shared:WaitForChild("ChestData"))
 local Format = require(Shared:WaitForChild("Format"))
+local AchievementData = require(Shared:WaitForChild("AchievementData"))
 local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
@@ -21,6 +22,7 @@ local equipCharm = Remotes:WaitForChild("EquipCharm") :: RemoteEvent
 local upgradeStaff = Remotes:WaitForChild("BuyUpgrade") :: RemoteEvent
 local equipWeapon = Remotes:WaitForChild("EquipWeapon") :: RemoteEvent
 local chestAction = Remotes:WaitForChild("ChestAction") :: RemoteEvent
+local claimAchievement = Remotes:WaitForChild("ClaimAchievement") :: RemoteEvent
 local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
 local player = Players.LocalPlayer
 local colors = UiKit.colors
@@ -540,6 +542,116 @@ function Menus.start()
 		end
 	end
 
+	-- Adventure Log ------------------------------------------------------------------------
+	-- One row per achievement: next tier's goal and progress, and a Claim button when reached.
+	local log, logBody = modal("log_title", 430)
+	local logList = UiKit.create("ScrollingFrame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	}, logBody)
+	UiKit.create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, logList)
+	local logRows = {}
+	for order, id in AchievementData.order do
+		local def = AchievementData.achievements[id]
+		local row = UiKit.create("Frame", {
+			LayoutOrder = order,
+			Size = UDim2.new(1, -10, 0, 64),
+			BackgroundColor3 = colors.panelLight,
+			BorderSizePixel = 0,
+		}, logList)
+		UiKit.corner(row, 12)
+		local name = UiKit.label({
+			Position = UDim2.fromOffset(12, 4),
+			Size = UDim2.new(1, -130, 0, 24),
+			TextSize = 18,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+		UiKit.label({
+			Position = UDim2.fromOffset(12, 26),
+			Size = UDim2.new(1, -130, 0, 16),
+			Text = Strings.get(def.descKey),
+			TextSize = 13,
+			TextColor3 = colors.muted,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+		local barBack = UiKit.create("Frame", {
+			Position = UDim2.fromOffset(12, 46),
+			Size = UDim2.new(1, -130, 0, 10),
+			BackgroundColor3 = Color3.fromRGB(30, 26, 48),
+			BorderSizePixel = 0,
+		}, row)
+		UiKit.corner(barBack, 5)
+		local barFill = UiKit.create("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = colors.xp, BorderSizePixel = 0 }, barBack)
+		UiKit.corner(barFill, 5)
+		local progress = UiKit.label({
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -118, 0, 4),
+			Size = UDim2.fromOffset(110, 20),
+			TextSize = 14,
+			TextColor3 = colors.muted,
+			TextXAlignment = Enum.TextXAlignment.Right,
+		}, row)
+		local button = UiKit.button({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -8, 0.5, 0),
+			Size = UDim2.fromOffset(100, 44),
+			TextSize = 18,
+		}, row, function()
+			claimAchievement:FireServer(id)
+			Audio.play("ui")
+		end)
+		logRows[id] = { name = name, barFill = barFill, progress = progress, button = button }
+	end
+	-- "id:claimedTiers:progress" from the server.
+	local function logEntries(): { [string]: { claimed: number, progress: number } }
+		local entries = {}
+		for _, item in Attrs.list("Achievements") do
+			local id, claimed, value = string.match(item, "^([^:]+):(%d+):(%d+)$")
+			if id then
+				entries[id] = { claimed = tonumber(claimed) :: number, progress = tonumber(value) :: number }
+			end
+		end
+		return entries
+	end
+	local function logReadyCount(): number
+		local ready = 0
+		for id, entry in logEntries() do
+			local def = AchievementData.achievements[id]
+			local tier = def and def.tiers[entry.claimed + 1]
+			if tier and entry.progress >= tier.goal then
+				ready += 1
+			end
+		end
+		return ready
+	end
+	local function refreshLog()
+		local entries = logEntries()
+		for id, view in logRows do
+			local def = AchievementData.achievements[id]
+			local entry = entries[id] or { claimed = 0, progress = 0 }
+			local tier = def.tiers[entry.claimed + 1]
+			view.name.Text = Strings.get(def.nameKey) .. "  " .. Strings.get("log_tier", math.min(entry.claimed + 1, #def.tiers), #def.tiers)
+			if not tier then
+				view.progress.Text = ""
+				view.barFill.Size = UDim2.fromScale(1, 1)
+				view.button.Text = Strings.get("log_done")
+				view.button.BackgroundColor3 = colors.panel
+				view.button.TextColor3 = colors.muted
+			else
+				view.progress.Text = Strings.get("log_progress", Format.short(math.min(entry.progress, tier.goal)), Format.short(tier.goal))
+				view.barFill.Size = UDim2.fromScale(math.clamp(entry.progress / tier.goal, 0, 1), 1)
+				local ready = entry.progress >= tier.goal
+				view.button.Text = if ready then Strings.get("log_claim") else Strings.get("hud_coins", Format.short(tier.coins))
+				view.button.BackgroundColor3 = if ready then colors.good else colors.panel
+				view.button.TextColor3 = if ready then colors.panel else colors.coin
+			end
+		end
+	end
+
 	-- Forge (the Smith's shop) ------------------------------------------------------------
 	-- One row per upgrade: level, what it does and the price of the next level.
 	local shop, shopBody = modal("shop_title", 420)
@@ -676,6 +788,30 @@ function Menus.start()
 		refreshLegends()
 		showModal(legends)
 	end)
+	local logButton = UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_log"), LayoutOrder = 5, BackgroundColor3 = colors.good }, topRight, function()
+		refreshLog()
+		showModal(log)
+	end)
+	local logBadge = UiKit.label({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -4, 0, 4),
+		Size = UDim2.fromOffset(24, 24),
+		BackgroundColor3 = colors.accent,
+		BackgroundTransparency = 0,
+		Text = "!",
+		TextSize = 18,
+		TextColor3 = colors.panel,
+		Visible = false,
+	}, logButton)
+	UiKit.corner(logBadge, 12)
+	local function refreshLogBadge()
+		logBadge.Visible = logReadyCount() > 0
+		if openModal == log then
+			refreshLog()
+		end
+	end
+	player:GetAttributeChangedSignal("Achievements"):Connect(refreshLogBadge)
+	refreshLogBadge()
 	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_bag"), LayoutOrder = 3 }, topRight, function()
 		refreshBag()
 		showModal(bag)

@@ -1153,6 +1153,63 @@ test("shadow rifts: every creature zone qualifies, waves grow, fallback coins sc
 	end
 end)
 
+test("adventure log: data, counters, claims in order, chest or coins, never early", function()
+	local AchievementData = require("../src/shared/AchievementData")
+	local AchievementLogic = require("../src/server/AchievementLogic")
+	for _, id in AchievementData.order do
+		local def = AchievementData.achievements[id]
+		assert(def and Strings.has(def.nameKey) and Strings.has(def.descKey), "achievement " .. id)
+		local previous = 0
+		for _, tier in def.tiers do
+			assert(tier.goal > previous, id .. " goals rise")
+			previous = tier.goal
+			assert(tier.coins > 0, id .. " pays coins")
+			assert(tier.chest == nil or ChestData.chests[tier.chest], id .. " chest type")
+		end
+	end
+	local p = Profile.new()
+	eq(AchievementLogic.claimable(p, "friends"), false)
+	eq(AchievementLogic.claim(p, "friends", 1), nil, "not before the goal")
+	AchievementLogic.count(p, "purifies", 49)
+	eq(AchievementLogic.claimable(p, "friends"), false)
+	AchievementLogic.count(p, "purifies")
+	eq(AchievementLogic.readyCount(p), 1)
+	local coins = p.coins
+	local claim = AchievementLogic.claim(p, "friends", 1) :: any
+	eq(claim.tier, 1)
+	eq(p.coins, coins + AchievementData.achievements.friends.tiers[1].coins)
+	eq(AchievementLogic.claim(p, "friends", 1), nil, "same tier only once")
+	-- Tier 2 gives a chest when a slot is free, coins when not.
+	AchievementLogic.count(p, "purifies", 1000)
+	table.insert(p.chests, { type = "wood", startedAt = 0 })
+	coins = p.coins
+	claim = AchievementLogic.claim(p, "friends", 1) :: any
+	eq(claim.chest, nil, "slots full")
+	eq(claim.chestCoins, AchievementData.chestCoins.wood)
+	eq(p.coins, coins + AchievementData.achievements.friends.tiers[2].coins + AchievementData.chestCoins.wood)
+	p.chests = {}
+	claim = AchievementLogic.claim(p, "friends", 1) :: any
+	eq(claim.chest, "silver", "chest into the free slot")
+	-- Derived progress.
+	p.xp = Progression.thresholds[25]
+	eq(AchievementLogic.progress(p, "rising"), 25)
+	p.ownedWeapons.bow = true
+	eq(AchievementLogic.progress(p, "arsenal"), 2)
+	eq(AchievementLogic.claim(Profile.new(), "nope", 1), nil, "unknown id")
+	local clean = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, counters = { purifies = 5, bad = -1 }, achievements = { friends = 99, nope = 1 } })
+	eq(clean.counters.purifies, 5)
+	eq(clean.counters.bad, nil)
+	eq(clean.achievements.friends, #AchievementData.achievements.friends.tiers, "capped")
+	eq(clean.achievements.nope, nil)
+end)
+
+test("team bonus: +10% per nearby ally, capped", function()
+	eq(Progression.coopMultiplier(0), 1)
+	eq(Progression.coopMultiplier(1), 1 + Balance.coop.bonusPerAlly)
+	eq(Progression.coopMultiplier(10), 1 + Balance.coop.maxBonus)
+	assert(Strings.has("hud_team_bonus"), "string")
+end)
+
 test("game content is English only (no Turkish letters in source)", function()
 	local offenders = {}
 	local function scan(dir: string)

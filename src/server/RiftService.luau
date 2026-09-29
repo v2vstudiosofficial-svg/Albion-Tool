@@ -13,6 +13,7 @@ local ChestData = require(Shared.ChestData)
 local Progression = require(Shared.Progression)
 local RiftLogic = require(script.Parent.RiftLogic)
 local ChestLogic = require(script.Parent.ChestLogic)
+local AchievementLogic = require(script.Parent.AchievementLogic)
 local EnemyService = require(script.Parent.EnemyService)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
 local Targets = require(script.Parent.Targets)
@@ -81,6 +82,7 @@ local function close(rift: Rift, success: boolean)
 	for player in rift.helpers do
 		local profile = PlayerProfiles.get(player)
 		if profile and player.Parent == Players then
+			AchievementLogic.count(profile, "rifts")
 			local chestType = Balance.rifts.chest
 			if ChestLogic.give(profile, chestType, Progression.levelForXp(profile.xp)) then
 				notice:FireClient(player, "notice_rift_done", ChestData.chests[chestType].nameKey)

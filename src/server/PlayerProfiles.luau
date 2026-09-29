@@ -9,8 +9,10 @@ local Profile = require(script.Parent.Profile)
 local QuestLogic = require(script.Parent.QuestLogic)
 local ChestLogic = require(script.Parent.ChestLogic)
 local SkillLogic = require(script.Parent.SkillLogic)
+local AchievementLogic = require(script.Parent.AchievementLogic)
 local Shared = ReplicatedStorage.Shared
 local QuestData = require(Shared.QuestData)
+local AchievementData = require(Shared.AchievementData)
 local Progression = require(Shared.Progression)
 local WeaponData = require(Shared.WeaponData)
 local Strings = require(Shared.Strings)
@@ -122,6 +124,11 @@ function PlayerProfiles.sync(player: Player)
 	table.sort(spots)
 	player:SetAttribute("ChestSpots", table.concat(spots, ","))
 	player:SetAttribute("Legends", csv(profile.legends))
+	local log = {}
+	for _, id in AchievementData.order do
+		table.insert(log, id .. ":" .. AchievementLogic.claimed(profile, id) .. ":" .. AchievementLogic.progress(profile, id))
+	end
+	player:SetAttribute("Achievements", table.concat(log, ","))
 	player:SetAttribute("Charm", profile.equippedCharm or "")
 	player:SetAttribute("Charms", csv(profile.ownedCharms))
 	player:SetAttribute("Flags", csv(profile.restorationFlags))

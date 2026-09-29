@@ -213,6 +213,7 @@ local remoteNames = {
 	"EquipWeapon",
 	"ChestAction",
 	"PickSkill",
+	"ClaimAchievement",
 	"RequestWave",
 	"Interact",
 	"BuyUpgrade",

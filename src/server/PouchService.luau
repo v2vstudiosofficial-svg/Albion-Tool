@@ -8,6 +8,7 @@ local Balance = require(Shared.Balance)
 local WorldData = require(Shared.WorldData)
 local Stats = require(Shared.Stats)
 local Profile = require(script.Parent.Profile)
+local AchievementLogic = require(script.Parent.AchievementLogic)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
 local Targets = require(script.Parent.Targets)
 
@@ -52,6 +53,7 @@ local function depositNearLantern()
 		local offset = target.root.Position - LANTERN
 		if profile and profile.crystals > 0 and Vector3.new(offset.X, 0, offset.Z).Magnitude <= Balance.pouch.lanternRadius then
 			local coins = Profile.depositCrystals(profile)
+			AchievementLogic.count(profile, "crystals", coins)
 			PlayerProfiles.sync(target.player)
 			notice:FireClient(target.player, "notice_deposit", coins)
 			fx:FireClient(target.player, "deposit", LANTERN, coins)

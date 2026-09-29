@@ -757,6 +757,21 @@ test("shadow rift: portal while open, wave banner nearby, cleaned up on close", 
 	eq(#H.threadErrors, 0, "thread errors")
 end)
 
+test("adventure log: rows with progress, claim when ready, badge", function()
+	local AchievementData = H.loadModule("src/shared/AchievementData.luau")
+	setAttributes({ Achievements = "friends:0:12,elites:0:1,rifts:0:0,treasure:0:0,crystals:0:0,legends:0:0,arsenal:0:1,rising:0:3,forge:0:0" })
+	click(findButton(Strings.get("menu_log")))
+	assert(shownText(Strings.get(AchievementData.achievements.friends.nameKey) .. "  " .. Strings.get("log_tier", 1, 5)), "row with tier")
+	assert(shownText(Strings.get("log_progress", 12, 50)), "progress")
+	click(findButton(Strings.get("log_claim")))
+	eq(sent("ClaimAchievement", function(args)
+		return args[1] == "elites"
+	end), 1, "claim the ready one")
+	setAttributes({ Achievements = "friends:0:12,elites:1:1,rifts:0:0,treasure:0:0,crystals:0:0,legends:0:0,arsenal:0:1,rising:0:3,forge:0:0" })
+	assert(not findButton(Strings.get("log_claim")), "nothing left to claim")
+	click(findButton(Strings.get("menu_log")))
+end)
+
 test("bag: equip an owned charm, locked ones do nothing", function()
 	setAttributes({ Charms = "swift", Charm = "" })
 	click(findButton(Strings.get("menu_bag")))

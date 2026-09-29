@@ -1152,6 +1152,78 @@ test("the light wave hits like the main weapon at any level", function()
 	toVillage(alice)
 end)
 
+test("adventure log counts play and pays claimed tiers once", function()
+	local function entry(id: string): (number, number)
+		for _, item in string.split(attr(alice, "Achievements"), ",") do
+			local key, claimed, progress = string.match(item, "^([^:]+):(%d+):(%d+)$")
+			if key == id then
+				return tonumber(claimed) :: number, tonumber(progress) :: number
+			end
+		end
+		error("missing " .. id)
+	end
+	local _, purifies = entry("friends")
+	assert(purifies >= 50, "purifies counted during the scenario: " .. purifies)
+	local _, chests = entry("treasure")
+	assert(chests >= 1, "opened chests counted")
+	local _, rifts = entry("rifts")
+	assert(rifts >= 1, "cleared rifts counted")
+	local _, crystals = entry("crystals")
+	assert(crystals > 0, "deposited crystals counted")
+	assert(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_achievement_ready"
+	end) >= 1, "told when a reward is ready")
+	local coins = attr(alice, "Coins")
+	remotes.ClaimAchievement.OnServerEvent:Fire(alice, "friends")
+	remotes.ClaimAchievement.OnServerEvent:Fire(alice, "friends")
+	advance(0.5)
+	eq((entry("friends")), 1, "one tier per claim, spam ignored")
+	assert(attr(alice, "Coins") > coins, "coins paid")
+	for _, bad in { "nope", 5, {} } do
+		remotes.ClaimAchievement.OnServerEvent:Fire(alice, bad)
+		advance(0.4)
+	end
+	eq((entry("friends")), 1, "bad claims ignored")
+end)
+
+test("team bonus: playing close together gives more XP per purify", function()
+	local function xpOf(player): number
+		return (rewardsTo(player, "purify"))
+	end
+	-- Alone: a bob-only purify at the glade.
+	toVillage(alice)
+	local before = xpOf(bob)
+	local model = nearestEnemy("Gloomling", vec(WorldData.areas.glade.center))
+	while not model do
+		advance(2)
+		model = nearestEnemy("Gloomling", vec(WorldData.areas.glade.center))
+	end
+	local level = model:GetAttribute("Level")
+	local alone = Progression.enemyStats(Balance.enemies.Gloomling, level).reward.xp
+	local logStart = #H.remoteLog + 1
+	local waited = 0
+	while isAlive(model) and waited < 20 do
+		teleport(bob, positionOf(model.Body) + Vector3.new(0, 1, 2))
+		teleport(alice, positionOf(model.Body) + Vector3.new(0, 1, 40)) -- nearby, not fighting
+		advance(0.2)
+		heal(bob)
+		heal(alice)
+		waited += 0.2
+	end
+	local expected = math.floor(alone * Progression.coopMultiplier(1) + 0.5)
+	local found = false
+	for index = logStart, #H.remoteLog do
+		local e = H.remoteLog[index]
+		if e.remote == "RewardGranted" and e.target == bob and e.args[1] == "purify" and e.args[2] == expected then
+			found = true
+		end
+	end
+	assert(found, `a purify paid {expected} XP (alone {alone}) with a teammate nearby`)
+	assert(xpOf(bob) > before, "xp gained")
+	toVillage(alice)
+	toVillage(bob)
+end)
+
 test("leaving and rejoining restores the saved profile", function()
 	local snapshot = {}
 	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots", "Upgrades", "Crystals", "Skills", "SkillOffer", "PendingPicks" } do

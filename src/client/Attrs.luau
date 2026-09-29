@@ -53,28 +53,32 @@ function Attrs.pairs(name: string): { [string]: number }
 end
 
 -- The same derived stats the server uses (Shared/Stats), built from replicated attributes.
--- Cached: the camera ring and ability bar read it every frame; it is rebuilt only after one of
--- its inputs changes.
+-- Cached by its inputs: the camera ring and ability bar read it every frame, and the cache can
+-- never be stale because a change to any input changes the key.
+local cachedKey: string? = nil
 local cachedStats: Stats.PlayerStats? = nil
-for _, name in { "XP", "StaffTier", "Upgrades", "Skills", "Charm" } do
-	player:GetAttributeChangedSignal(name):Connect(function()
-		cachedStats = nil
-	end)
-end
 
 function Attrs.stats(): Stats.PlayerStats
-	if cachedStats then
+	local charm = Attrs.get("Charm", "")
+	local key = table.concat({
+		tostring(Attrs.get("XP", 0)),
+		tostring(Attrs.get("StaffTier", 0)),
+		Attrs.get("Upgrades", ""),
+		Attrs.get("Skills", ""),
+		charm,
+	}, "|")
+	if key == cachedKey and cachedStats then
 		return cachedStats
 	end
-	local charm = Attrs.get("Charm", "")
-	cachedStats = Stats.of({
+	local stats = Stats.of({
 		xp = Attrs.get("XP", 0),
 		staffUpgrade = Attrs.get("StaffTier", 0),
 		upgrades = Attrs.pairs("Upgrades"),
 		skills = Attrs.pairs("Skills"),
 		equippedCharm = if charm ~= "" then charm else nil,
 	})
-	return cachedStats :: Stats.PlayerStats
+	cachedKey, cachedStats = key, stats
+	return stats
 end
 
 return Attrs

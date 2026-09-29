@@ -20,6 +20,8 @@ local Balance = require(Shared.Balance)
 local ChestData = require(Shared.ChestData)
 local SkillService = require(script.SkillService)
 local RiftService = require(script.RiftService)
+local AchievementService = require(script.AchievementService)
+local Targets = require(script.Targets)
 
 local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
 local notice = ReplicatedStorage.Remotes.Notice :: RemoteEvent
@@ -36,14 +38,34 @@ ChestService.start()
 PouchService.start()
 SkillService.start()
 RiftService.start()
+AchievementService.start()
 
 -- Creatures give XP (boosted by the Wisdom skill) and Light Crystals for the pouch; coins come
 -- from turning crystals in at the Great Lantern.
 local eliteRandom = Random.new()
 
+-- Other living players close enough to share the team bonus.
+local function alliesNear(player: Player): number
+	local own = Targets.of(player)
+	if not own then
+		return 0
+	end
+	local count = 0
+	for _, other in Targets.get() do
+		if other.player ~= player and (other.root.Position - own.root.Position).Magnitude <= Balance.coop.radius then
+			count += 1
+		end
+	end
+	return count
+end
+
 EnemyService.connectPurified(function(enemyType, reward, participants, position, enemy)
 	for _, player in participants do
 		local profile = PlayerProfiles.get(player)
+		AchievementService.count(player, "purifies")
+		if enemy.elite then
+			AchievementService.count(player, "elites")
+		end
 		-- Elites may drop a chest for everyone who helped.
 		if profile and enemy.elite and eliteRandom:NextNumber() < Balance.elite.chestChance then
 			local chests = Balance.elite.chests
@@ -53,11 +75,13 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 			end
 		end
 		local xpMultiplier = if profile then Stats.of(profile).xpMultiplier else 1
+		local teamBonus = Progression.coopMultiplier(alliesNear(player))
+		xpMultiplier *= teamBonus
 		-- Bosses pay coins straight away (a boss payout would overflow an early pouch).
 		local isBoss = Balance.enemies[enemyType].isBoss == true
 		PlayerProfiles.grant(player, { xp = math.floor(reward.xp * xpMultiplier + 0.5), coins = if isBoss then reward.coins else 0 }, "purify")
 		if not isBoss then
-			PouchService.give(player, reward.coins, position)
+			PouchService.give(player, math.floor(reward.coins * teamBonus + 0.5), position)
 		end
 		QuestService.onPurified(player, enemyType)
 		if profile and Profile.recordLegend(profile, enemyType) then

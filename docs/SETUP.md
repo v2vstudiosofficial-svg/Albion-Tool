@@ -67,6 +67,9 @@ Oyun içi tüm metinler İngilizce.
    ara sıra mor dönen portal açılır, "Wave 1 of 3" afişi; 90 sn'de 3 dalgayı temizleyince Silver Chest,
    süre biterse kalanlar kaybolur. Hemen denemek için (Studio): Workspace'e `LvDebugRift` (string) = `glade`.
    Doğuda Bubbler/Hexcap yelpaze şeklinde çoklu mermi atar, Shade kısa uyarıdan sonra ışınlanarak yaklaşır.
+10e. M8: sürüler eriyince tek toplu bildirim ("5 friends made! +230 XP"); sağ üstte **Log** (Macera Günlüğü):
+   9 başarım, ilerleme çubuğu, hazır olana "Claim!" ve butonda "!" rozeti; ödül sikke + bazen sandık.
+   İki oyuncu yakın durunca sol üstte "Team bonus +10%" ve arındırmalarda daha çok XP/kristal.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).
