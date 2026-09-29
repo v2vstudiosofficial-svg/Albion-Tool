@@ -108,6 +108,8 @@ local texts = {
 	hint_wave_pc = "Q: Light Wave",
 
 	enemy_label = "Lv.%d %s",
+	enemy_label_elite = "Elite Lv.%d %s",
+	notice_elite_chest = "The elite dropped a %s!",
 	hud_crystals = "%s/%s",
 	notice_pouch_full = "Your pouch is full! Bring crystals to the Great Lantern.",
 	notice_deposit = "Crystals turned into %d coins!",

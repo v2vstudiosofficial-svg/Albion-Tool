@@ -970,6 +970,43 @@ test("east lands: packs roll levels in their range; the Bog Mother is a legend",
 	toVillage(alice)
 end)
 
+test("elites: crowned, tougher, triple rewards, may drop a chest", function()
+	local EnemyService = H.loadModule("src/server/EnemyService.luau")
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	PlayerProfiles.get(alice).chests = {}
+	PlayerProfiles.sync(alice)
+	local chance = Balance.elite.chestChance
+	Balance.elite.chestChance = 1 -- make the drop certain for the test
+	local spot = vec(WorldData.areas.glade.center)
+	local id = EnemyService.spawnTemporary("Gloomling", 2, spot, "glade", "test", true)
+	local enemy = EnemyService.get(id)
+	assert(enemy and enemy.elite, "elite spawned")
+	eq(enemy.model:GetAttribute("Elite"), true)
+	assert(enemy.model:FindFirstChild("Crown1"), "golden crown")
+	local normal = Progression.enemyStats(Balance.enemies.Gloomling, 2)
+	eq(enemy.model:GetAttribute("MaxHp"), math.floor(normal.maxHp * Balance.elite.hpMultiplier + 0.5), "tougher")
+	local xpBefore = rewardsTo(alice, "purify")
+	local waited = 0
+	while EnemyService.get(id) and waited < 20 do
+		teleport(alice, positionOf(enemy.body) + Vector3.new(0, 1, 2))
+		advance(0.2)
+		heal(alice)
+		waited += 0.2
+	end
+	Balance.elite.chestChance = chance
+	eq(EnemyService.get(id), nil, "purified")
+	advance(0.2)
+	assert(rewardsTo(alice, "purify") - xpBefore >= normal.reward.xp * Balance.elite.rewardMultiplier, "triple xp")
+	assert(attr(alice, "Chests") ~= "", "elite chest dropped")
+	-- Natural elites in the glade may drop chests during the fight too.
+	assert(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_elite_chest"
+	end) >= 1, "told about the chest")
+	advance(20)
+	eq(EnemyService.get(id), nil, "temporary enemies never respawn")
+	toVillage(alice)
+end)
+
 test("leaving and rejoining restores the saved profile", function()
 	local snapshot = {}
 	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots", "Upgrades", "Crystals", "Skills", "SkillOffer", "PendingPicks" } do

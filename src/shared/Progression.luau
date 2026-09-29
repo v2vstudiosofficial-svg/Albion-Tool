@@ -142,6 +142,19 @@ function Progression.nextMilestone(level: number): number
 	return math.max(best, math.min(level + 1, Progression.MAX_LEVEL))
 end
 
+-- Turns level-scaled creature stats into an elite's (Balance.elite).
+function Progression.eliteStats(scaled: any)
+	local elite = Balance.elite
+	return {
+		maxHp = math.floor(scaled.maxHp * elite.hpMultiplier + 0.5),
+		damageMultiplier = scaled.damageMultiplier * elite.damageMultiplier,
+		reward = {
+			xp = math.floor(scaled.reward.xp * elite.rewardMultiplier + 0.5),
+			coins = math.floor(scaled.reward.coins * elite.rewardMultiplier + 0.5),
+		},
+	}
+end
+
 -- How many same-level reference creatures one level takes.
 function Progression.killsPerLevel(level: number): number
 	local scaling = Balance.enemyScaling

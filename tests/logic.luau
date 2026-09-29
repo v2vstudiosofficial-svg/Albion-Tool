@@ -1120,6 +1120,19 @@ test("short numbers: 950, 12.3K, 150K, 4.5M, 2.1B", function()
 	eq(Format.short(-2500), "-2.5K")
 end)
 
+test("elites: tougher and more rewarding, rare", function()
+	local scaled = Progression.enemyStats(Balance.enemies.Gloomling, 10)
+	local elite = Progression.eliteStats(scaled)
+	eq(elite.maxHp, math.floor(scaled.maxHp * Balance.elite.hpMultiplier + 0.5))
+	assert(elite.damageMultiplier > scaled.damageMultiplier, "hits harder")
+	assert(elite.reward.xp > scaled.reward.xp and elite.reward.coins > scaled.reward.coins, "pays more")
+	assert(Balance.elite.chance > 0 and Balance.elite.chance <= 0.1, "rare")
+	for _, chestType in Balance.elite.chests do
+		assert(ChestData.chests[chestType], "elite chest " .. chestType)
+	end
+	assert(Strings.has("enemy_label_elite") and Strings.has("notice_elite_chest"), "elite strings")
+end)
+
 test("game content is English only (no Turkish letters in source)", function()
 	local offenders = {}
 	local function scan(dir: string)

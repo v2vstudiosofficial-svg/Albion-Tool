@@ -562,7 +562,12 @@ local function attachEnemyUi(model: Instance)
 	}, billboards)
 	UiKit.label({
 		Size = UDim2.new(1, 0, 0, 18),
-		Text = Strings.get("enemy_label", model:GetAttribute("Level") or 1, Strings.get(stats.nameKey)),
+		Text = Strings.get(
+			if model:GetAttribute("Elite") then "enemy_label_elite" else "enemy_label",
+			model:GetAttribute("Level") or 1,
+			Strings.get(stats.nameKey)
+		),
+		TextColor3 = if model:GetAttribute("Elite") then Color3.fromRGB(255, 205, 70) else nil,
 		TextSize = 16,
 		TextStrokeTransparency = 0.4,
 	}, gui)

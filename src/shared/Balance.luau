@@ -321,6 +321,18 @@ enemies.ShadowKing = variant("Warden", {
 -- The Legendary Shadows collection, in the order they are met. The first win against each
 -- gives a Mystic chest (or legendCoins when every chest slot is full).
 Balance.legends = { "Warden", "BogMother", "FrostTitan", "ShadowKing" }
+
+-- Elite creatures: a rare, bigger, golden-crowned version of a regular creature. Everyone who
+-- helped gets a chestChance roll for one of `chests` (when a chest slot is free).
+Balance.elite = {
+	chance = 0.06,
+	hpMultiplier = 4,
+	damageMultiplier = 1.4,
+	rewardMultiplier = 3,
+	sizeMultiplier = 1.35,
+	chestChance = 0.35,
+	chests = { "wood", "wood", "silver" },
+}
 Balance.legendCoins = 300
 
 return Balance

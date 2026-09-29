@@ -119,6 +119,15 @@ function EnemyModels.build(kind: string, stats, cframe: CFrame): (Model, BasePar
 	if builder then
 		builder(model, body, stats)
 	end
+	if stats.elite then
+		-- A little golden crown marks elites.
+		local gold = Color3.fromRGB(255, 205, 70)
+		for index = 1, 5 do
+			local angle = index / 5 * math.pi * 2
+			local spike = ball("Crown" .. index, 0.7, gold, Enum.Material.Neon)
+			attach(model, body, spike, CFrame.new(math.cos(angle) * stats.size * 0.22, stats.size * 0.55, math.sin(angle) * stats.size * 0.22))
+		end
+	end
 	return model, body
 end
 

@@ -17,6 +17,7 @@ local PouchService = require(script.PouchService)
 local Profile = require(script.Profile)
 local ChestLogic = require(script.ChestLogic)
 local Balance = require(Shared.Balance)
+local ChestData = require(Shared.ChestData)
 local SkillService = require(script.SkillService)
 
 local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
@@ -36,9 +37,19 @@ SkillService.start()
 
 -- Creatures give XP (boosted by the Wisdom skill) and Light Crystals for the pouch; coins come
 -- from turning crystals in at the Great Lantern.
-EnemyService.connectPurified(function(enemyType, reward, participants, position)
+local eliteRandom = Random.new()
+
+EnemyService.connectPurified(function(enemyType, reward, participants, position, enemy)
 	for _, player in participants do
 		local profile = PlayerProfiles.get(player)
+		-- Elites may drop a chest for everyone who helped.
+		if profile and enemy.elite and eliteRandom:NextNumber() < Balance.elite.chestChance then
+			local chests = Balance.elite.chests
+			local chestType = chests[eliteRandom:NextInteger(1, #chests)]
+			if ChestLogic.give(profile, chestType, Progression.levelForXp(profile.xp)) then
+				notice:FireClient(player, "notice_elite_chest", ChestData.chests[chestType].nameKey)
+			end
+		end
 		local xpMultiplier = if profile then Stats.of(profile).xpMultiplier else 1
 		PlayerProfiles.grant(player, { xp = math.floor(reward.xp * xpMultiplier + 0.5), coins = 0 }, "purify")
 		PouchService.give(player, reward.coins, position)

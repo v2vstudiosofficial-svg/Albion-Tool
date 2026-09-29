@@ -32,7 +32,9 @@ export type Enemy = {
 	reward: any,
 	model: Model,
 	body: BasePart,
-	spawnIndex: number,
+	spawnIndex: number?,
+	elite: boolean,
+	tag: string?,
 	areaCenter: Vector3,
 	areaRadius: number,
 	home: Vector3,
@@ -49,7 +51,7 @@ local EnemyService = {}
 
 local enemies: { [number]: Enemy } = {}
 local random = Random.new()
-local purifiedListeners: { (string, any, { Player }, Vector3) -> () } = {}
+local purifiedListeners: { (string, any, { Player }, Vector3, any) -> () } = {}
 local folder: Folder
 local nextId = 0
 
@@ -305,32 +307,48 @@ local function place(enemy: Enemy, now: number)
 	enemy.body.CFrame = CFrame.lookAt(position, position + enemy.facing)
 end
 
-local function spawnAt(spawnIndex: number)
-	local spawn = WorldData.spawns[spawnIndex]
-	local stats = Balance.enemies[spawn.kind]
-	local area = WorldData.areas[spawn.area]
-	local level = spawn.level or (if spawn.levels then random:NextInteger(spawn.levels[1], spawn.levels[2]) else 1)
-	local scaled = Progression.enemyStats(stats, level)
+export type SpawnOptions = {
+	-- Index into WorldData.spawns; purified enemies with one respawn there. Nil = temporary.
+	spawnIndex: number?,
+	elite: boolean?,
+	-- Free-form label for systems that track their own enemies (e.g. "rift").
+	tag: string?,
+}
+
+local function createEnemy(kind: string, level: number, position: Vector3, areaId: string, options: SpawnOptions): Enemy
+	local base = Balance.enemies[kind]
+	local area = WorldData.areas[areaId]
+	local scaled = Progression.enemyStats(base, level)
+	local stats = base
+	if options.elite then
+		scaled = Progression.eliteStats(scaled)
+		stats = table.clone(base)
+		stats.size *= Balance.elite.sizeMultiplier
+		stats.elite = true
+	end
 	nextId += 1
-	local home = WorldData.vector(spawn.position) + Vector3.new(0, stats.hoverHeight, 0)
-	local model, body = EnemyModels.build(spawn.kind, stats, CFrame.new(home))
+	local home = position + Vector3.new(0, stats.hoverHeight, 0)
+	local model, body = EnemyModels.build(kind, stats, CFrame.new(home))
 	model:SetAttribute("EnemyId", nextId)
-	model:SetAttribute("EnemyType", spawn.kind)
+	model:SetAttribute("EnemyType", kind)
 	model:SetAttribute("Level", level)
 	model:SetAttribute("Boss", stats.isBoss == true)
+	model:SetAttribute("Elite", options.elite == true)
 	model:SetAttribute("Alive", true)
 
 	local enemy: Enemy = {
 		id = nextId,
-		kind = spawn.kind,
+		kind = kind,
 		stats = stats,
 		level = level,
+		elite = options.elite == true,
+		tag = options.tag,
 		baseMaxHp = scaled.maxHp,
 		damageMultiplier = scaled.damageMultiplier,
 		reward = scaled.reward,
 		model = model,
 		body = body,
-		spawnIndex = spawnIndex,
+		spawnIndex = options.spawnIndex,
 		areaCenter = WorldData.vector(area.center),
 		areaRadius = area.radius,
 		home = home,
@@ -345,6 +363,20 @@ local function spawnAt(spawnIndex: number)
 	publishHp(enemy)
 	model.Parent = folder
 	enemies[nextId] = enemy
+	return enemy
+end
+
+local function spawnAt(spawnIndex: number)
+	local spawn = WorldData.spawns[spawnIndex]
+	local stats = Balance.enemies[spawn.kind]
+	local level = spawn.level or (if spawn.levels then random:NextInteger(spawn.levels[1], spawn.levels[2]) else 1)
+	local elite = not stats.isBoss and random:NextNumber() < Balance.elite.chance
+	createEnemy(spawn.kind, level, WorldData.vector(spawn.position), spawn.area, { spawnIndex = spawnIndex, elite = elite })
+end
+
+-- A one-off enemy that never respawns (wave events). Returns its id.
+function EnemyService.spawnTemporary(kind: string, level: number, position: Vector3, areaId: string, tag: string?, elite: boolean?): number
+	return createEnemy(kind, level, position, areaId, { tag = tag, elite = elite }).id
 end
 
 local function purify(enemy: Enemy)
@@ -357,9 +389,11 @@ local function purify(enemy: Enemy)
 	enemy.model:SetAttribute("Alive", false)
 	fx:FireAllClients("purify", position, enemy.kind, enemy.facing)
 	enemy.model:Destroy()
-	task.delay(enemy.stats.respawnDelay, spawnAt, enemy.spawnIndex)
+	if enemy.spawnIndex then
+		task.delay(enemy.stats.respawnDelay, spawnAt, enemy.spawnIndex)
+	end
 	for _, listener in purifiedListeners do
-		task.spawn(listener, enemy.kind, enemy.reward, participants, position)
+		task.spawn(listener, enemy.kind, enemy.reward, participants, position, enemy)
 	end
 end
 
@@ -382,8 +416,8 @@ function EnemyService.getFolder(): Folder
 	return folder
 end
 
--- listener(enemyType, reward, participants, position)
-function EnemyService.connectPurified(listener: (string, any, { Player }, Vector3) -> ())
+-- listener(enemyType, reward, participants, position, enemy)
+function EnemyService.connectPurified(listener: (string, any, { Player }, Vector3, any) -> ())
 	table.insert(purifiedListeners, listener)
 end
 
