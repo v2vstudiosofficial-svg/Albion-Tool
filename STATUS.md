@@ -25,11 +25,11 @@
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 71, balance, api, scene 15, sim 59, client 51/52/52/1, place; hepsi geçti (sinematik akış,
+- logic 71, balance, api, scene 15, sim 59, client 52/53/53/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.
-- Roblox Studio'da HİÇ ÇALIŞTIRILMADI: görünüm, fizik, gerçek DataStore, ağ, performans ölçülmedi.
+- Studio'da ilk çalıştırma yapıldı (kullanıcı, yerel). Bulunan: kol animasyonu C0 tween hatası (düzeltildi). Elle test listesi sürüyor.
 
 ## Bilinen riskler
 - Silah/kostüm modelleri, açılar, sandık konumları tahmini; denge bir model. Ses kimlikleri boş; animasyonlar prosedürel.

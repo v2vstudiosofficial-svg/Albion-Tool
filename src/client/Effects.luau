@@ -136,6 +136,21 @@ local function tierColor(power: number): Color3
 	return UiKit.rgb(Progression.powerColor(power))
 end
 
+-- Steps a joint's C0 by hand: TweenService refuses it in Studio ("property named 'C0' ... is read
+-- only"). Eases out like the other tweens; stops early when the joint is removed.
+local function moveJoint(joint: Motor6D, goal: CFrame, seconds: number)
+	local from = joint.C0
+	local started = os.clock()
+	while joint.Parent do
+		local alpha = math.clamp((os.clock() - started) / seconds, 0, 1)
+		joint.C0 = from:Lerp(goal, 1 - (1 - alpha) * (1 - alpha))
+		if alpha >= 1 then
+			return
+		end
+		task.wait()
+	end
+end
+
 local function swingArm(character: Model?)
 	if not character then
 		return
@@ -150,11 +165,15 @@ local function swingArm(character: Model?)
 	shoulder:SetAttribute("LvSwing", true)
 	local original = shoulder.C0
 	local raise = if upperArm then CFrame.Angles(math.rad(75), 0, 0) else CFrame.Angles(0, 0, math.rad(75))
-	UiKit.tween(shoulder, 0.07, { C0 = original * raise })
-	task.delay(0.1, function()
-		local back = UiKit.tween(shoulder, 0.16, { C0 = original })
-		back.Completed:Wait()
-		shoulder:SetAttribute("LvSwing", nil)
+	task.spawn(function()
+		-- The character can be removed at any moment (respawn, leaving): a destroyed joint just ends the swing.
+		pcall(function()
+			moveJoint(shoulder, original * raise, 0.07)
+			task.wait(0.03)
+			moveJoint(shoulder, original, 0.16)
+			shoulder.C0 = original
+			shoulder:SetAttribute("LvSwing", nil)
+		end)
 	end)
 end
 

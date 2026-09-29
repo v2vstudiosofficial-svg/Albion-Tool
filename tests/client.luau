@@ -1287,6 +1287,25 @@ test("settings apply: look, effects, damage numbers, creature bars, camera scene
 	eq(#H.threadErrors, 0, "thread errors")
 end)
 
+test("attack animation: the arm swings by stepping the joint (TweenService cannot tween C0) and returns", function()
+	local shoulder = friend.Character.RightUpperArm.RightShoulder
+	local original = H.read(shoulder, "C0")
+	teleport(vec(WorldData.spawn, 3)) -- effects of far-away players are skipped
+	remotes.Fx.OnClientEvent:Fire("attack", friend, "staff", 0, vec(WorldData.spawn, 3) + Vector3.new(0, 0, 10), vec(WorldData.spawn, 3), 1)
+	advance(0.06)
+	assert(H.read(shoulder, "C0") ~= original, "the arm is raised while swinging")
+	assert(shoulder:GetAttribute("LvSwing"), "one swing at a time")
+	advance(0.6)
+	assert(H.read(shoulder, "C0") == original, "the arm returns to where it was")
+	assert(not shoulder:GetAttribute("LvSwing"), "ready for the next swing")
+	-- A joint removed mid-swing ends the swing quietly.
+	remotes.Fx.OnClientEvent:Fire("attack", friend, "staff", 0, vec(WorldData.spawn, 3) + Vector3.new(0, 0, 10), vec(WorldData.spawn, 3), 1)
+	advance(0.03)
+	shoulder:Destroy()
+	advance(0.5)
+	eq(#H.threadErrors, 0, "no thread errors")
+end)
+
 test("mini map: near and world views, other players, guide goal, follows the setting", function()
 	local MapLogic = H.loadModule("src/shared/MapLogic.luau")
 	local map = playerGui.Minimap:FindFirstChild("Map", true)
