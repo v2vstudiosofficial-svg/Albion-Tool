@@ -123,6 +123,9 @@ Oyun içi tüm metinler İngilizce.
 10o. M17: **Kulede boss katları**: her 10. katta ortada bir Efsane Gölge (seviyeye göre Bog Mother → Frost Titan →
    Shadow King) ve birkaç yardımcı; afişte "X awaits!". Boss can payı normalin %40'ı. Kule boss'ları hikâye görevine ve "ilk zafer" ödülüne (Mistik sandık, Legends kaydı, pet) SAYILMAZ; bunlar kendi arenalarında kalır. Hemen denemek için Studio'da
    Sv12 ile girip 9. kata kadar çıkmak gerekir (uzun); mantık testlerde ve modelde doğrulandı (boss savaşları 25–180 sn).
+10p. M18: **3 yeni yetenek kartı** (artık 13 yetenek): Healing Light (her arındırmada canın %2'si/rank iyileşir), Brave Heart
+   (can yarıdan azken +%10/rank hasar), Treasure Hunter (sandık sikkesi +%15/rank). Seviye atlayınca kartlarda çıkar;
+   `LvDebugLevel` ile çok seviye atlayıp denenebilir.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

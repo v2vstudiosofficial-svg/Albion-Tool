@@ -2,7 +2,7 @@
 -- kept forever. `perRank` is a fraction unless noted. When every skill is maxed the card turns
 -- into a coin gift.
 return {
-	order = { "swift", "sharp", "reach", "lucky", "tough", "magnet", "feet", "wave", "wisdom", "echo" },
+	order = { "swift", "sharp", "reach", "lucky", "tough", "magnet", "feet", "wave", "wisdom", "echo", "healing", "fury", "treasure" },
 	offerCount = 3,
 	fallbackCoins = 50,
 
@@ -26,6 +26,12 @@ return {
 		-- More XP from creatures.
 		wisdom = { nameKey = "skill_wisdom_name", descKey = "skill_wisdom_desc", maxRank = 4, perRank = 0.08, color = { 230, 200, 255 } },
 		-- Floating weapons hit harder.
+		-- Heals this share of max health every time you purify a creature.
+		healing = { nameKey = "skill_healing_name", descKey = "skill_healing_desc", maxRank = 5, perRank = 0.02, color = { 150, 255, 170 } },
+		-- More damage while at half health or less.
+		fury = { nameKey = "skill_fury_name", descKey = "skill_fury_desc", maxRank = 4, perRank = 0.1, color = { 255, 110, 90 } },
+		-- More coins from chests.
+		treasure = { nameKey = "skill_treasure_name", descKey = "skill_treasure_desc", maxRank = 4, perRank = 0.15, color = { 255, 215, 100 } },
 		echo = { nameKey = "skill_echo_name", descKey = "skill_echo_desc", maxRank = 5, perRank = 0.1, color = { 120, 240, 220 } },
 	},
 }

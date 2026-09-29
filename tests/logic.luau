@@ -2014,6 +2014,33 @@ test("tower boss floors: every tenth floor, the legend fits the level, helpers c
 	assert(TowerLogic.chestFor(10) ~= nil and TowerLogic.chestFor(20) ~= nil, "a boss floor always gives a chest")
 end)
 
+test("new skills: healing, brave heart and treasure hunter are complete and add up", function()
+	for _, id in { "healing", "fury", "treasure" } do
+		local skill = SkillData.skills[id]
+		assert(skill and table.find(SkillData.order, id), id .. " is offered")
+		assert(Strings.has(skill.nameKey) and Strings.has(skill.descKey), id .. " texts")
+		assert(skill.maxRank >= 3 and skill.perRank > 0, id .. " ranks")
+	end
+	eq(#SkillData.order, 13)
+	local plain = Stats.of({ xp = 0, staffUpgrade = 0 })
+	eq(plain.healOnPurify, 0)
+	eq(plain.furyDamage, 0)
+	eq(plain.chestCoins, 1)
+	local skilled = Stats.of({ xp = 0, staffUpgrade = 0, skills = { healing = 3, fury = 2, treasure = 4 } })
+	assert(math.abs(skilled.healOnPurify - 3 * SkillData.skills.healing.perRank) < 1e-9, "healing per rank")
+	assert(math.abs(skilled.furyDamage - 2 * SkillData.skills.fury.perRank) < 1e-9, "fury per rank")
+	assert(math.abs(skilled.chestCoins - (1 + 4 * SkillData.skills.treasure.perRank)) < 1e-9, "treasure per rank")
+	assert(SkillData.skills.healing.perRank * SkillData.skills.healing.maxRank <= 0.15, "healing stays a small top-up")
+	-- Chests pay more with Treasure Hunter, and the same chest pays the same otherwise.
+	local p = Profile.new()
+	local base = ChestLogic.roll("wood", sequence({ 0 }), p, 1).coins
+	eq(base, ChestData.chests.wood.coins[1])
+	p.skills.treasure = 4
+	local richer = ChestLogic.roll("wood", sequence({ 0 }), p, 1).coins
+	eq(richer, math.floor(ChestData.chests.wood.coins[1] * (1 + 4 * SkillData.skills.treasure.perRank) + 0.5), "treasure hunter bonus on chest coins")
+	assert(richer > base)
+end)
+
 test("game content is English only (no Turkish letters in source)", function()
 	local offenders = {}
 	local function scan(dir: string)

@@ -5,6 +5,7 @@ local ChestData = if Shared then require(Shared.ChestData) else require("../shar
 local WeaponData = if Shared then require(Shared.WeaponData) else require("../shared/WeaponData")
 local WorldData = if Shared then require(Shared.WorldData) else require("../shared/WorldData")
 local Progression = if Shared then require(Shared.Progression) else require("../shared/Progression")
+local Stats = if Shared then require(Shared.Stats) else require("../shared/Stats")
 
 export type Reward = {
 	chest: string,
@@ -127,7 +128,7 @@ function ChestLogic.roll(chestType: string, rng: () -> number, profile: any, lev
 	local data = ChestData.chests[chestType]
 	local reward: Reward = {
 		chest = chestType,
-		coins = data.coins[1] + math.floor(rng() * (data.coins[2] - data.coins[1] + 1)),
+		coins = math.floor((data.coins[1] + math.floor(rng() * (data.coins[2] - data.coins[1] + 1))) * Stats.of(profile).chestCoins + 0.5),
 		slots = {},
 	}
 	if rng() < data.weaponChance then

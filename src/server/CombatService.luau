@@ -86,6 +86,7 @@ local function attack(target: Targets.Target, profile: Profile.Profile, stats: S
 	local damage = Progression.weaponDamage(weaponId, profile.staffUpgrade, stats.level, companion, profile.slotLevels[slot + 1], profile.weaponStars[weaponId])
 		* stats.damageMultiplier
 		* (if companion then stats.companionMultiplier else 1)
+		* (if target.humanoid.Health <= target.humanoid.MaxHealth * Balance.fury.healthShare then 1 + stats.furyDamage else 1)
 	local aim = primary.body.Position
 	fx:FireAllClients("attack", target.player, weaponId, slot, origin, aim, profile.staffUpgrade)
 	-- Heavy swings shove enemies back; other hits keep them in reach.

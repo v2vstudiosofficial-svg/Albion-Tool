@@ -19,12 +19,12 @@
   2–3 seviye, +%1 XP/görev); animasyonlar; M13: Story sekmesi, Pas/rebirth düzeltmesi;
   M14: işaretçiler, ipuçları, 6 kostüm; M15: profesyonel ayarlar penceresi + grafik
   ön ayarları/özelleştirme
-  (Auto–Ultra, gölge, parlama, sis, FOV, ses, arayüz boyutu); M16: Players paneli, ses rehberi; M17: kulede
-  boss katları (her 10 katta Efsane Gölge).
+  (Auto–Ultra, gölge, parlama, sis, FOV, ses, arayüz boyutu); M16: Players paneli, ses rehberi; M17: kule boss katları;
+  M18: 3 yeni yetenek (13 toplam).
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah kademeleri, üstel düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 65, balance, api, scene 15, sim 52, client 45/46/46/1, place; hepsi geçti (sinematik akış,
+- logic 66, balance, api, scene 15, sim 54, client 45/46/46/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,2 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.
@@ -35,6 +35,6 @@
 - Ses kimlikleri boş (SETUP'ta rehber); animasyonlar prosedürel.
 - Mağaza ürün kimlikleri 0 (`StoreData`); sinematik kamera/PlayerModule kilidi Studio'da denenmedi.
 ## Bekleyen elle testler (kullanıcı isteğiyle ertelendi)
-`docs/SETUP.md` → "Elle test listesi" maddelerinin tamamı (1–16, 6b/6c, 10b–10o) oynanmadı.
+`docs/SETUP.md` → "Elle test listesi" maddelerinin tamamı (1–16, 6b/6c, 10b–10p) oynanmadı.
 
 ## Sonraki adım: Studio testleri → Output hatalarını düzelt.

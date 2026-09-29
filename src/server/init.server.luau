@@ -106,6 +106,14 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 		if profile and StoreLogic.boostActive(profile, os.time()) then
 			xpMultiplier *= StoreData.xpBoostMultiplier
 		end
+		-- Healing Light: every purified creature heals a little.
+		local healer = if profile then Stats.of(profile).healOnPurify else 0
+		if healer > 0 then
+			local living = Targets.of(player)
+			if living then
+				living.humanoid.Health = math.min(living.humanoid.MaxHealth, living.humanoid.Health + living.humanoid.MaxHealth * healer)
+			end
+		end
 		PassService.award(player, "purify")
 		if enemy.elite then
 			PassService.award(player, "elite")

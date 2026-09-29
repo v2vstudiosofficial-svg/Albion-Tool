@@ -378,6 +378,9 @@ Balance.tower = {
 	recordMinutes = 2,
 }
 
+-- Brave Heart skill: the extra damage applies at or below this share of max health.
+Balance.fury = { healthShare = 0.5 }
+
 -- Story blessing: every main quest completed adds `xpPerQuest` XP from creatures for good, so
 -- players who follow the story level up faster (and the quests themselves pay levels' worth of XP,
 -- see QuestData).

@@ -1858,6 +1858,62 @@ test("tower bosses do not count as the story's Legendary Shadow victories", func
 	advance(0.2)
 end)
 
+test("skills in play: Healing Light heals on purify, Brave Heart hits harder at low health", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local EnemyService = H.loadModule("src/server/EnemyService.luau")
+	local profile = PlayerProfiles.get(alice)
+	local savedSkills, savedUpgrades = table.clone(profile.skills), table.clone(profile.upgrades)
+	profile.skills = {}
+	profile.upgrades = {}
+	-- Healing Light: a purified creature tops up health.
+	profile.skills.healing = 5
+	PlayerProfiles.sync(alice)
+	toVillage(alice)
+	teleport(alice, vec(WorldData.areas.glade.center, 3))
+	advance(0.2)
+	local maxHealth = humanoid(alice).MaxHealth
+	humanoid(alice).Health = maxHealth * 0.4
+	local before = humanoid(alice).Health
+	local foe = nearestEnemy("Gloomling", root(alice).Position)
+	assert(foe, "a creature to purify")
+	assert(EnemyService.damage(foe:GetAttribute("EnemyId"), alice, 1e9, nil), "purified")
+	advance(0.3)
+	assert(humanoid(alice).Health >= before + maxHealth * 0.09, "healed about 10% of max health: " .. before .. " -> " .. humanoid(alice).Health)
+	profile.skills.healing = nil
+	-- Brave Heart: compare the same weapon's hit at full health and at low health.
+	profile.skills.fury = 4
+	PlayerProfiles.sync(alice)
+	local boss = EnemyService.spawnTemporary("BogMother", 40, vec(WorldData.areas.glade.center, 0) + Vector3.new(0, 0, 40), "bog", "test-fury")
+	local function hitAmounts(healthShare: number): { number }
+		local start = #H.remoteLog
+		local amounts = {}
+		for _ = 1, 30 do
+			teleport(alice, positionOf(EnemyService.get(boss).body) + Vector3.new(0, 1, 9))
+			humanoid(alice).Health = humanoid(alice).MaxHealth * healthShare
+			advance(0.1)
+		end
+		for index = start + 1, #H.remoteLog do
+			local e = H.remoteLog[index]
+			if e.remote == "Fx" and e.args[1] == "hit" and e.args[4] and e.args[5] == false then
+				table.insert(amounts, e.args[4])
+			end
+		end
+		return amounts
+	end
+	local healthy = hitAmounts(1)
+	local hurt = hitAmounts(0.4)
+	EnemyService.despawn(boss)
+	assert(#healthy > 0 and #hurt > 0, "hits at both health levels: " .. #healthy .. "/" .. #hurt)
+	table.sort(healthy)
+	table.sort(hurt)
+	local ratio = hurt[#hurt] / healthy[#healthy]
+	assert(math.abs(ratio - 1.4) < 0.05, "40% more damage at low health: " .. ratio)
+	profile.skills, profile.upgrades = savedSkills, savedUpgrades
+	PlayerProfiles.sync(alice)
+	heal(alice)
+	toVillage(alice)
+end)
+
 test("robux store: receipts granted once and only after saving; unknown ones wait", function()
 	local StoreData = H.loadModule("src/shared/StoreData.luau")
 	local MarketplaceService = H.services.MarketplaceService

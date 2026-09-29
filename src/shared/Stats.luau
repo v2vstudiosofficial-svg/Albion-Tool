@@ -30,6 +30,12 @@ export type PlayerStats = {
 	xpMultiplier: number,
 	pouchCapacity: number,
 	waveRank: number,
+	-- Share of max health healed per purified creature.
+	healOnPurify: number,
+	-- Extra damage share while at or below Balance.fury.healthShare of max health.
+	furyDamage: number,
+	-- Multiplier on the coins a chest gives.
+	chestCoins: number,
 }
 
 local Stats = {}
@@ -83,6 +89,9 @@ function Stats.of(input: Input): PlayerStats
 			(Balance.pouch.baseCapacity + upgrade(input, "pouch") * ups.pouch.perLevel) * (1 + Balance.pouch.perLevel * (level - 1)) + 0.5
 		),
 		waveRank = rank(input, "wave"),
+		healOnPurify = bonus(input, "healing"),
+		furyDamage = bonus(input, "fury"),
+		chestCoins = 1 + bonus(input, "treasure"),
 	}
 end
 
