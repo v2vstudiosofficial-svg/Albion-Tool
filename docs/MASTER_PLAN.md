@@ -74,6 +74,8 @@ M7 — Eğlence turu (kullanıcı isteği): büyük sayıların kısaltılması 
 
 M8 — Kalite ve bağlılık (kullanıcı isteği): kod/mantık hatalarının taranıp düzeltilmesi, sunucu ve istemci performansı, Macera Günlüğü (kademeli başarımlar, alınabilir ödüller) ve takım bonusu (yakındaki oyuncularla daha çok XP/kristal). Baskı kuran mekanikler (günlük seri, ücretli hızlandırma) yok.
 
+M9 — Mağaza, Işık Pası ve kostümler (kullanıcı isteği): Robux paketleri (sabit fiyatlı sikke paketleri, 30 dk 2x XP, tek seferlik başlangıç paketi, Premium Pas, 2 kostüm); sezonluk 50 kademeli Işık Pası (oynayarak XP, ücretsiz ve premium yol); yalnızca görünüş değiştiren 12 kostüm (şapka/sırt/aura; sikke, pas veya Robux ile). Kurallar: ücretli rastgele ödül yok (sandık satılmaz, pasta sandık yok), baskı ekranı/sahte sayaç yok, her güç kalemi oynayarak da kazanılır, ürün kimlikleri uydurulmaz (0 = "Soon"). Bitiş: `lune run tests/all` geçer; sim satın alma makbuzunu (kaydedilmeden onay yok, tekrar yok) kapsar.
+
 6. TOKEN VE ÇALIŞMA KURALLARI
 
 - Bu planı MASTER_PLAN.md’ye bir kez kaydet; her mesajda yeniden yazma ve yeniden tasarlama.

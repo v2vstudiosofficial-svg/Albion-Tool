@@ -29,6 +29,14 @@ local Players = {
 function Players:GetPlayers()
 	return table.clone(self.list)
 end
+function Players:GetPlayerByUserId(userId: number)
+	for _, player in self.list do
+		if player.UserId == userId then
+			return player
+		end
+	end
+	return nil
+end
 
 local guid = 0
 H.services.Players = Players
@@ -49,6 +57,8 @@ H.services.DataStoreService = {
 	end,
 }
 H.services.MessagingService = {}
+-- ProcessReceipt is set by StoreService; tests call it directly with fake receipts.
+H.services.MarketplaceService = {}
 H.services.HttpService = {
 	GenerateGUID = function()
 		guid += 1
@@ -1224,9 +1234,112 @@ test("team bonus: playing close together gives more XP per purify", function()
 	toVillage(bob)
 end)
 
+test("robux store: receipts granted once and only after saving; unknown ones wait", function()
+	local StoreData = H.loadModule("src/shared/StoreData.luau")
+	local MarketplaceService = H.services.MarketplaceService
+	assert(MarketplaceService.ProcessReceipt, "receipt handler installed")
+	StoreData.products.coins_small.productId = 9001 -- test id; real ids come from the dashboard
+	StoreData.products.starter.productId = 9002
+	local coins = attr(alice, "Coins")
+	local receipt = { PlayerId = alice.UserId, ProductId = 9001, PurchaseId = "p-1" }
+	local decision = nil
+	task.spawn(function()
+		decision = MarketplaceService.ProcessReceipt(receipt)
+	end)
+	advance(2)
+	eq(decision, roblox.Enum.ProductPurchaseDecision.PurchaseGranted, "granted after saving")
+	local level = attr(alice, "Level")
+	eq(attr(alice, "Coins"), coins + Progression.incomeCoins(level, StoreData.products.coins_small.coinMinutes), "coins as shown in the store")
+	-- Roblox may send the same receipt again: no second grant.
+	local again = nil
+	task.spawn(function()
+		again = MarketplaceService.ProcessReceipt(receipt)
+	end)
+	advance(2)
+	eq(again, roblox.Enum.ProductPurchaseDecision.PurchaseGranted)
+	eq(attr(alice, "Coins"), coins + Progression.incomeCoins(level, StoreData.products.coins_small.coinMinutes), "not paid twice")
+	-- Unknown products and players who are not here yet are retried later.
+	local unknown, absent = nil, nil
+	task.spawn(function()
+		unknown = MarketplaceService.ProcessReceipt({ PlayerId = alice.UserId, ProductId = 1234, PurchaseId = "p-2" })
+		absent = MarketplaceService.ProcessReceipt({ PlayerId = 999999, ProductId = 9001, PurchaseId = "p-3" })
+	end)
+	advance(1)
+	eq(unknown, roblox.Enum.ProductPurchaseDecision.NotProcessedYet)
+	eq(absent, roblox.Enum.ProductPurchaseDecision.NotProcessedYet)
+	-- Starter pack: sword + cape, once.
+	local starter = nil
+	task.spawn(function()
+		starter = MarketplaceService.ProcessReceipt({ PlayerId = alice.UserId, ProductId = 9002, PurchaseId = "p-4" })
+	end)
+	advance(2)
+	eq(starter, roblox.Enum.ProductPurchaseDecision.PurchaseGranted)
+	assert(string.find(attr(alice, "Costumes"), "explorer_cape", 1, true), "cape")
+	assert(string.find(attr(alice, "OneTime"), "starter", 1, true), "starter marked")
+	StoreData.products.coins_small.productId = 0
+	StoreData.products.starter.productId = 0
+end)
+
+test("costumes: buy with coins, wear shows on the character, remove", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	PlayerProfiles.get(alice).coins += 10000
+	PlayerProfiles.sync(alice)
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Size = Vector3.new(2, 1, 1)
+	head.Parent = alice.Character
+	remotes.BuyCosmetic.OnServerEvent:Fire(alice, "star_crown")
+	advance(0.5)
+	assert(not string.find(attr(alice, "Costumes"), "star_crown", 1, true), "pass costumes are not sold for coins")
+	remotes.BuyCosmetic.OnServerEvent:Fire(alice, "lantern_hat")
+	advance(0.5)
+	assert(string.find(attr(alice, "Costumes"), "lantern_hat", 1, true), "bought")
+	assert(string.find(attr(alice, "Worn"), "hat:lantern_hat", 1, true), "worn right away")
+	local hat = alice.Character:FindFirstChild("Costume_hat")
+	assert(hat and hat:GetAttribute("CostumeId") == "lantern_hat", "on the character")
+	remotes.EquipCosmetic.OnServerEvent:Fire(alice, "", "hat")
+	advance(0.5)
+	eq(alice.Character:FindFirstChild("Costume_hat"), nil, "removed")
+	for _, args in { { 5, "hat" }, { "golden_aura" }, { "", "nope" }, { string.rep("a", 99) } } do
+		remotes.EquipCosmetic.OnServerEvent:Fire(alice, args[1], args[2])
+		advance(0.4)
+	end
+	assert(not string.find(attr(alice, "Worn"), "golden_aura", 1, true), "unowned costume not worn")
+end)
+
+test("light pass: playing earns tiers, free claims, premium only after buying it", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local PassData = H.loadModule("src/shared/PassData.luau")
+	assert(attr(alice, "PassXp") > 0, "pass xp from the scenario so far")
+	PlayerProfiles.get(alice).pass.xp = PassData.xpPerTier * 3 -- as if three tiers were played
+	PlayerProfiles.sync(alice)
+	local coins = attr(alice, "Coins")
+	remotes.ClaimPass.OnServerEvent:Fire(alice, 1, "free")
+	advance(0.5)
+	assert(attr(alice, "Coins") > coins, "free tier paid")
+	eq(attr(alice, "PassFree"), "1")
+	remotes.ClaimPass.OnServerEvent:Fire(alice, 1, "premium")
+	advance(0.5)
+	eq(attr(alice, "PassPremiumClaimed"), "", "premium locked")
+	remotes.ClaimPass.OnServerEvent:Fire(alice, 9, "free")
+	advance(0.5)
+	eq(attr(alice, "PassFree"), "1", "unreached tier")
+	PlayerProfiles.get(alice).pass.premium = true -- as if pass_premium was bought
+	PlayerProfiles.sync(alice)
+	remotes.ClaimPass.OnServerEvent:Fire(alice, "all")
+	advance(0.5)
+	eq(attr(alice, "PassFree"), "1,2,3")
+	eq(attr(alice, "PassPremiumClaimed"), "1,2,3")
+	for _, args in { { "x", "free" }, { 2.5, "free" }, { 1, "gold" }, { {}, {} } } do
+		remotes.ClaimPass.OnServerEvent:Fire(alice, args[1], args[2])
+		advance(0.4)
+	end
+	eq(attr(alice, "PassFree"), "1,2,3", "bad claims ignored")
+end)
+
 test("leaving and rejoining restores the saved profile", function()
 	local snapshot = {}
-	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots", "Upgrades", "Crystals", "Skills", "SkillOffer", "PendingPicks" } do
+	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots", "Upgrades", "Crystals", "Skills", "SkillOffer", "PendingPicks", "Costumes", "Worn", "PassXp", "PassFree", "PassPremium", "OneTime" } do
 		snapshot[key] = attr(alice, key)
 	end
 	leave(alice)

@@ -15,6 +15,14 @@ local Players = { PlayerAdded = H.Signal.new(), PlayerRemoving = H.Signal.new(),
 function Players:GetPlayers()
 	return table.clone(self.list)
 end
+function Players:GetPlayerByUserId(userId: number)
+	for _, player in self.list do
+		if player.UserId == userId then
+			return player
+		end
+	end
+	return nil
+end
 local guid = 0
 H.services.Players = Players
 H.services.RunService = {
@@ -33,6 +41,8 @@ H.services.DataStoreService = {
 	end,
 }
 H.services.MessagingService = {}
+-- ProcessReceipt is set by StoreService; tests call it directly with fake receipts.
+H.services.MarketplaceService = {}
 H.services.HttpService = {
 	GenerateGUID = function()
 		guid += 1

@@ -1210,6 +1210,186 @@ test("team bonus: +10% per nearby ally, capped", function()
 	assert(Strings.has("hud_team_bonus"), "string")
 end)
 
+-- Store, Light Pass and costumes ---------------------------------------------------------------
+
+local CosmeticData = require("../src/shared/CosmeticData")
+local PassData = require("../src/shared/PassData")
+local StoreData = require("../src/shared/StoreData")
+local CosmeticLogic = require("../src/server/CosmeticLogic")
+local PassLogic = require("../src/server/PassLogic")
+local StoreLogic = require("../src/server/StoreLogic")
+
+test("store data: fixed contents only, valid references, strings, no ids invented", function()
+	for _, key in StoreData.order do
+		local product = StoreData.products[key]
+		assert(product, "product " .. key)
+		assert(Strings.has(product.nameKey), "product name " .. key)
+		eq(product.productId, 0, key .. " id is set on the Creator Dashboard, not invented here")
+		assert(product.chest == nil, key .. " never sells a random chest")
+		assert(product.costume == nil or CosmeticData.costumes[product.costume], key .. " costume")
+		assert(product.weapon == nil or WeaponData.weapons[product.weapon], key .. " weapon")
+	end
+	for _, id in CosmeticData.order do
+		local costume = CosmeticData.costumes[id]
+		assert(Strings.has(costume.nameKey), "costume name " .. id)
+		assert(table.find(CosmeticData.slots, costume.slot), "slot " .. id)
+		local source = costume.source
+		assert(source.coins or source.pass or source.robux, "costume source " .. id)
+		if source.robux then
+			eq(StoreData.products[source.robux].costume, id, "robux costume product " .. id)
+		end
+		if source.pass then
+			eq(PassData.rewards[source.pass][source.track].costume, id, "pass costume " .. id)
+		end
+	end
+	for tier = 1, PassData.tiers do
+		for _, track in { "free", "premium" } do
+			local reward = PassData.rewards[tier][track]
+			assert(reward.costume or (reward.coinMinutes and reward.coinMinutes > 0), "pass reward " .. tier .. track)
+			assert(not reward.chest, "no random rewards in the pass")
+		end
+	end
+end)
+
+test("costumes: buy with coins, wear one per slot, remove", function()
+	local p = Profile.new()
+	eq(select(2, CosmeticLogic.buy(p, "lantern_hat")), "coins")
+	p.coins = 10 ^ 6
+	eq(CosmeticLogic.buy(p, "lantern_hat"), true)
+	eq(p.coins, 10 ^ 6 - CosmeticData.costumes.lantern_hat.source.coins)
+	eq(select(2, CosmeticLogic.buy(p, "lantern_hat")), "owned")
+	eq(select(2, CosmeticLogic.buy(p, "star_crown")), "notForCoins", "pass costume")
+	eq(select(2, CosmeticLogic.buy(p, "golden_aura")), "notForCoins", "robux costume")
+	eq(CosmeticLogic.equip(p, "star_crown"), false, "not owned")
+	eq(CosmeticLogic.equip(p, "lantern_hat"), true)
+	eq(p.equippedCosmetics.hat, "lantern_hat")
+	CosmeticLogic.buy(p, "frost_hood")
+	CosmeticLogic.equip(p, "frost_hood")
+	eq(p.equippedCosmetics.hat, "frost_hood", "one hat at a time")
+	eq(CosmeticLogic.equip(p, "", "hat"), true)
+	eq(p.equippedCosmetics.hat, nil)
+	eq(CosmeticLogic.equip(p, "", "nope"), false)
+	local clean = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, ownedCosmetics = { lantern_hat = true, nope = true }, equippedCosmetics = { hat = "lantern_hat", back = "lantern_hat", aura = "golden_aura" } })
+	eq(clean.equippedCosmetics.hat, "lantern_hat")
+	eq(clean.equippedCosmetics.back, nil, "wrong slot")
+	eq(clean.equippedCosmetics.aura, nil, "not owned")
+	eq(clean.ownedCosmetics.nope, nil)
+end)
+
+test("light pass: xp to tiers, free and premium claims, costumes, season reset", function()
+	local p = Profile.new()
+	eq(PassLogic.tier(p), 0)
+	eq(PassLogic.addXp(p, "rift", 5), 1, "1000 pass xp = 1 tier")
+	eq(PassLogic.claimable(p, 1, "free"), true)
+	eq(PassLogic.claimable(p, 2, "free"), false, "not reached")
+	eq(PassLogic.claimable(p, 1, "premium"), false, "premium needs the pass")
+	local coins = p.coins
+	local paid = PassLogic.claim(p, 1, "free", 10) :: any
+	eq(paid.coins, Progression.incomeCoins(10, PassData.rewards[1].free.coinMinutes))
+	eq(p.coins, coins + paid.coins)
+	eq(PassLogic.claim(p, 1, "free", 10), nil, "once")
+	-- The free costume at its tier.
+	PassLogic.addXp(p, "rift", 5 * 5)
+	local leaf = CosmeticData.costumes.leaf_crown.source.pass
+	local costume = PassLogic.claim(p, leaf, "free", 10) :: any
+	eq(costume.costume, "leaf_crown")
+	eq(p.ownedCosmetics.leaf_crown, true)
+	-- Premium: everything reached so far becomes claimable.
+	p.pass.premium = true
+	local all = PassLogic.claimAll(p, 10)
+	eq(#all, PassLogic.tier(p) * 2 - 2, "the rest of both tracks")
+	eq(#PassLogic.claimAll(p, 10), 0, "nothing twice")
+	-- Capped at the last tier.
+	PassLogic.addXp(p, "rift", 10 ^ 6)
+	eq(PassLogic.tier(p), PassData.tiers)
+	eq(PassLogic.claimable(p, PassData.tiers + 1, "free"), false)
+	-- A new season starts over.
+	p.pass.season = PassData.season - 1
+	PassLogic.ensureSeason(p)
+	eq(p.pass.xp, 0)
+	eq(p.pass.premium, false, "premium is per season")
+	-- Owned costume from the pass becomes coins.
+	local q = Profile.new()
+	q.ownedCosmetics.leaf_crown = true
+	PassLogic.addXp(q, "rift", 10 ^ 4)
+	local dup = PassLogic.claim(q, leaf, "free", 10) :: any
+	eq(dup.costume, nil)
+	assert(dup.coins > 0, "duplicate costume turns into coins")
+	for _, key in { "pass_title", "pass_tier", "notice_pass_tier", "notice_pass_coins" } do
+		assert(Strings.has(key), key)
+	end
+end)
+
+test("store: coin packs scale with level, receipts once, starter once, boost stacks to a cap", function()
+	assert(StoreLogic.coinsFor("coins_small", 50) > StoreLogic.coinsFor("coins_small", 1), "packs keep their value at every level")
+	eq(StoreLogic.coinsFor("coins_small", 10), Progression.incomeCoins(10, StoreData.products.coins_small.coinMinutes))
+	assert(StoreLogic.coinsFor("coins_large", 10) / StoreData.products.coins_large.coinMinutes > StoreLogic.coinsFor("coins_small", 10) / StoreData.products.coins_small.coinMinutes, "bigger packs give a bonus")
+	local p = Profile.new()
+	eq(StoreLogic.remember(p, "a"), true)
+	eq(StoreLogic.remember(p, "a"), false, "a receipt counts once")
+	for index = 1, StoreData.purchaseIdCache + 5 do
+		StoreLogic.remember(p, "id" .. index)
+	end
+	eq(#p.purchaseIds, StoreData.purchaseIdCache, "bounded cache")
+	-- Starter pack: sword, cape and coins; once.
+	local coins = p.coins
+	local granted = StoreLogic.grant(p, "starter", 5, 1000) :: any
+	eq(granted.weapon, "sword")
+	eq(granted.costume, "explorer_cape")
+	eq(p.ownedWeapons.sword, true)
+	eq(p.coins, coins + granted.coins)
+	eq(StoreLogic.available(p, "starter", 1000), false, "once")
+	eq(StoreLogic.available(p, "crystal_wings", 1000), true)
+	StoreLogic.grant(p, "crystal_wings", 5, 1000)
+	eq(StoreLogic.available(p, "crystal_wings", 1000), false, "owned costume not sold twice")
+	local again = StoreLogic.grant(p, "crystal_wings", 5, 1000) :: any
+	assert(again.coins > 0, "a duplicate receipt still gives something (coins)")
+	-- XP boost stacks, capped.
+	StoreLogic.grant(p, "xp_boost", 5, 1000)
+	eq(p.boostUntil, 1000 + 30 * 60)
+	eq(StoreLogic.boostActive(p, 1000 + 30 * 60 - 1), true)
+	eq(StoreLogic.boostActive(p, 1000 + 30 * 60), false)
+	for _ = 1, 20 do
+		StoreLogic.grant(p, "xp_boost", 5, 1000)
+	end
+	eq(p.boostUntil, 1000 + StoreData.maxBoostMinutes * 60, "capped")
+	eq(StoreLogic.available(p, "xp_boost", 1000), false, "no buying past the cap")
+	-- Premium pass.
+	eq(StoreLogic.available(p, "pass_premium", 1000), true)
+	StoreLogic.grant(p, "pass_premium", 5, 1000)
+	eq(p.pass.premium, true)
+	eq(StoreLogic.available(p, "pass_premium", 1000), false)
+	eq(StoreLogic.grant(p, "nope", 5, 1000), nil)
+	-- Sanitize keeps store state sane.
+	local clean = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, purchaseIds = { "x", 5 }, oneTime = { starter = true, nope = true }, boostUntil = -3 })
+	eq(#clean.purchaseIds, 1)
+	eq(clean.oneTime.starter, true)
+	eq(clean.oneTime.nope, nil)
+	eq(clean.boostUntil, 0)
+end)
+
+test("store balance: a coin pack is worth minutes of play, never a whole game", function()
+	-- The biggest pack at any level buys only a handful of weapon power levels at that point.
+	-- Typical weapon power at these levels, from the tests/balance model.
+	local typicalPower = { [5] = 5, [25] = 17, [50] = 26, [75] = 33, [99] = 37 }
+	for level, power in typicalPower do
+		local coins = StoreLogic.coinsFor("coins_large", level)
+		local bought = 0
+		while coins > 0 and power < Balance.upgrades.power.maxLevel do
+			local cost = Progression.upgradeCost("power", power) :: number
+			if cost > coins then
+				break
+			end
+			coins -= cost
+			power += 1
+			bought += 1
+		end
+		-- Early power levels are cheap, so a small head start is fine; later packs stay modest.
+		local limit = if level < 25 then 20 else 10
+		assert(bought <= limit, `level {level}: the largest pack buys {bought} power levels`)
+	end
+end)
+
 test("game content is English only (no Turkish letters in source)", function()
 	local offenders = {}
 	local function scan(dir: string)

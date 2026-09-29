@@ -1,5 +1,6 @@
 -- Weapons, chests, bag (charms), weapon-power shop, settings, performance overlay and the save-loading overlay.
 -- Only one modal is open at a time so the screen never fills up with windows.
+local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -13,6 +14,9 @@ local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local ChestData = require(Shared:WaitForChild("ChestData"))
 local Format = require(Shared:WaitForChild("Format"))
 local AchievementData = require(Shared:WaitForChild("AchievementData"))
+local StoreData = require(Shared:WaitForChild("StoreData"))
+local CosmeticData = require(Shared:WaitForChild("CosmeticData"))
+local PassData = require(Shared:WaitForChild("PassData"))
 local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
@@ -23,6 +27,9 @@ local upgradeStaff = Remotes:WaitForChild("BuyUpgrade") :: RemoteEvent
 local equipWeapon = Remotes:WaitForChild("EquipWeapon") :: RemoteEvent
 local chestAction = Remotes:WaitForChild("ChestAction") :: RemoteEvent
 local claimAchievement = Remotes:WaitForChild("ClaimAchievement") :: RemoteEvent
+local buyCosmetic = Remotes:WaitForChild("BuyCosmetic") :: RemoteEvent
+local equipCosmetic = Remotes:WaitForChild("EquipCosmetic") :: RemoteEvent
+local claimPass = Remotes:WaitForChild("ClaimPass") :: RemoteEvent
 local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
 local player = Players.LocalPlayer
 local colors = UiKit.colors
@@ -81,7 +88,7 @@ function Menus.start()
 
 	-- Top-right buttons ---------------------------------------------------------------------
 	-- A two-column grid keeps the buttons clear of the quest panel in the top center.
-	local topRight = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -12, 0, 12), Vector2.new(208, 160))
+	local topRight = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -12, 0, 12), Vector2.new(208, 216))
 	UiKit.create("UIGridLayout", {
 		CellSize = UDim2.fromOffset(100, 48),
 		CellPadding = UDim2.fromOffset(8, 8),
@@ -652,6 +659,303 @@ function Menus.start()
 		end
 	end
 
+	-- Shop: Robux packs and costumes -----------------------------------------------------------
+	-- Robux products show their live price from Roblox; products without an id say "Soon".
+	-- Nothing here pops up by itself: the shop only opens when the player taps it.
+	local refreshStore: () -> ()
+	local refreshPass: () -> ()
+	local store: Frame, pass: Frame
+	local priceCache: { [number]: number } = {}
+	local function priceOf(productId: number): number?
+		if productId == 0 then
+			return nil
+		end
+		if priceCache[productId] == nil then
+			priceCache[productId] = -1
+			task.spawn(function()
+				local ok, info = pcall(function()
+					return MarketplaceService:GetProductInfo(productId, Enum.InfoType.Product)
+				end)
+				priceCache[productId] = if ok and info and info.PriceInRobux then info.PriceInRobux else -1
+				-- Prices arrive a moment later; redraw whichever window shows them.
+				if openModal == store then
+					refreshStore()
+				elseif openModal == pass then
+					refreshPass()
+				end
+			end)
+		end
+		local price = priceCache[productId]
+		return if price and price >= 0 then price else nil
+	end
+	local function prompt(productKey: string)
+		local product = StoreData.products[productKey]
+		if product and product.productId ~= 0 then
+			MarketplaceService:PromptProductPurchase(player, product.productId)
+		end
+	end
+	local function serverNow(): number
+		return workspace:GetServerTimeNow()
+	end
+
+	local storeBody
+	store, storeBody = modal("shop_store_title", 440)
+	local tabRow = UiKit.create("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, storeBody)
+	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, tabRow)
+	UiKit.label({
+		Position = UDim2.fromOffset(0, 44),
+		Size = UDim2.new(1, 0, 0, 30),
+		Text = Strings.get("shop_note"),
+		TextSize = 13,
+		TextWrapped = true,
+		TextColor3 = colors.muted,
+	}, storeBody)
+	local function page(): ScrollingFrame
+		local frame = UiKit.create("ScrollingFrame", {
+			Position = UDim2.fromOffset(0, 78),
+			Size = UDim2.new(1, 0, 1, -78),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ScrollBarThickness = 6,
+			CanvasSize = UDim2.fromOffset(0, 0),
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		}, storeBody)
+		return frame
+	end
+	local packsPage, costumesPage = page(), page()
+	UiKit.create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, packsPage)
+	UiKit.create("UIGridLayout", {
+		CellSize = UDim2.fromOffset(122, 92),
+		CellPadding = UDim2.fromOffset(6, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, costumesPage)
+	local currentTab = "packs"
+	local TAB_KEYS = { packs = "shop_tab_packs", costumes = "shop_tab_costumes" }
+	local tabButtons = {}
+	for order, tab in { "packs", "costumes" } do
+		tabButtons[tab] = UiKit.button({ Size = UDim2.fromOffset(130, 40), TextSize = 18, LayoutOrder = order, Text = Strings.get(TAB_KEYS[tab]) }, tabRow, function()
+			currentTab = tab
+			refreshStore()
+		end)
+	end
+
+	local packRows = {}
+	for order, key in StoreData.order do
+		local product = StoreData.products[key]
+		if not product.costume or product.weapon then
+			local row = UiKit.create("Frame", { LayoutOrder = order, Size = UDim2.new(1, -10, 0, 60), BackgroundColor3 = colors.panelLight, BorderSizePixel = 0 }, packsPage)
+			UiKit.corner(row, 12)
+			UiKit.label({ Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -140, 0, 26), Text = Strings.get(product.nameKey), TextSize = 19, TextXAlignment = Enum.TextXAlignment.Left }, row)
+			local gives = UiKit.label({ Position = UDim2.fromOffset(12, 30), Size = UDim2.new(1, -140, 0, 24), TextSize = 14, TextWrapped = true, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Left }, row)
+			local button = UiKit.button({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(112, 44), TextSize = 18 }, row, function()
+				-- Owned, capped or not on sale yet: the button is greyed out and does nothing.
+				if packRows[key].buyable then
+					prompt(key)
+				end
+			end)
+			packRows[key] = { gives = gives, button = button, buyable = false }
+		end
+	end
+
+	local costumeTiles = {}
+	for order, id in CosmeticData.order do
+		local costume = CosmeticData.costumes[id]
+		local tile = UiKit.create("Frame", { LayoutOrder = order, BackgroundColor3 = colors.panelLight, BorderSizePixel = 0 }, costumesPage)
+		UiKit.corner(tile, 12)
+		local swatch = UiKit.create("Frame", { Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(18, 18), BackgroundColor3 = UiKit.rgb(costume.color), BorderSizePixel = 0 }, tile)
+		UiKit.corner(swatch, 9)
+		UiKit.label({ Position = UDim2.fromOffset(30, 4), Size = UDim2.new(1, -34, 0, 34), Text = Strings.get(costume.nameKey), TextSize = 14, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left }, tile)
+		local button = UiKit.button({ AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -6), Size = UDim2.new(1, -12, 0, 36), TextSize = 15 }, tile, function()
+			local owned = Attrs.set("Costumes")[id]
+			if owned then
+				local worn = false
+				for _, entry in Attrs.list("Worn") do
+					if entry == costume.slot .. ":" .. id then
+						worn = true
+					end
+				end
+				equipCosmetic:FireServer(if worn then "" else id, costume.slot)
+			elseif costume.source.coins then
+				buyCosmetic:FireServer(id)
+			elseif costume.source.robux then
+				prompt(costume.source.robux)
+			end
+			Audio.play("ui")
+		end)
+		costumeTiles[id] = { button = button }
+	end
+
+	local function setButton(button: TextButton, text: string, enabled: boolean, color: Color3?)
+		button.Text = text
+		button.BackgroundColor3 = if enabled then (color or colors.accent) else colors.panel
+		button.TextColor3 = if enabled then colors.panel else colors.muted
+	end
+
+	refreshStore = function()
+		packsPage.Visible = currentTab == "packs"
+		costumesPage.Visible = currentTab == "costumes"
+		for tab, button in tabButtons do
+			setButton(button, Strings.get(TAB_KEYS[tab]), true, if tab == currentTab then colors.accent else colors.panelLight)
+		end
+		local level = Attrs.get("Level", 1)
+		local oneTime = Attrs.set("OneTime")
+		local boostLeft = Attrs.get("BoostUntil", 0) - serverNow()
+		for key, view in packRows do
+			local product = StoreData.products[key]
+			if product.coinMinutes and not product.once then
+				local coins = Format.short(Progression.incomeCoins(level, product.coinMinutes, product.bonus))
+				view.gives.Text = if (product.bonus or 0) > 0
+					then Strings.get("store_gives_coins_bonus", coins, math.floor(product.bonus * 100 + 0.5))
+					else Strings.get("store_gives_coins", coins)
+			elseif product.boostMinutes then
+				view.gives.Text = Strings.get("store_gives_boost")
+			elseif product.once then
+				view.gives.Text = Strings.get("store_gives_starter", Format.short(Progression.incomeCoins(level, product.coinMinutes)))
+			elseif product.passPremium then
+				view.gives.Text = Strings.get("store_gives_pass")
+			end
+			local owned = (product.once and oneTime[key]) or (product.passPremium and Attrs.get("PassPremium", false))
+			local capped = product.boostMinutes and boostLeft > (StoreData.maxBoostMinutes - product.boostMinutes) * 60
+			local price = priceOf(product.productId)
+			view.buyable = not owned and price ~= nil and not capped
+			if owned then
+				setButton(view.button, Strings.get("shop_owned"), false)
+			elseif not price then
+				setButton(view.button, Strings.get("shop_soon"), false)
+			else
+				setButton(view.button, Strings.get("shop_price_robux", price), not capped, colors.good)
+			end
+		end
+		local ownedCostumes = Attrs.set("Costumes")
+		local worn = Attrs.set("Worn")
+		for id, view in costumeTiles do
+			local costume = CosmeticData.costumes[id]
+			local source = costume.source
+			if ownedCostumes[id] then
+				local wearing = worn[costume.slot .. ":" .. id] == true
+				setButton(view.button, Strings.get(if wearing then "costume_remove" else "costume_wear"), true, if wearing then colors.panelLight else colors.good)
+			elseif source.coins then
+				setButton(view.button, Strings.get("hud_coins", Format.short(source.coins)), Attrs.get("Coins", 0) >= source.coins, colors.coin)
+			elseif source.robux then
+				local price = priceOf(StoreData.products[source.robux].productId)
+				setButton(view.button, if price then Strings.get("shop_price_robux", price) else Strings.get("shop_soon"), price ~= nil, colors.good)
+			else
+				setButton(view.button, Strings.get("costume_from_pass", source.pass), false)
+			end
+		end
+	end
+
+	-- Light Pass -----------------------------------------------------------------------------
+	local passBody
+	pass, passBody = modal("menu_pass", 440)
+	local passTitle = UiKit.label({ Size = UDim2.new(1, 0, 0, 26), TextSize = 20, TextColor3 = colors.accent }, passBody)
+	local passTier = UiKit.label({ Position = UDim2.fromOffset(0, 28), Size = UDim2.new(1, 0, 0, 22), TextSize = 17 }, passBody)
+	local passBarBack = UiKit.create("Frame", {
+		Position = UDim2.fromOffset(20, 54),
+		Size = UDim2.new(1, -40, 0, 12),
+		BackgroundColor3 = Color3.fromRGB(30, 26, 48),
+		BorderSizePixel = 0,
+	}, passBody)
+	UiKit.corner(passBarBack, 6)
+	local passBarFill = UiKit.create("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = colors.boss, BorderSizePixel = 0 }, passBarBack)
+	UiKit.corner(passBarFill, 6)
+	local passButtons = UiKit.create("Frame", { Position = UDim2.fromOffset(0, 72), Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1 }, passBody)
+	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 10) }, passButtons)
+	local claimAllButton = UiKit.button({ Size = UDim2.fromOffset(150, 42), Text = Strings.get("pass_claim_all"), TextSize = 18, LayoutOrder = 1 }, passButtons, function()
+		claimPass:FireServer("all")
+		Audio.play("ui")
+	end)
+	local premiumButton = UiKit.button({ Size = UDim2.fromOffset(170, 42), TextSize = 18, LayoutOrder = 2 }, passButtons, function()
+		if not Attrs.get("PassPremium", false) then
+			prompt("pass_premium")
+		end
+	end)
+	local track = UiKit.create("ScrollingFrame", {
+		Position = UDim2.fromOffset(0, 124),
+		Size = UDim2.new(1, 0, 1, -124),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		ScrollingDirection = Enum.ScrollingDirection.X,
+		CanvasSize = UDim2.fromOffset(PassData.tiers * 86, 0),
+	}, passBody)
+	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, track)
+	local function rewardText(reward, level: number): string
+		if reward.costume then
+			return Strings.get(CosmeticData.costumes[reward.costume].nameKey)
+		end
+		return Strings.get("pass_reward_coins", Format.short(Progression.incomeCoins(level, reward.coinMinutes)))
+	end
+	local passCells = {}
+	for tier = 1, PassData.tiers do
+		local column = UiKit.create("Frame", { LayoutOrder = tier, Size = UDim2.fromOffset(80, 180), BackgroundTransparency = 1 }, track)
+		UiKit.label({ Size = UDim2.new(1, 0, 0, 20), Text = tostring(tier), TextSize = 16, TextColor3 = colors.muted }, column)
+		local cells = {}
+		for index, trackName in { "free", "premium" } do
+			cells[trackName] = UiKit.button({
+				Position = UDim2.fromOffset(0, 22 + (index - 1) * 80),
+				Size = UDim2.fromOffset(80, 74),
+				TextSize = 12,
+				TextWrapped = true,
+			}, column, function()
+				claimPass:FireServer(tier, trackName)
+			end)
+		end
+		passCells[tier] = cells
+	end
+	local function passState()
+		local tier = math.min(PassData.tiers, Attrs.get("PassXp", 0) // PassData.xpPerTier)
+		return tier, Attrs.set("PassFree"), Attrs.set("PassPremiumClaimed"), Attrs.get("PassPremium", false)
+	end
+	local function passClaimable(): number
+		local tier, free, premiumClaimed, premium = passState()
+		local count = 0
+		for t = 1, tier do
+			if not free[tostring(t)] then
+				count += 1
+			end
+			if premium and not premiumClaimed[tostring(t)] then
+				count += 1
+			end
+		end
+		return count
+	end
+	refreshPass = function()
+		local tier, free, premiumClaimed, premium = passState()
+		local level = Attrs.get("Level", 1)
+		local xp = Attrs.get("PassXp", 0)
+		passTitle.Text = Strings.get("pass_title", Attrs.get("PassSeason", PassData.season))
+		passTier.Text = Strings.get("pass_tier", tier, PassData.tiers)
+		passBarFill.Size = UDim2.fromScale(if tier >= PassData.tiers then 1 else (xp % PassData.xpPerTier) / PassData.xpPerTier, 1)
+		local premiumPrice = priceOf(StoreData.products.pass_premium.productId)
+		if premium then
+			setButton(premiumButton, Strings.get("pass_premium_on"), false)
+		elseif premiumPrice then
+			setButton(premiumButton, Strings.get("pass_get_premium") .. "  " .. Strings.get("shop_price_robux", premiumPrice), true, colors.boss)
+		else
+			setButton(premiumButton, Strings.get("pass_get_premium") .. "  " .. Strings.get("shop_soon"), false)
+		end
+		setButton(claimAllButton, Strings.get("pass_claim_all"), passClaimable() > 0, colors.good)
+		for t, cells in passCells do
+			for trackName, cell in cells do
+				local claimed = if trackName == "free" then free[tostring(t)] else premiumClaimed[tostring(t)]
+				local reached = t <= tier
+				local open = trackName == "free" or premium
+				cell.Text = (if trackName == "premium" then Strings.get("pass_premium") .. "\n" else "") .. rewardText(PassData.rewards[t][trackName], level)
+				if claimed then
+					cell.BackgroundColor3 = colors.panel
+					cell.TextColor3 = colors.muted
+				elseif reached and open then
+					cell.BackgroundColor3 = colors.good
+					cell.TextColor3 = colors.panel
+				else
+					cell.BackgroundColor3 = if trackName == "premium" then Color3.fromRGB(70, 50, 100) else colors.panelLight
+					cell.TextColor3 = colors.text
+				end
+			end
+		end
+	end
+
 	-- Forge (the Smith's shop) ------------------------------------------------------------
 	-- One row per upgrade: level, what it does and the price of the next level.
 	local shop, shopBody = modal("shop_title", 420)
@@ -788,6 +1092,36 @@ function Menus.start()
 		refreshLegends()
 		showModal(legends)
 	end)
+	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_shop"), LayoutOrder = 6, BackgroundColor3 = colors.accent }, topRight, function()
+		refreshStore()
+		showModal(store)
+	end)
+	local passButton = UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_pass"), LayoutOrder = 7, BackgroundColor3 = colors.boss }, topRight, function()
+		refreshPass()
+		showModal(pass)
+	end)
+	local passBadge = UiKit.label({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -4, 0, 4),
+		Size = UDim2.fromOffset(24, 24),
+		BackgroundColor3 = colors.accent,
+		BackgroundTransparency = 0,
+		Text = "!",
+		TextSize = 18,
+		TextColor3 = colors.panel,
+		Visible = false,
+	}, passButton)
+	UiKit.corner(passBadge, 12)
+	for _, name in { "PassXp", "PassFree", "PassPremiumClaimed", "PassPremium", "Costumes", "Worn", "OneTime", "BoostUntil", "Coins", "Level" } do
+		player:GetAttributeChangedSignal(name):Connect(function()
+			passBadge.Visible = passClaimable() > 0
+			if openModal == pass then
+				refreshPass()
+			elseif openModal == store then
+				refreshStore()
+			end
+		end)
+	end
 	local logButton = UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_log"), LayoutOrder = 5, BackgroundColor3 = colors.good }, topRight, function()
 		refreshLog()
 		showModal(log)

@@ -346,6 +346,33 @@ test("chest spots sit on open ground (not inside walls, trees or rocks)", functi
 	end
 end)
 
+test("costume models build for all twelve costumes, welded to their anchor", function()
+	local CosmeticModels = loadModule("src/shared/CosmeticModels.luau")
+	local CosmeticData = loadModule("src/shared/CosmeticData.luau")
+	for _, id in CosmeticData.order do
+		local model = CosmeticModels.build(id, roblox.CFrame.new(1, 2, 3))
+		local anchor = model.PrimaryPart
+		assert(anchor and anchor.Name == "Anchor", id .. " anchor")
+		eq(model:GetAttribute("CostumeId"), id)
+		local parts = 0
+		for _, part in model:GetChildren() do
+			if part:IsA("BasePart") and part ~= anchor then
+				parts += 1
+				eq(part.CanCollide, false, id .. " never collides")
+				local weld = part:FindFirstChildOfClass("WeldConstraint")
+				assert(weld and weld.Part0 == anchor, id .. " welded")
+			end
+		end
+		local aura = anchor:FindFirstChildOfClass("ParticleEmitter")
+		if CosmeticData.costumes[id].slot == "aura" then
+			assert(aura, id .. " sparkles")
+		else
+			assert(parts >= 1 and parts <= 8, id .. " stays cheap: " .. parts)
+		end
+		model:Destroy()
+	end
+end)
+
 print(`scene tests: {passed} passed, {failed} failed`)
 if failed > 0 then
 	error("scene tests failed")

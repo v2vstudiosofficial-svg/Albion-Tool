@@ -109,6 +109,17 @@ end
 H.services.Players = Players
 H.services.TweenService = TweenService
 H.services.ContextActionService = ContextActionService
+-- Robux prices by product id (only ids a test sets up) and the purchase prompts that were shown.
+local productPrices = { [7001] = 49, [7002] = 99, [7003] = 299 }
+local prompts = {}
+H.services.MarketplaceService = {
+	GetProductInfo = function(_, productId: number)
+		return { PriceInRobux = productPrices[productId] }
+	end,
+	PromptProductPurchase = function(_, _player, productId: number)
+		table.insert(prompts, productId)
+	end,
+}
 H.services.UserInputService = {
 	TouchEnabled = touchMode,
 	KeyboardEnabled = not touchMode,
@@ -787,6 +798,103 @@ test("bag: equip an owned charm, locked ones do nothing", function()
 	assert(shownText(Strings.get("bag_unequip")), "shows unequip")
 	click(findButton(Strings.get("menu_bag")))
 	assert(not shownText(Strings.get("charm_swift_desc")), "bag closed")
+end)
+
+test("shop: packs say Soon without ids, show prices, prompt only when buyable; costumes", function()
+	local StoreData = H.loadModule("src/shared/StoreData.luau")
+	local Progression = H.loadModule("src/shared/Progression.luau")
+	local Format = H.loadModule("src/shared/Format.luau")
+	setAttributes({ Coins = 3000, Costumes = "", Worn = "", OneTime = "", BoostUntil = 0 })
+	click(findButton(Strings.get("menu_shop")))
+	assert(shownText(Strings.get("shop_note")), "shop open")
+	local coins = Format.short(Progression.incomeCoins(hero:GetAttribute("Level"), StoreData.products.coins_small.coinMinutes))
+	assert(shownText(Strings.get("store_gives_coins", coins)), "pack shows the coins it gives at this level")
+	click(findButton(Strings.get("shop_soon")))
+	eq(#prompts, 0, "no product ids yet: nothing to buy")
+	click(findButton(Strings.get("menu_shop")))
+
+	StoreData.products.coins_small.productId = 7001
+	StoreData.products.starter.productId = 7002
+	click(findButton(Strings.get("menu_shop")))
+	click(findButton(Strings.get("shop_price_robux", 49)))
+	eq(prompts[1], 7001, "Roblox purchase prompt for the pack")
+	setAttributes({ OneTime = "starter" })
+	assert(not findButton(Strings.get("shop_price_robux", 99)), "starter pack already bought")
+	click(findButton(Strings.get("shop_owned")))
+	eq(#prompts, 1, "an owned pack does not prompt")
+
+	click(findButton(Strings.get("shop_tab_costumes")))
+	assert(shownText(Strings.get("costume_from_pass", 30)), "pass costumes point to the pass")
+	click(findButton(Strings.get("hud_coins", Format.short(2000))))
+	eq(sent("BuyCosmetic", function(args)
+		return args[1] == "lantern_hat"
+	end), 1, "buy with coins")
+	setAttributes({ Costumes = "lantern_hat" })
+	click(findButton(Strings.get("costume_wear")))
+	eq(sent("EquipCosmetic", function(args)
+		return args[1] == "lantern_hat" and args[2] == "hat"
+	end), 1, "wear")
+	setAttributes({ Worn = "hat:lantern_hat" })
+	click(findButton(Strings.get("costume_remove")))
+	eq(sent("EquipCosmetic", function(args)
+		return args[1] == "" and args[2] == "hat"
+	end), 1, "remove")
+	click(findButton(Strings.get("menu_shop")))
+	assert(not shownText(Strings.get("shop_note")), "shop closed")
+	StoreData.products.coins_small.productId = 0
+	StoreData.products.starter.productId = 0
+end)
+
+test("light pass: tiers, claim all, costume cell, premium button, badge", function()
+	local StoreData = H.loadModule("src/shared/StoreData.luau")
+	local PassData = H.loadModule("src/shared/PassData.luau")
+	local passButton = findButton(Strings.get("menu_pass"))
+	setAttributes({ PassSeason = 1, PassXp = 0, PassFree = "", PassPremiumClaimed = "", PassPremium = false })
+	eq(findText("!", passButton).Visible, false, "no badge with nothing to claim")
+	setAttributes({ PassXp = 5 * PassData.xpPerTier + 10 })
+	eq(findText("!", passButton).Visible, true, "badge when a tier is ready")
+	click(passButton)
+	assert(shownText(Strings.get("pass_tier", 5, PassData.tiers)), "tier shown")
+	click(findButton(Strings.get("pass_claim_all")))
+	eq(sent("ClaimPass", function(args)
+		return args[1] == "all"
+	end), 1, "claim all")
+	click(findButton(Strings.get("costume_leaf_crown")))
+	eq(sent("ClaimPass", function(args)
+		return args[1] == 5 and args[2] == "free"
+	end), 1, "claim one cell")
+	local before = #prompts
+	click(findButton(Strings.get("pass_get_premium") .. "  " .. Strings.get("shop_soon")))
+	eq(#prompts, before, "premium not on sale yet")
+	click(passButton)
+	StoreData.products.pass_premium.productId = 7003
+	click(passButton)
+	click(findButton(Strings.get("pass_get_premium") .. "  " .. Strings.get("shop_price_robux", 299)))
+	eq(prompts[#prompts], 7003, "premium prompt")
+	local free = {}
+	for tier = 1, 5 do
+		table.insert(free, tostring(tier))
+	end
+	setAttributes({ PassPremium = true, PassFree = table.concat(free, ","), PassPremiumClaimed = table.concat(free, ",") })
+	assert(shownText(Strings.get("pass_premium_on")), "premium active")
+	eq(findText("!", passButton).Visible, false, "badge gone once everything is claimed")
+	click(passButton)
+	StoreData.products.pass_premium.productId = 0
+end)
+
+test("double XP time left shows on the HUD while the boost runs", function()
+	local label = findText(Strings.get("hud_boost", 1, 30))
+	assert(label == nil or not isShown(label), "no boost label yet")
+	hero:SetAttribute("BoostUntil", workspace:GetServerTimeNow() + 90.4)
+	advance(0.6)
+	assert(shownText(Strings.get("hud_boost", 1, 29)) or shownText(Strings.get("hud_boost", 1, 30)), "boost time left")
+	hero:SetAttribute("BoostUntil", 0)
+	advance(0.6)
+	for _, descendant in playerGui:GetDescendants() do
+		if descendant:IsA("TextLabel") and string.find(descendant.Text, "2x XP", 1, true) then
+			assert(not isShown(descendant), "hidden when the boost ends")
+		end
+	end
 end)
 
 test("settings toggle sound and the performance overlay", function()

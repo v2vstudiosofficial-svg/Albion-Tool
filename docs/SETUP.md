@@ -70,6 +70,13 @@ Oyun içi tüm metinler İngilizce.
 10e. M8: sürüler eriyince tek toplu bildirim ("5 friends made! +230 XP"); sağ üstte **Log** (Macera Günlüğü):
    9 başarım, ilerleme çubuğu, hazır olana "Claim!" ve butonda "!" rozeti; ödül sikke + bazen sandık.
    İki oyuncu yakın durunca sol üstte "Team bonus +10%" ve arındırmalarda daha çok XP/kristal.
+10f. M9: sağ üstte **Shop** ve **Pass**. Shop → Packs: ürün kimliği girilmemiş paketler "Soon" yazar ve
+   tıklanmaz; Costumes: sikke ile al → "Wear"/"Remove", karakterde şapka/pelerin/aura görünür. Pass: 50 kademe,
+   yaratık/görev/sandık/yarık ile XP; "Claim all", ücretsiz ve premium satırlar, alınacak varsa butonda "!".
+   Satın almayı Robux harcamadan denemek için (Studio): Workspace'e `LvDebugGrant` (string) = `coins_small`,
+   `xp_boost` (sol üstte "2x XP 29:59"), `starter` veya `pass_premium`. Gerçek satın alma: Creator Dashboard →
+   Monetization → Developer Products'ta ürünleri oluştur, kimlikleri `src/shared/StoreData.luau` → `productId`'ye yaz,
+   yayınla; Studio'daki satın alma penceresi test modudur (Robux düşmez).
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

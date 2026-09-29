@@ -22,6 +22,11 @@ local SkillService = require(script.SkillService)
 local RiftService = require(script.RiftService)
 local AchievementService = require(script.AchievementService)
 local Targets = require(script.Targets)
+local CosmeticService = require(script.CosmeticService)
+local PassService = require(script.PassService)
+local StoreService = require(script.StoreService)
+local StoreLogic = require(script.StoreLogic)
+local StoreData = require(Shared.StoreData)
 
 local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
 local notice = ReplicatedStorage.Remotes.Notice :: RemoteEvent
@@ -39,6 +44,9 @@ PouchService.start()
 SkillService.start()
 RiftService.start()
 AchievementService.start()
+CosmeticService.start()
+PassService.start()
+StoreService.start()
 
 -- Creatures give XP (boosted by the Wisdom skill) and Light Crystals for the pouch; coins come
 -- from turning crystals in at the Great Lantern.
@@ -77,6 +85,13 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 		local xpMultiplier = if profile then Stats.of(profile).xpMultiplier else 1
 		local teamBonus = Progression.coopMultiplier(alliesNear(player))
 		xpMultiplier *= teamBonus
+		if profile and StoreLogic.boostActive(profile, os.time()) then
+			xpMultiplier *= StoreData.xpBoostMultiplier
+		end
+		PassService.award(player, "purify")
+		if enemy.elite then
+			PassService.award(player, "elite")
+		end
 		-- Bosses pay coins straight away (a boss payout would overflow an early pouch).
 		local isBoss = Balance.enemies[enemyType].isBoss == true
 		PlayerProfiles.grant(player, { xp = math.floor(reward.xp * xpMultiplier + 0.5), coins = if isBoss then reward.coins else 0 }, "purify")
@@ -85,6 +100,7 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 		end
 		QuestService.onPurified(player, enemyType)
 		if profile and Profile.recordLegend(profile, enemyType) then
+			PassService.award(player, "legend")
 			local nameKey = Balance.enemies[enemyType].nameKey
 			if ChestLogic.give(profile, "mystic", Progression.levelForXp(profile.xp)) then
 				notice:FireClient(player, "notice_legend", nameKey)

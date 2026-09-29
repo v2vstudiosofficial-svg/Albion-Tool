@@ -6,6 +6,9 @@ local WeaponData = if Shared then require(Shared.WeaponData) else require("../sh
 local ChestData = if Shared then require(Shared.ChestData) else require("../shared/ChestData")
 local SkillData = if Shared then require(Shared.SkillData) else require("../shared/SkillData")
 local AchievementData = if Shared then require(Shared.AchievementData) else require("../shared/AchievementData")
+local CosmeticData = if Shared then require(Shared.CosmeticData) else require("../shared/CosmeticData")
+local PassData = if Shared then require(Shared.PassData) else require("../shared/PassData")
+local StoreData = if Shared then require(Shared.StoreData) else require("../shared/StoreData")
 
 export type QuestProgress = {
 	state: "active" | "completed",
@@ -44,6 +47,15 @@ export type Profile = {
 	-- Adventure Log: counters (purifies, elites, rifts, chests, crystals) and claimed tiers.
 	counters: { [string]: number },
 	achievements: { [string]: number },
+	-- Costumes owned and worn (slot -> costume id).
+	ownedCosmetics: { [string]: boolean },
+	equippedCosmetics: { [string]: string },
+	-- Light Pass for `season`: Pass XP, premium, and claimed tiers per track.
+	pass: { season: number, xp: number, premium: boolean, free: { [string]: boolean }, premiumClaimed: { [string]: boolean } },
+	-- Store: recent purchase ids (duplicate receipts), one-time products bought, XP boost end (os.time).
+	purchaseIds: { string },
+	oneTime: { [string]: boolean },
+	boostUntil: number,
 	ownedCharms: { [string]: boolean },
 	equippedCharm: string?,
 	questProgress: { [string]: QuestProgress },
@@ -80,6 +92,12 @@ function Profile.new(): Profile
 		legends = {},
 		counters = {},
 		achievements = {},
+		ownedCosmetics = {},
+		equippedCosmetics = {},
+		pass = { season = PassData.season, xp = 0, premium = false, free = {}, premiumClaimed = {} },
+		purchaseIds = {},
+		oneTime = {},
+		boostUntil = 0,
 		ownedCharms = {},
 		equippedCharm = nil,
 		questProgress = {},
@@ -212,6 +230,69 @@ function Profile.sanitize(data: any): Profile
 		end
 	end
 	data.achievements = achievements
+
+	local cosmetics = {}
+	if type(data.ownedCosmetics) == "table" then
+		for id, value in data.ownedCosmetics do
+			if value == true and CosmeticData.costumes[id] then
+				cosmetics[id] = true
+			end
+		end
+	end
+	data.ownedCosmetics = cosmetics
+	local worn = {}
+	if type(data.equippedCosmetics) == "table" then
+		for _, slot in CosmeticData.slots do
+			local id = data.equippedCosmetics[slot]
+			if type(id) == "string" and cosmetics[id] and CosmeticData.costumes[id].slot == slot then
+				worn[slot] = id
+			end
+		end
+	end
+	data.equippedCosmetics = worn
+
+	local pass = if type(data.pass) == "table" then data.pass else {}
+	local function tierSet(value: any): { [string]: boolean }
+		local set = {}
+		if type(value) == "table" then
+			for key, claimed in value do
+				local tier = tonumber(key)
+				if claimed == true and tier and tier >= 1 and tier <= PassData.tiers and tier % 1 == 0 then
+					set[tostring(tier)] = true
+				end
+			end
+		end
+		return set
+	end
+	data.pass = {
+		season = if isValidAmount(pass.season) then pass.season else PassData.season,
+		xp = if isValidAmount(pass.xp) then pass.xp else 0,
+		premium = pass.premium == true,
+		free = tierSet(pass.free),
+		premiumClaimed = tierSet(pass.premiumClaimed),
+	}
+
+	local ids = {}
+	if type(data.purchaseIds) == "table" then
+		for _, id in data.purchaseIds do
+			if type(id) == "string" and #ids < StoreData.purchaseIdCache then
+				table.insert(ids, id)
+			end
+		end
+	end
+	data.purchaseIds = ids
+	local oneTime = {}
+	if type(data.oneTime) == "table" then
+		for key, value in data.oneTime do
+			if value == true and StoreData.products[key] then
+				oneTime[key] = true
+			end
+		end
+	end
+	data.oneTime = oneTime
+	if not isValidAmount(data.boostUntil) then
+		data.boostUntil = 0
+	end
 	local companions = {}
 	if type(data.companions) == "table" then
 		for slot = 1, WeaponData.maxCompanions do

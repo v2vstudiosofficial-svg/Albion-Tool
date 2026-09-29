@@ -110,9 +110,19 @@ function Hud.start()
 	-- Team bonus: shown while other players are close by (the server applies the same rule).
 	local teamLabel = UiKit.label({
 		Position = UDim2.fromOffset(4, 108),
-		Size = UDim2.fromOffset(228, 20),
+		Size = UDim2.fromOffset(120, 20),
 		TextSize = 16,
 		TextColor3 = colors.good,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextStrokeTransparency = 0.4,
+		Visible = false,
+	}, topLeft)
+	-- Double XP time left (store boost), next to the team bonus.
+	local boostLabel = UiKit.label({
+		Position = UDim2.fromOffset(126, 108),
+		Size = UDim2.fromOffset(106, 20),
+		TextSize = 16,
+		TextColor3 = colors.xp,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextStrokeTransparency = 0.4,
 		Visible = false,
@@ -120,6 +130,11 @@ function Hud.start()
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
+			local left = math.floor((player:GetAttribute("BoostUntil") or 0) - workspace:GetServerTimeNow())
+			boostLabel.Visible = left > 0
+			if left > 0 then
+				boostLabel.Text = Strings.get("hud_boost", left // 60, left % 60)
+			end
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			local allies = 0

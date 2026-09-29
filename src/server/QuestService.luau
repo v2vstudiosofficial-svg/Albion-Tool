@@ -11,6 +11,7 @@ local Progression = require(Shared.Progression)
 local Profile = require(script.Parent.Profile)
 local QuestLogic = require(script.Parent.QuestLogic)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
+local PassService = require(script.Parent.PassService)
 local Targets = require(script.Parent.Targets)
 
 local Remotes = ReplicatedStorage.Remotes
@@ -40,6 +41,7 @@ local function complete(player: Player, profile, questId: string)
 	if reward.flag and Profile.setFlag(profile, reward.flag) then
 		notice:FireClient(player, "notice_restore_" .. reward.flag)
 	end
+	PassService.award(player, "quest")
 	PlayerProfiles.grant(player, reward, "quest")
 	fx:FireClient(player, "questComplete", questId)
 end

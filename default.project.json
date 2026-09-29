@@ -28,6 +28,15 @@
         "EquipCharm": {
           "$className": "RemoteEvent"
         },
+        "BuyCosmetic": {
+          "$className": "RemoteEvent"
+        },
+        "EquipCosmetic": {
+          "$className": "RemoteEvent"
+        },
+        "ClaimPass": {
+          "$className": "RemoteEvent"
+        },
         "ClaimAchievement": {
           "$className": "RemoteEvent"
         },

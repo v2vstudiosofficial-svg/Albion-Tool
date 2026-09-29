@@ -10,6 +10,8 @@ local QuestLogic = require(script.Parent.QuestLogic)
 local ChestLogic = require(script.Parent.ChestLogic)
 local SkillLogic = require(script.Parent.SkillLogic)
 local AchievementLogic = require(script.Parent.AchievementLogic)
+local StoreLogic = require(script.Parent.StoreLogic)
+local PassLogic = require(script.Parent.PassLogic)
 local Shared = ReplicatedStorage.Shared
 local QuestData = require(Shared.QuestData)
 local AchievementData = require(Shared.AchievementData)
@@ -129,6 +131,21 @@ function PlayerProfiles.sync(player: Player)
 		table.insert(log, id .. ":" .. AchievementLogic.claimed(profile, id) .. ":" .. AchievementLogic.progress(profile, id))
 	end
 	player:SetAttribute("Achievements", table.concat(log, ","))
+	-- Costumes, Light Pass and store state.
+	player:SetAttribute("Costumes", csv(profile.ownedCosmetics))
+	local worn = {}
+	for slot, id in profile.equippedCosmetics do
+		table.insert(worn, slot .. ":" .. id)
+	end
+	table.sort(worn)
+	player:SetAttribute("Worn", table.concat(worn, ","))
+	player:SetAttribute("PassSeason", profile.pass.season)
+	player:SetAttribute("PassXp", profile.pass.xp)
+	player:SetAttribute("PassPremium", profile.pass.premium)
+	player:SetAttribute("PassFree", csv(profile.pass.free))
+	player:SetAttribute("PassPremiumClaimed", csv(profile.pass.premiumClaimed))
+	player:SetAttribute("BoostUntil", profile.boostUntil)
+	player:SetAttribute("OneTime", csv(profile.oneTime))
 	player:SetAttribute("Charm", profile.equippedCharm or "")
 	player:SetAttribute("Charms", csv(profile.ownedCharms))
 	player:SetAttribute("Flags", csv(profile.restorationFlags))
@@ -157,6 +174,41 @@ function PlayerProfiles.sync(player: Player)
 	for _, listener in changedListeners do
 		task.spawn(listener, player)
 	end
+end
+
+-- Robux purchase flow (ProfileStore's recommended pattern): remember the receipt's purchase id
+-- and grant once, then report success only after the id is saved. Returns true when the receipt
+-- may be marked granted; false means "try again later" (Roblox retries the receipt).
+local SAVE_WAIT_LIMIT = 30
+
+function PlayerProfiles.processPurchase(player: Player, purchaseId: string, grant: (any) -> ()): boolean
+	local session = sessions[player]
+	if not session or not session:IsActive() then
+		return false
+	end
+	if StoreLogic.remember(session.Data, purchaseId) then
+		grant(session.Data)
+		PlayerProfiles.sync(player)
+	end
+	local function saved(data: any): boolean
+		return type(data) == "table" and type(data.purchaseIds) == "table" and table.find(data.purchaseIds, purchaseId) ~= nil
+	end
+	if saved(session.LastSavedData) then
+		return true
+	end
+	local done = false
+	local connection = session.OnAfterSave:Connect(function(data)
+		if saved(data) then
+			done = true
+		end
+	end)
+	session:Save()
+	local waited = 0
+	while not done and session:IsActive() and waited < SAVE_WAIT_LIMIT do
+		waited += task.wait(0.1)
+	end
+	connection:Disconnect()
+	return done
 end
 
 function PlayerProfiles.grant(player: Player, reward: Profile.Reward, reason: string)
@@ -202,6 +254,7 @@ local function load(player: Player)
 	session:AddUserId(player.UserId)
 	session:Reconcile()
 	Profile.sanitize(session.Data)
+	PassLogic.ensureSeason(session.Data)
 	if session.Data.pendingPicks > 0 and #session.Data.skillOffer == 0 then
 		session.Data.skillOffer = SkillLogic.roll(session.Data, rng)
 	end

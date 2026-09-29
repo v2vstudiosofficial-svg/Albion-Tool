@@ -345,6 +345,10 @@ Balance.rifts = {
 	coinsPerLevel = 20,
 }
 
+-- Rough income of a player fighting same-level creatures (used to size coin rewards that should
+-- feel the same at every level: Light Pass coins and store coin packs).
+Balance.income = { killsPerMinute = 15 }
+
 -- Playing together: every other player within `radius` adds bonusPerAlly to purify XP and
 -- crystals, up to maxBonus.
 Balance.coop = { radius = 60, bonusPerAlly = 0.1, maxBonus = 0.3 }

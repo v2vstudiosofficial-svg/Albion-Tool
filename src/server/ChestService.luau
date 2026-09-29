@@ -12,6 +12,7 @@ local WeaponData = require(Shared.WeaponData)
 local Progression = require(Shared.Progression)
 local ChestLogic = require(script.Parent.ChestLogic)
 local AchievementLogic = require(script.Parent.AchievementLogic)
+local PassService = require(script.Parent.PassService)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
 local Targets = require(script.Parent.Targets)
 
@@ -82,6 +83,7 @@ local function onChestAction(player: Player, action: unknown, index: unknown)
 		local reward = ChestLogic.open(profile, index :: number, now, rng, Progression.levelForXp(profile.xp))
 		if reward then
 			AchievementLogic.count(profile, "chests")
+			PassService.award(player, "chest")
 			PlayerProfiles.sync(player)
 			local weapon = reward.weapon and WeaponData.weapons[reward.weapon]
 			-- Remote tables lose non-array keys (slot 0), so slots travel as a list of pairs.

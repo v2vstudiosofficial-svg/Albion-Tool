@@ -142,6 +142,17 @@ function Progression.nextMilestone(level: number): number
 	return math.max(best, math.min(level + 1, Progression.MAX_LEVEL))
 end
 
+-- Coins a player of this level earns per minute from same-level reference creatures.
+function Progression.coinsPerMinute(level: number): number
+	local reference = Balance.enemies.Gloomling.reward.coins
+	return reference * (1 + Balance.enemyScaling.coinsPerLevel * (level - 1)) * Balance.income.killsPerMinute
+end
+
+-- Coins worth `minutes` of income at this level, with an optional bonus (0.2 = +20%).
+function Progression.incomeCoins(level: number, minutes: number, bonus: number?): number
+	return math.floor(Progression.coinsPerMinute(level) * minutes * (1 + (bonus or 0)) + 0.5)
+end
+
 -- Team bonus multiplier for this many nearby allies.
 function Progression.coopMultiplier(allies: number): number
 	local coop = Balance.coop
