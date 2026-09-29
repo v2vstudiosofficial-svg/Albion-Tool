@@ -8,6 +8,7 @@ local ShopService = require(script.ShopService)
 local Projectiles = require(script.Projectiles)
 local EnemyService = require(script.EnemyService)
 local CombatService = require(script.CombatService)
+local ChestService = require(script.ChestService)
 
 local map = MapBuilder.build()
 CharacterService.start()
@@ -17,6 +18,7 @@ ShopService.start(map)
 Projectiles.start()
 EnemyService.start()
 CombatService.start()
+ChestService.start()
 
 EnemyService.connectPurified(function(enemyType, reward, participants)
 	for _, player in participants do
@@ -26,17 +28,13 @@ EnemyService.connectPurified(function(enemyType, reward, participants)
 end)
 
 local Shared = ReplicatedStorage.Shared
-local WeaponData = require(Shared.WeaponData)
 local Progression = require(Shared.Progression)
 local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
 local notice = ReplicatedStorage.Remotes.Notice :: RemoteEvent
 PlayerProfiles.onLevelUp(function(player, level, previous)
 	fx:FireAllClients("levelUp", player, level)
-	for _, weaponId in WeaponData.order do
-		local weapon = WeaponData.weapons[weaponId]
-		if weapon.unlockLevel > previous and weapon.unlockLevel <= level then
-			notice:FireClient(player, "notice_weapon_unlocked", weapon.nameKey)
-		end
+	if Progression.chestSlots(level) > Progression.chestSlots(previous) then
+		notice:FireClient(player, "notice_chest_slot_unlocked")
 	end
 	if Progression.companionSlots(level) > Progression.companionSlots(previous) then
 		notice:FireClient(player, "notice_companion_unlocked")

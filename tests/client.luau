@@ -535,14 +535,15 @@ end)
 
 test("weapons menu: main weapon, floating slots, locked ones do nothing", function()
 	local WeaponData = H.loadModule("src/shared/WeaponData.luau")
-	setAttributes({ Level = 3, Weapon = "staff", Companions = "" })
+	setAttributes({ Level = 3, Weapon = "staff", Companions = "", Weapons = "staff", SlotLevels = "2,0,0,0,0" })
 	click(findButton(Strings.get("menu_weapons")))
 	assert(shownText(Strings.get("bag_main_hint")), "weapons menu open")
-	click(findButton(Strings.get("weapon_locked", WeaponData.weapons.bow.unlockLevel)))
-	eq(sent("EquipWeapon"), 0, "locked weapon does nothing")
+	assert(findButton(Strings.get("slot_level", Strings.get("bag_main"), 2)), "main slot shows its level")
+	click(findButton(Strings.get("weapon_find")))
+	eq(sent("EquipWeapon"), 0, "a weapon not found yet does nothing")
 	click(findButton(Strings.get("weapon_locked", 25)))
 	assert(shownText(Strings.get("bag_main_hint")), "closed slot does not open")
-	setAttributes({ Level = 25, Companions = "spear" })
+	setAttributes({ Level = 25, Companions = "spear", Weapons = "bow,spear,staff,sword" })
 	click(findButton(Strings.get(WeaponData.weapons.bow.nameKey)))
 	eq(sent("EquipWeapon", function(args)
 		return args[1] == 0 and args[2] == "bow"
@@ -559,6 +560,78 @@ test("weapons menu: main weapon, floating slots, locked ones do nothing", functi
 	end), 1, "back to auto")
 	click(findButton(Strings.get("menu_weapons")))
 	setAttributes({ Level = 3, Companions = "" })
+end)
+
+test("chests in the world: shown when ready, hidden while their spot is empty", function()
+	local ChestData = H.loadModule("src/shared/ChestData.luau")
+	local function chestModels(): number
+		local count = 0
+		for _, child in workspace.ClientWorld:GetChildren() do
+			if string.sub(child.Name, 1, 6) == "Chest_" then
+				count += 1
+			end
+		end
+		return count
+	end
+	setAttributes({ ChestSpots = "" })
+	advance(1.1)
+	local total = 0
+	for _ in WorldData.chests do
+		total += 1
+	end
+	eq(chestModels(), total, "every spot has a chest")
+	local now = H.EPOCH + H.now()
+	setAttributes({ ChestSpots = "chest_glade_1:" .. math.floor(now + 5) })
+	eq(chestModels(), total - 1, "taken spot is empty")
+	advance(6)
+	eq(chestModels(), total, "chest came back when its time passed")
+	local prompt = workspace.ClientWorld.Chest_chest_glade_1:FindFirstChildWhichIsA("ProximityPrompt", true)
+	assert(prompt, "chest prompt")
+	eq(prompt.ObjectText, Strings.get(ChestData.chests.wood.nameKey))
+	prompt.Triggered:Fire()
+	eq(sent("Interact", function(args)
+		return args[1] == "chest" and args[2] == "chest_glade_1"
+	end), 1, "asks the server")
+end)
+
+test("chests menu: slots by level, one unlock at a time, timers, open and reward panel", function()
+	local ChestData = H.loadModule("src/shared/ChestData.luau")
+	setAttributes({ Level = 3, Chests = "wood:0,silver:0" })
+	click(findButton(Strings.get("menu_chests")))
+	assert(shownText(Strings.get("chest_hint")), "chests menu open")
+	assert(shownText(Strings.get("weapon_locked", ChestData.slotUnlockLevels[3])), "third slot closed at level 3")
+	assert(shownText(Strings.get(ChestData.chests.silver.nameKey)), "silver chest listed")
+	click(findButton(Strings.get("chest_unlock")))
+	eq(sent("ChestAction", function(args)
+		return args[1] == "unlock" and (args[2] == 1 or args[2] == 2)
+	end), 1, "unlock a chest")
+	local now = math.floor(H.EPOCH + H.now())
+	setAttributes({ Chests = "wood:" .. now .. ",silver:0" })
+	advance(0.6)
+	assert(shownText(Strings.get("chest_time", 1, 59)) or shownText(Strings.get("chest_time", 2, 0)), "countdown shown")
+	assert(findButton(Strings.get("chest_wait")), "the other chest has to wait")
+	click(findButton(Strings.get("chest_wait")))
+	eq(sent("ChestAction"), 1, "waiting chest sends nothing")
+	advance(ChestData.chests.wood.unlockSeconds)
+	click(findButton(Strings.get("chest_open")))
+	eq(sent("ChestAction", function(args)
+		return args[1] == "open" and args[2] == 1
+	end), 1, "open when ready")
+	remotes.Fx.OnClientEvent:Fire("chestOpened", {
+		chest = "wood",
+		coins = 33,
+		weapon = "bow",
+		rarity = "common",
+		duplicate = false,
+		slots = { { 0, 1, 3 } },
+	})
+	advance(0.2)
+	assert(shownText(Strings.get("chest_reward_title", Strings.get(ChestData.chests.wood.nameKey))), "reward title")
+	assert(shownText(Strings.get("chest_reward_coins", 33)), "coins line")
+	assert(shownText(Strings.get("chest_reward_weapon", Strings.get("weapon_bow_name"), Strings.get("rarity_common"))), "weapon line")
+	assert(shownText(Strings.get("chest_reward_slot", Strings.get("bag_main"), 3, 1)), "slot line")
+	click(findButton("X"))
+	setAttributes({ Level = 3, Chests = "" })
 end)
 
 test("bag: equip an owned charm, locked ones do nothing", function()

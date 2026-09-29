@@ -28,6 +28,9 @@
         "EquipCharm": {
           "$className": "RemoteEvent"
         },
+        "ChestAction": {
+          "$className": "RemoteEvent"
+        },
         "RetryLoad": {
           "$className": "RemoteEvent"
         },

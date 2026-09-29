@@ -170,6 +170,9 @@ end)
 roblox.implementMethod("Workspace", "Raycast", function()
 	return nil
 end)
+roblox.implementMethod("Workspace", "GetServerTimeNow", function()
+	return Harness.EPOCH + Harness.now()
+end)
 roblox.implementMethod("DataStoreOptions", "SetExperimentalFeatures", function() end)
 roblox.implementMethod("SoundService", "PlayLocalSound", function() end)
 roblox.implementMethod("ParticleEmitter", "Emit", function() end)
@@ -208,6 +211,7 @@ Harness.remoteLog = {} :: { { remote: string, direction: string, target: any, ar
 
 local remoteNames = {
 	"EquipWeapon",
+	"ChestAction",
 	"RequestWave",
 	"Interact",
 	"UpgradeStaff",
@@ -354,9 +358,14 @@ function Harness.read(object: any, property: string): any
 	return object[property]
 end
 
+-- Simulated wall clock: os.time() and GetServerTimeNow() advance with the simulated clock.
+Harness.EPOCH = 1700000000
 local simOs = setmetatable({
 	clock = function()
 		return clock
+	end,
+	time = function()
+		return Harness.EPOCH + math.floor(clock)
 	end,
 }, { __index = os })
 
@@ -398,12 +407,14 @@ local function scriptPathFor(file: string): string
 end
 
 local Random = {
-	new = function(seed: number)
-		local state = seed
+	-- Like Roblox: the seed is optional and NextNumber() without bounds returns [0, 1).
+	new = function(seed: number?)
+		local state = seed or 1
 		return {
-			NextNumber = function(_, min: number, max: number)
+			NextNumber = function(_, min: number?, max: number?)
 				state = (state * 1103515245 + 12345) % 2147483648
-				return min + (max - min) * state / 2147483648
+				local low, high = min or 0, max or 1
+				return low + (high - low) * state / 2147483648
 			end,
 		}
 	end,

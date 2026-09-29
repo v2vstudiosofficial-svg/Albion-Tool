@@ -1,5 +1,5 @@
--- Per-player world state drawn locally: quest flowers, landmark beacons, the ruins vine barrier,
--- NPC quest markers and the village restoration decorations. None of it changes other players' world.
+-- Per-player world state drawn locally: quest flowers, chests, landmark beacons, the ruins vine
+-- barrier, NPC quest markers and the village restoration decorations. None of it changes other players' world.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local QuestData = require(Shared:WaitForChild("QuestData"))
 local Progression = require(Shared:WaitForChild("Progression"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
+local ChestData = require(Shared:WaitForChild("ChestData"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local Audio = require(script.Parent.Audio)
 local Effects = require(script.Parent.Effects)
@@ -141,6 +142,64 @@ local function refreshFlowers()
 		elseif not show and flowers[id] then
 			flowers[id]:Destroy()
 			flowers[id] = nil
+		end
+	end
+end
+
+-- Chests ----------------------------------------------------------------------------------------
+
+local chests: { [string]: Model } = {}
+local WOOD_DARK = Color3.fromRGB(110, 75, 50)
+
+local function buildChest(spotId: string, chestType: string, position: Vector3): Model
+	local data = ChestData.chests[chestType]
+	local color = UiKit.rgb(data.color)
+	local model = Instance.new("Model")
+	model.Name = "Chest_" .. spotId
+	local base = CFrame.new(position + Vector3.new(0, 0.8, 0)) * CFrame.Angles(0, math.rad(20), 0)
+	localPart({ Size = Vector3.new(2.8, 1.6, 1.9), CFrame = base, Color = if chestType == "wood" then WOOD_DARK else color, Material = Enum.Material.Wood }, model)
+	localPart({ Size = Vector3.new(2.9, 0.7, 2), CFrame = base * CFrame.new(0, 1.15, 0), Color = color, Material = Enum.Material.SmoothPlastic }, model)
+	for _, x in { -1, 1 } do
+		localPart({ Size = Vector3.new(0.25, 2.3, 2.05), CFrame = base * CFrame.new(x, 0.35, 0), Color = Color3.fromRGB(70, 60, 70), Material = Enum.Material.Metal }, model)
+	end
+	local gem = localPart({ Size = Vector3.new(0.6, 0.6, 0.2), CFrame = base * CFrame.new(0, 0.7, -1.02), Color = color, Material = Enum.Material.Neon }, model)
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Range = 10
+	light.Brightness = 1.2
+	light.Shadows = false
+	light.Parent = gem
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = Strings.get("chest_action")
+	prompt.ObjectText = Strings.get(data.nameKey)
+	prompt.HoldDuration = 0.3
+	prompt.MaxActivationDistance = 9
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = gem
+	prompt.Triggered:Connect(function()
+		interact:FireServer("chest", spotId)
+	end)
+	model.Parent = folder
+	return model
+end
+
+-- Taken spots arrive as "spotId:readyAt" (server os.time); a spot shows again once that time passes.
+local function refreshChests()
+	local readyAt = {}
+	for _, entry in Attrs.list("ChestSpots") do
+		local spotId, at = string.match(entry, "^([^:]+):(%d+)$")
+		if spotId then
+			readyAt[spotId] = tonumber(at)
+		end
+	end
+	local now = workspace:GetServerTimeNow()
+	for spotId, spot in WorldData.chests do
+		local show = player:GetAttribute("DataState") == "ready" and (readyAt[spotId] == nil or now >= readyAt[spotId])
+		if show and not chests[spotId] then
+			chests[spotId] = buildChest(spotId, spot.type, WorldData.vector(spot.position))
+		elseif not show and chests[spotId] then
+			chests[spotId]:Destroy()
+			chests[spotId] = nil
 		end
 	end
 end
@@ -532,8 +591,18 @@ function World.start()
 	end)
 	refreshQuestVisuals()
 	refreshRestoration(false)
+	for _, name in { "ChestSpots", "DataState" } do
+		player:GetAttributeChangedSignal(name):Connect(refreshChests)
+	end
+	refreshChests()
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			refreshChests()
+		end
+	end)
 
-	fxRemote.OnClientEvent:Connect(function(kind, id, position)
+	fxRemote.OnClientEvent:Connect(function(kind, id, position, extra)
 		if kind == "collected" then
 			Effects.burst(position + Vector3.new(0, 2, 0), PINK, 30, 8)
 			Audio.play("pickup")
@@ -543,6 +612,10 @@ function World.start()
 			if landmark then
 				Effects.popup(position + Vector3.new(0, 8, 0), Strings.get(landmark.nameKey), GOLD, 30)
 			end
+			Audio.play("pickup")
+		elseif kind == "chestTaken" then
+			local data = ChestData.chests[extra or ""]
+			Effects.burst(position + Vector3.new(0, 2, 0), if data then UiKit.rgb(data.color) else GOLD, 40, 10)
 			Audio.play("pickup")
 		elseif kind == "vineCleared" then
 			local vine = WorldData.vines[id]

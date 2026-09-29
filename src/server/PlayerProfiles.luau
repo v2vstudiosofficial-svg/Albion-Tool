@@ -7,9 +7,11 @@ local RunService = game:GetService("RunService")
 local ProfileStore = require(script.Parent.Packages.ProfileStore)
 local Profile = require(script.Parent.Profile)
 local QuestLogic = require(script.Parent.QuestLogic)
+local ChestLogic = require(script.Parent.ChestLogic)
 local Shared = ReplicatedStorage.Shared
 local QuestData = require(Shared.QuestData)
 local Progression = require(Shared.Progression)
+local WeaponData = require(Shared.WeaponData)
 local Strings = require(Shared.Strings)
 
 local Remotes = ReplicatedStorage.Remotes
@@ -80,6 +82,24 @@ function PlayerProfiles.sync(player: Player)
 	local main, companions = Profile.loadout(profile)
 	player:SetAttribute("Weapon", main)
 	player:SetAttribute("Companions", table.concat(companions, ","))
+	player:SetAttribute("Weapons", csv(profile.ownedWeapons))
+	player:SetAttribute("SlotLevels", table.concat(profile.slotLevels, ","))
+	-- Chests as "type:startedAt" in slot order; spots as "spotId:readyAt" for taken spots only.
+	local chests = {}
+	for _, chest in profile.chests do
+		table.insert(chests, chest.type .. ":" .. chest.startedAt)
+	end
+	player:SetAttribute("Chests", table.concat(chests, ","))
+	local now = os.time()
+	local spots = {}
+	for spotId in profile.chestSpots do
+		local readyAt = ChestLogic.spotReadyAt(profile, spotId, now)
+		if readyAt then
+			table.insert(spots, spotId .. ":" .. readyAt)
+		end
+	end
+	table.sort(spots)
+	player:SetAttribute("ChestSpots", table.concat(spots, ","))
 	player:SetAttribute("Charm", profile.equippedCharm or "")
 	player:SetAttribute("Charms", csv(profile.ownedCharms))
 	player:SetAttribute("Flags", csv(profile.restorationFlags))
@@ -188,8 +208,9 @@ function PlayerProfiles.start()
 		end
 	end)
 
-	-- Studio-only test helper: set the Workspace attribute LvDebugLevel (server view) to move every
-	-- loaded player to that level, e.g. to look at late weapons and floating slots. Never in live games.
+	-- Studio-only test helpers (server view, Workspace attributes). Never in live games:
+	-- LvDebugLevel (number) moves every loaded player to that level; LvDebugAllWeapons (true)
+	-- gives them every weapon, so late weapons and floating slots can be checked quickly.
 	if RunService:IsStudio() then
 		workspace:GetAttributeChangedSignal("LvDebugLevel"):Connect(function()
 			local level = workspace:GetAttribute("LvDebugLevel")
@@ -199,6 +220,17 @@ function PlayerProfiles.start()
 			local xp = Progression.thresholds[math.clamp(math.floor(level), 1, Progression.MAX_LEVEL)]
 			for player, session in sessions do
 				session.Data.xp = xp
+				PlayerProfiles.sync(player)
+			end
+		end)
+		workspace:GetAttributeChangedSignal("LvDebugAllWeapons"):Connect(function()
+			if workspace:GetAttribute("LvDebugAllWeapons") ~= true then
+				return
+			end
+			for player, session in sessions do
+				for weaponId in WeaponData.weapons do
+					session.Data.ownedWeapons[weaponId] = true
+				end
 				PlayerProfiles.sync(player)
 			end
 		end)

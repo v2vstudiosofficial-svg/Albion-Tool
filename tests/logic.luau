@@ -13,6 +13,8 @@ local Sounds = require("../src/shared/Sounds")
 local Goals = require("../src/shared/Goals")
 local WeaponData = require("../src/shared/WeaponData")
 local WeaponLogic = require("../src/server/WeaponLogic")
+local ChestData = require("../src/shared/ChestData")
+local ChestLogic = require("../src/server/ChestLogic")
 
 local passed, failed = 0, 0
 
@@ -210,7 +212,7 @@ test("post-story goals: affordable upgrade, then level cap, then remaining tiers
 	eq(g.affordable, true)
 	local levelGoal = Goals.next(0, 0, 0)
 	eq(levelGoal.kind, "level", "otherwise level up")
-	eq(levelGoal.target, WeaponData.weapons.bow.unlockLevel, "toward the next weapon unlock")
+	eq(levelGoal.target, ChestData.slotUnlockLevels[2], "toward the next chest slot")
 	eq(Goals.next(Progression.thresholds[24], 0, 0).target, 25, "floating slot is a milestone")
 	local lastTier = Progression.maxStaffUpgrade()
 	local staffOnly = Goals.next(maxXp, 0, lastTier - 1)
@@ -552,23 +554,27 @@ local function sorted(list: { number }): string
 	return table.concat(copy, ",")
 end
 
-test("weapon data: eight weapons, strings, rising unlocks, known styles", function()
+test("weapon data: eight weapons sorted by rarity, strings, known styles", function()
 	eq(#WeaponData.order, 8, "eight weapons")
-	local previous = 0
+	local previous = 1
 	local styles = {}
-	for index, weaponId in WeaponData.order do
+	for _, weaponId in WeaponData.order do
 		local weapon = WeaponData.weapons[weaponId]
 		assert(weapon, "missing weapon " .. weaponId)
 		assert(Strings.has(weapon.nameKey) and Strings.has(weapon.descKey), "weapon strings " .. weaponId)
-		assert(weapon.unlockLevel > previous or index == 1, "unlock levels rise: " .. weaponId)
-		assert(weapon.unlockLevel <= Progression.MAX_LEVEL, "reachable " .. weaponId)
-		previous = weapon.unlockLevel
+		local rank = table.find(WeaponData.rarityOrder, weapon.rarity)
+		assert(rank, "known rarity " .. weaponId)
+		assert(rank >= previous, "order goes from common to legendary: " .. weaponId)
+		previous = rank
 		assert(weapon.damage > 0 and weapon.cooldown > 0 and weapon.range > 0, "stats " .. weaponId)
 		styles[weapon.style] = true
 		-- Each weapon plans an attack without erroring.
 		assert(WeaponLogic.plan(weapon, { x = 0, z = 0 }, { x = 0, z = -1 }, { foe(1, 0, -3) }), "plan " .. weaponId)
 	end
-	eq(WeaponData.weapons.staff.unlockLevel, 1, "starter weapon")
+	eq(WeaponData.starter, "staff", "starter weapon")
+	for _, rarity in WeaponData.rarityOrder do
+		assert(Strings.has(WeaponData.rarities[rarity].nameKey), "rarity string " .. rarity)
+	end
 	local count = 0
 	for _ in styles do
 		count += 1
@@ -623,12 +629,13 @@ test("weapon logic: area styles hit the right groups", function()
 	eq(spread and sorted(spread.hits), "1,2,3", "three daggers, three targets")
 end)
 
-test("progression: weapon unlocks, damage scaling, floating slots every 25 levels", function()
-	eq(Progression.weaponUnlocked("staff", 1), true)
-	eq(Progression.weaponUnlocked("bow", WeaponData.weapons.bow.unlockLevel - 1), false)
-	eq(Progression.weaponUnlocked("bow", WeaponData.weapons.bow.unlockLevel), true)
-	eq(Progression.weaponUnlocked("nope", 100), false)
+test("progression: damage scaling, slot levels, chest slots, floating slots every 25 levels", function()
 	eq(Progression.weaponDamage("staff", 0, 1), WeaponData.weapons.staff.damage, "base damage")
+	eq(Progression.weaponDamage("staff", 0, 1, false, 0), WeaponData.weapons.staff.damage, "slot level 0")
+	assert(Progression.weaponDamage("staff", 0, 1, false, 5) > Progression.weaponDamage("staff", 0, 1), "slot levels help")
+	eq(Progression.slotMultiplier(WeaponData.maxSlotLevel + 50), Progression.slotMultiplier(WeaponData.maxSlotLevel), "slot level cap")
+	eq(Progression.chestSlots(1), 1, "one chest slot at the start")
+	eq(Progression.chestSlots(100), 5, "five at most")
 	assert(Progression.weaponDamage("staff", 1, 1) > Progression.weaponDamage("staff", 0, 1), "power tier helps")
 	assert(Progression.weaponDamage("staff", 0, 50) > Progression.weaponDamage("staff", 0, 1), "levels help")
 	assert(Progression.weaponDamage("sword", 0, 20, true) < Progression.weaponDamage("sword", 0, 20), "floating hits softer")
@@ -637,7 +644,7 @@ test("progression: weapon unlocks, damage scaling, floating slots every 25 level
 	eq(Progression.companionSlots(25), 1)
 	eq(Progression.companionSlots(74), 2)
 	eq(Progression.companionSlots(100), 4)
-	eq(Progression.nextMilestone(1), WeaponData.weapons.bow.unlockLevel)
+	eq(Progression.nextMilestone(1), ChestData.slotUnlockLevels[2])
 	eq(Progression.nextMilestone(61), 75)
 	eq(Progression.nextMilestone(99), 100)
 	eq(Progression.nextMilestone(100), 100)
@@ -666,23 +673,28 @@ test("enemy levels scale health, damage and rewards; bosses keep their tuning", 
 	end
 end)
 
-test("profile weapons: equip rules, floating slots, auto picks, sanitize", function()
+test("profile weapons: only owned weapons equip, floating slots, auto picks, sanitize", function()
 	local p = Profile.new()
 	eq(p.equippedWeapon, "staff")
-	eq(Profile.equipWeapon(p, 0, "bow"), false, "locked weapon")
+	eq(p.ownedWeapons.staff, true, "starter owned")
+	eq(Profile.equipWeapon(p, 0, "bow"), false, "not owned")
 	eq(Profile.equipWeapon(p, 0, "nope"), false, "unknown weapon")
 	eq(Profile.equipWeapon(p, 1, "staff"), false, "no floating slot yet")
 	local main, companions = Profile.loadout(p)
 	eq(main, "staff")
 	eq(#companions, 0)
 
-	p.xp = Progression.thresholds[25]
+	p.ownedWeapons.bow = true
+	p.ownedWeapons.sword = true
+	p.ownedWeapons.spear = true
 	eq(Profile.equipWeapon(p, 0, "spear"), true)
+	p.xp = Progression.thresholds[25]
 	main, companions = Profile.loadout(p)
 	eq(main, "spear")
 	eq(#companions, 1, "one floating slot at 25")
-	eq(companions[1], "sword", "auto pick: strongest unlocked weapon not in use")
+	eq(companions[1], "sword", "auto pick: rarest owned weapon not in use")
 	eq(Profile.equipWeapon(p, 2, "bow"), false, "second slot still closed")
+	eq(Profile.equipWeapon(p, 1, "hammer"), false, "not owned")
 	eq(Profile.equipWeapon(p, 1, "bow"), true)
 	main, companions = Profile.loadout(p)
 	eq(companions[1], "bow")
@@ -691,22 +703,177 @@ test("profile weapons: equip rules, floating slots, auto picks, sanitize", funct
 	eq(companions[1], "sword")
 
 	p.xp = Progression.thresholds[100]
+	for _, weaponId in WeaponData.order do
+		p.ownedWeapons[weaponId] = true
+	end
 	main, companions = Profile.loadout(p)
 	eq(#companions, 4, "four floating slots at 100")
 	local seen = { [main] = true }
 	for _, weaponId in companions do
-		assert(not seen[weaponId], "auto picks do not repeat: " .. weaponId)
+		assert(not seen[weaponId], "auto picks do not repeat while owned weapons remain: " .. weaponId)
 		seen[weaponId] = true
 	end
+	local few = Profile.new()
+	few.xp = Progression.thresholds[50]
+	local _, fewCompanions = Profile.loadout(few)
+	eq(#fewCompanions, 2, "slots stay usable with only the starter")
+	eq(fewCompanions[1], "staff", "falls back to the main weapon")
 
-	local bad = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, equippedWeapon = "hammer", companions = { "x", 5, "bow" } })
-	eq(bad.equippedWeapon, "staff", "locked main weapon reset")
+	local bad = Profile.sanitize({
+		xp = 0,
+		coins = 0,
+		staffUpgrade = 0,
+		equippedWeapon = "hammer",
+		companions = { "x", 5, "bow" },
+		ownedWeapons = { bow = true, nope = true, sword = "yes" },
+		slotLevels = { 3, -1, 999, "x" },
+		chests = { { type = "gold", startedAt = 5 }, { type = "nope" }, "x", { type = "wood", startedAt = -3 } },
+		chestSpots = { chest_glade_1 = 10, bad = "x" },
+	})
+	eq(bad.equippedWeapon, "staff", "unowned main weapon reset")
 	eq(bad.companions[1], "", "unknown pick cleared")
 	eq(bad.companions[2], "", "bad pick cleared")
 	eq(bad.companions[3], "bow", "valid pick kept for later")
+	eq(bad.ownedWeapons.staff and bad.ownedWeapons.bow and not bad.ownedWeapons.nope and not bad.ownedWeapons.sword, true, "owned weapons cleaned")
+	eq(table.concat(bad.slotLevels, ","), "3,0," .. WeaponData.maxSlotLevel .. ",0,0", "slot levels cleaned and capped")
+	eq(#bad.chests, 2, "invalid chests dropped")
+	eq(bad.chests[2].startedAt, 0, "bad timer reset")
+	eq(bad.chestSpots.chest_glade_1, 10)
+	eq(bad.chestSpots.bad, nil)
 	local missing = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 })
 	eq(missing.equippedWeapon, "staff")
-	eq(type(missing.companions), "table")
+	eq(missing.ownedWeapons.staff, true)
+	eq(#missing.slotLevels, 5)
+	eq(type(missing.chests), "table")
+end)
+
+-- Chests ----------------------------------------------------------------------------------------
+
+local function sequence(values: { number }): () -> number
+	local index = 0
+	return function()
+		index = index % #values + 1
+		return values[index]
+	end
+end
+
+test("chest data: four types from 2 to 20 minutes, strings, valid spots", function()
+	eq(#ChestData.order, 4)
+	eq(ChestData.chests[ChestData.order[1]].unlockSeconds, 120, "simplest chest: 2 minutes")
+	eq(ChestData.chests[ChestData.order[4]].unlockSeconds, 1200, "longest chest: 20 minutes")
+	local previous = 0
+	for _, chestType in ChestData.order do
+		local data = ChestData.chests[chestType]
+		assert(data.unlockSeconds > previous, "longer chests for better types")
+		previous = data.unlockSeconds
+		assert(Strings.has(data.nameKey), "chest string " .. chestType)
+		for rarity in data.rarityWeights do
+			assert(WeaponData.rarities[rarity], "known rarity " .. rarity)
+		end
+	end
+	eq(#ChestData.slotUnlockLevels, 5, "five chest slots at most")
+	eq(ChestData.slotUnlockLevels[1], 1, "one at the start")
+	for spotId, spot in WorldData.chests do
+		assert(ChestData.chests[spot.type], "spot type " .. spotId)
+		local p = spot.position
+		local b = WorldData.bounds
+		assert(p[1] > b.minX and p[1] < b.maxX and p[3] > b.minZ and p[3] < b.maxZ, "inside the map " .. spotId)
+	end
+end)
+
+test("chests: pick up into free slots, spots come back after their respawn time", function()
+	local p = Profile.new()
+	local ok, reason = ChestLogic.collect(p, "chest_glade_1", 1000, 1)
+	eq(ok, true)
+	eq(#p.chests, 1)
+	eq(p.chests[1].type, WorldData.chests.chest_glade_1.type)
+	ok, reason = ChestLogic.collect(p, "chest_glade_2", 1000, 1)
+	eq(reason, "full", "one slot at level 1")
+	eq(p.chestSpots.chest_glade_2, nil, "a full inventory leaves the chest in the world")
+	ok, reason = ChestLogic.collect(p, "chest_glade_1", 1001, 10)
+	eq(reason, "cooldown", "taken spot is empty for a while")
+	eq(ChestLogic.spotReadyAt(p, "chest_glade_1", 1001), 1000 + ChestData.chests.wood.respawnSeconds)
+	ok = ChestLogic.collect(p, "chest_glade_1", 1000 + ChestData.chests.wood.respawnSeconds, 10)
+	eq(ok, true, "back after respawn")
+	eq(select(2, ChestLogic.collect(p, "nope", 1000, 10)), "unknown")
+end)
+
+test("chests: one unlock at a time, opening only when the timer is done", function()
+	local p = Profile.new()
+	p.xp = Progression.thresholds[10]
+	ChestLogic.collect(p, "chest_glade_1", 0, 10)
+	ChestLogic.collect(p, "chest_grove_1", 0, 10)
+	eq(#p.chests, 2)
+	eq(select(2, ChestLogic.open(p, 1, 100, math.random, 10)), "locked", "not started")
+	eq(ChestLogic.startUnlock(p, 1, 100), true)
+	eq(select(2, ChestLogic.startUnlock(p, 1, 101)), "started")
+	eq(select(2, ChestLogic.startUnlock(p, 2, 101)), "busy", "only one unlocks at a time")
+	eq(select(2, ChestLogic.startUnlock(p, 9, 101)), "empty")
+	eq(ChestLogic.remaining(p.chests[1], 160), 60)
+	eq(select(2, ChestLogic.open(p, 1, 219, math.random, 10)), "locked", "one second early")
+	local reward = ChestLogic.open(p, 1, 220, sequence({ 0.5 }), 10)
+	assert(reward, "opened on time")
+	eq(#p.chests, 1, "chest removed")
+	eq(ChestLogic.startUnlock(p, 1, 221), true, "next one may start")
+	eq(select(2, ChestLogic.open(p, 1, 221, math.random, 10)), "locked")
+	eq(ChestLogic.open(p, 5, 9999, math.random, 10), nil, "empty slot")
+end)
+
+test("chest rewards: coins in range, rarity weights, duplicates to coins, slot levels", function()
+	local p = Profile.new()
+	-- rng values: coins roll, weapon chance, rarity roll, weapon pick, then slot picks.
+	local low = ChestLogic.roll("wood", sequence({ 0 }), p, 1)
+	eq(low.coins, ChestData.chests.wood.coins[1], "lowest coins")
+	eq(low.weapon, "staff", "weapon chance 0 < 0.25 hits; lowest rarity roll -> common; first common")
+	eq(low.duplicate, true, "staff is already owned")
+	eq(low.duplicateCoins, ChestData.duplicateCoins.common)
+	local high = ChestLogic.roll("wood", sequence({ 0.999 }), p, 1)
+	eq(high.coins, ChestData.chests.wood.coins[2], "highest coins")
+	eq(high.weapon, nil, "no weapon when the chance roll fails")
+	eq(high.slots[0], ChestData.chests.wood.slotLevels, "slot levels go to the main slot at low level")
+	local mystic = ChestLogic.roll("mystic", sequence({ 0.99, 0.5, 0.99, 0.99 }), p, 1)
+	eq(WeaponData.weapons[mystic.weapon].rarity, "legendary", "top of the rarity roll")
+	-- Over many opens every weapon appears and rarities follow the chest.
+	local seen = {}
+	local legendaryFromWood = false
+	math.randomseed(7)
+	for _ = 1, 2000 do
+		for _, chestType in ChestData.order do
+			local reward = ChestLogic.roll(chestType, math.random, p, 100)
+			if reward.weapon then
+				seen[reward.weapon] = true
+				if chestType == "wood" and WeaponData.weapons[reward.weapon].rarity == "legendary" then
+					legendaryFromWood = true
+				end
+			end
+			local c = ChestData.chests[chestType].coins
+			assert(reward.coins >= c[1] and reward.coins <= c[2], "coins in range")
+			local total = 0
+			for slot, gained in reward.slots do
+				assert(slot >= 0 and slot <= 4, "valid slot")
+				total += gained
+			end
+			eq(total, ChestData.chests[chestType].slotLevels, "all slot levels handed out")
+		end
+	end
+	for _, weaponId in WeaponData.order do
+		assert(seen[weaponId], "chests can give " .. weaponId)
+	end
+	eq(legendaryFromWood, false, "wooden chests never give legendary weapons")
+end)
+
+test("opening applies rewards: coins, new weapon, capped slot levels", function()
+	local p = Profile.new()
+	p.slotLevels[1] = WeaponData.maxSlotLevel - 1
+	table.insert(p.chests, { type = "mystic", startedAt = 1 })
+	local coins = p.coins
+	local reward = ChestLogic.open(p, 1, 1 + ChestData.chests.mystic.unlockSeconds, sequence({ 0, 0, 0.99, 0.99 }), 1) :: any
+	eq(reward.weapon, "hammer")
+	eq(p.ownedWeapons.hammer, true, "weapon owned")
+	eq(p.coins, coins + reward.coins, "coins added")
+	eq(p.slotLevels[1], WeaponData.maxSlotLevel, "slot level capped")
+	eq(reward.slots[0], 1, "only one level fit before the cap")
+	eq(Profile.equipWeapon(p, 0, "hammer"), true, "new weapon can be equipped")
 end)
 
 test("game content is English only (no Turkish letters in source)", function()

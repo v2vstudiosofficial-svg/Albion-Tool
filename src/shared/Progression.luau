@@ -8,6 +8,9 @@ local Progression = {}
 local WeaponData = if script
 	then require(script.Parent.WeaponData)
 	else require("./WeaponData")
+local ChestData = if script
+	then require(script.Parent.ChestData)
+	else require("./ChestData")
 
 local levels = Balance.levels
 Progression.MAX_LEVEL = levels.maxLevel
@@ -77,14 +80,14 @@ function Progression.staffDamage(staffUpgrade: number, level: number): number
 	return math.floor(tier.damage * levelMultiplier(level) + 0.5)
 end
 
-function Progression.weaponUnlocked(weaponId: string, level: number): boolean
-	local weapon = WeaponData.weapons[weaponId]
-	return weapon ~= nil and level >= weapon.unlockLevel
+-- Bonus from a weapon slot's level (slot levels come from chests).
+function Progression.slotMultiplier(slotLevel: number?): number
+	return 1 + WeaponData.slotLevelBonus * math.clamp(slotLevel or 0, 0, WeaponData.maxSlotLevel)
 end
 
-function Progression.weaponDamage(weaponId: string, staffUpgrade: number, level: number, companion: boolean?): number
+function Progression.weaponDamage(weaponId: string, staffUpgrade: number, level: number, companion: boolean?, slotLevel: number?): number
 	local weapon = WeaponData.weapons[weaponId]
-	local damage = weapon.damage * Progression.tierMultiplier(staffUpgrade) * levelMultiplier(level)
+	local damage = weapon.damage * Progression.tierMultiplier(staffUpgrade) * levelMultiplier(level) * Progression.slotMultiplier(slotLevel)
 	if companion then
 		damage *= WeaponData.companionDamage
 	end
@@ -101,12 +104,23 @@ function Progression.companionSlots(level: number): number
 	return math.min(WeaponData.maxCompanions, level // WeaponData.companionEvery)
 end
 
--- The next level that unlocks a weapon or a floating slot (or the level cap).
+-- Chest slots open at this level (1 at the start, 5 at most).
+function Progression.chestSlots(level: number): number
+	local count = 0
+	for _, needed in ChestData.slotUnlockLevels do
+		if level >= needed then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- The next level that opens a chest slot or a floating weapon slot (or the level cap).
 function Progression.nextMilestone(level: number): number
 	local best = Progression.MAX_LEVEL
-	for _, weapon in WeaponData.weapons do
-		if weapon.unlockLevel > level and weapon.unlockLevel < best then
-			best = weapon.unlockLevel
+	for _, needed in ChestData.slotUnlockLevels do
+		if needed > level and needed < best then
+			best = needed
 		end
 	end
 	local nextSlot = (level // WeaponData.companionEvery + 1) * WeaponData.companionEvery

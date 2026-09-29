@@ -3,12 +3,16 @@ local Shared = if script then game:GetService("ReplicatedStorage").Shared else n
 local Balance = if Shared then require(Shared.Balance) else require("../shared/Balance")
 local Progression = if Shared then require(Shared.Progression) else require("../shared/Progression")
 local WeaponData = if Shared then require(Shared.WeaponData) else require("../shared/WeaponData")
+local ChestData = if Shared then require(Shared.ChestData) else require("../shared/ChestData")
 
 export type QuestProgress = {
 	state: "active" | "completed",
 	count: number,
 	found: { [string]: boolean }?,
 }
+
+-- A chest waiting in a chest slot; startedAt is the os.time() its unlock began (0 = not yet).
+export type Chest = { type: string, startedAt: number }
 
 export type Profile = {
 	schemaVersion: number,
@@ -18,6 +22,12 @@ export type Profile = {
 	-- Main weapon, and explicit picks for floating slots (empty slots are auto-filled).
 	equippedWeapon: string,
 	companions: { string },
+	ownedWeapons: { [string]: boolean },
+	-- slotLevels[slot + 1]: level of weapon slot 0 (main) .. 4 (floating).
+	slotLevels: { number },
+	chests: { Chest },
+	-- os.time() when this player last took the chest at each world spot.
+	chestSpots: { [string]: number },
 	ownedCharms: { [string]: boolean },
 	equippedCharm: string?,
 	questProgress: { [string]: QuestProgress },
@@ -42,6 +52,10 @@ function Profile.new(): Profile
 		staffUpgrade = 0,
 		equippedWeapon = "staff",
 		companions = {},
+		ownedWeapons = { staff = true },
+		slotLevels = { 0, 0, 0, 0, 0 },
+		chests = {},
+		chestSpots = {},
 		ownedCharms = {},
 		equippedCharm = nil,
 		questProgress = {},
@@ -70,10 +84,46 @@ function Profile.sanitize(data: any): Profile
 	end
 	data.staffUpgrade = math.min(data.staffUpgrade, MAX_UPGRADE)
 
-	local level = Progression.levelForXp(data.xp)
-	if type(data.equippedWeapon) ~= "string" or not Progression.weaponUnlocked(data.equippedWeapon, level) then
-		data.equippedWeapon = "staff"
+	local weapons = {}
+	if type(data.ownedWeapons) == "table" then
+		for weaponId, value in data.ownedWeapons do
+			if value == true and WeaponData.weapons[weaponId] then
+				weapons[weaponId] = true
+			end
+		end
 	end
+	weapons[WeaponData.starter] = true
+	data.ownedWeapons = weapons
+	if type(data.equippedWeapon) ~= "string" or not weapons[data.equippedWeapon] then
+		data.equippedWeapon = WeaponData.starter
+	end
+
+	local slotLevels = {}
+	for index = 1, WeaponData.maxCompanions + 1 do
+		local value = type(data.slotLevels) == "table" and data.slotLevels[index]
+		slotLevels[index] = if isValidAmount(value) then math.min(value, WeaponData.maxSlotLevel) else 0
+	end
+	data.slotLevels = slotLevels
+
+	local chests = {}
+	if type(data.chests) == "table" then
+		for _, chest in data.chests do
+			if #chests < #ChestData.slotUnlockLevels and type(chest) == "table" and ChestData.chests[chest.type] then
+				table.insert(chests, { type = chest.type, startedAt = if isValidAmount(chest.startedAt) then chest.startedAt else 0 })
+			end
+		end
+	end
+	data.chests = chests
+
+	local spots = {}
+	if type(data.chestSpots) == "table" then
+		for spotId, takenAt in data.chestSpots do
+			if type(spotId) == "string" and isValidAmount(takenAt) then
+				spots[spotId] = takenAt
+			end
+		end
+	end
+	data.chestSpots = spots
 	local companions = {}
 	if type(data.companions) == "table" then
 		for slot = 1, WeaponData.maxCompanions do
@@ -142,12 +192,16 @@ function Profile.tryUpgradeStaff(profile: Profile): (boolean, string?, number?)
 	return true
 end
 
+function Profile.ownsWeapon(profile: Profile, weaponId: string): boolean
+	return WeaponData.weapons[weaponId] ~= nil and profile.ownedWeapons[weaponId] == true
+end
+
 -- slot 0 is the main weapon, 1..n the floating slots unlocked at this level; "" clears a
--- floating slot back to the automatic pick.
+-- floating slot back to the automatic pick. Only owned weapons can be equipped.
 function Profile.equipWeapon(profile: Profile, slot: number, weaponId: string): boolean
 	local level = Progression.levelForXp(profile.xp)
 	if slot == 0 then
-		if not Progression.weaponUnlocked(weaponId, level) then
+		if not Profile.ownsWeapon(profile, weaponId) then
 			return false
 		end
 		profile.equippedWeapon = weaponId
@@ -156,7 +210,7 @@ function Profile.equipWeapon(profile: Profile, slot: number, weaponId: string): 
 	if slot < 1 or slot > Progression.companionSlots(level) or slot % 1 ~= 0 then
 		return false
 	end
-	if weaponId ~= "" and not Progression.weaponUnlocked(weaponId, level) then
+	if weaponId ~= "" and not Profile.ownsWeapon(profile, weaponId) then
 		return false
 	end
 	for index = #profile.companions + 1, slot - 1 do
@@ -167,16 +221,16 @@ function Profile.equipWeapon(profile: Profile, slot: number, weaponId: string): 
 end
 
 -- The weapons actually in use: the main one plus one per unlocked floating slot. Empty or
--- no-longer-valid slots take the strongest unlocked weapon that is not already in use.
+-- no-longer-valid slots take the rarest owned weapon that is not already in use.
 function Profile.loadout(profile: Profile): (string, { string })
 	local level = Progression.levelForXp(profile.xp)
-	local main = if Progression.weaponUnlocked(profile.equippedWeapon, level) then profile.equippedWeapon else "staff"
+	local main = if Profile.ownsWeapon(profile, profile.equippedWeapon) then profile.equippedWeapon else WeaponData.starter
 	local used = { [main] = true }
 	local companions = {}
 	local slots = Progression.companionSlots(level)
 	for slot = 1, slots do
 		local picked = profile.companions[slot]
-		if picked and picked ~= "" and Progression.weaponUnlocked(picked, level) then
+		if picked and picked ~= "" and Profile.ownsWeapon(profile, picked) then
 			companions[slot] = picked
 			used[picked] = true
 		end
@@ -186,7 +240,7 @@ function Profile.loadout(profile: Profile): (string, { string })
 			local choice = main
 			for index = #WeaponData.order, 1, -1 do
 				local weaponId = WeaponData.order[index]
-				if not used[weaponId] and Progression.weaponUnlocked(weaponId, level) then
+				if not used[weaponId] and Profile.ownsWeapon(profile, weaponId) then
 					choice = weaponId
 					break
 				end

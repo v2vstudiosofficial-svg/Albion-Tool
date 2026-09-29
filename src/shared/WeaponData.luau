@@ -1,8 +1,23 @@
--- The eight weapons. All of them attack automatically; `style` decides how targets are picked
--- (see server/WeaponLogic) and how the attack looks. Later unlocks hit harder or wider.
+-- The eight weapons, ordered by rarity. All of them attack automatically; `style` decides how
+-- targets are picked (see server/WeaponLogic) and how the attack looks. Everyone starts with the
+-- staff; the others come from chests (ChestData). Rarer weapons hit harder or wider.
 -- Distances are studs, cooldowns seconds, spread/arc degrees. Colors are {r, g, b}.
 return {
 	order = { "staff", "bow", "daggers", "sword", "spear", "crossbow", "axe", "hammer" },
+	starter = "staff",
+
+	rarityOrder = { "common", "rare", "epic", "legendary" },
+	rarities = {
+		common = { nameKey = "rarity_common", color = { 170, 200, 170 } },
+		rare = { nameKey = "rarity_rare", color = { 110, 180, 255 } },
+		epic = { nameKey = "rarity_epic", color = { 200, 120, 255 } },
+		legendary = { nameKey = "rarity_legendary", color = { 255, 190, 60 } },
+	},
+
+	-- Weapon slots (0 = main, 1..4 = floating) gain levels from chests; every level makes
+	-- whatever weapon sits in that slot stronger.
+	maxSlotLevel = 30,
+	slotLevelBonus = 0.08,
 
 	-- Every `companionEvery` levels a floating weapon slot opens behind the player (max `maxCompanions`).
 	companionEvery = 25,
@@ -21,7 +36,7 @@ return {
 		staff = {
 			nameKey = "weapon_staff_name",
 			descKey = "weapon_staff_desc",
-			unlockLevel = 1,
+			rarity = "common",
 			style = "bolt",
 			ranged = true,
 			damage = 25,
@@ -32,7 +47,7 @@ return {
 		bow = {
 			nameKey = "weapon_bow_name",
 			descKey = "weapon_bow_desc",
-			unlockLevel = 4,
+			rarity = "common",
 			style = "arrow",
 			ranged = true,
 			damage = 22,
@@ -43,7 +58,7 @@ return {
 		daggers = {
 			nameKey = "weapon_daggers_name",
 			descKey = "weapon_daggers_desc",
-			unlockLevel = 8,
+			rarity = "rare",
 			style = "fan",
 			ranged = true,
 			damage = 17,
@@ -57,7 +72,7 @@ return {
 		sword = {
 			nameKey = "weapon_sword_name",
 			descKey = "weapon_sword_desc",
-			unlockLevel = 14,
+			rarity = "rare",
 			style = "arc",
 			damage = 40,
 			cooldown = 0.5,
@@ -68,7 +83,7 @@ return {
 		spear = {
 			nameKey = "weapon_spear_name",
 			descKey = "weapon_spear_desc",
-			unlockLevel = 20,
+			rarity = "epic",
 			style = "thrust",
 			damage = 50,
 			cooldown = 0.6,
@@ -80,7 +95,7 @@ return {
 		crossbow = {
 			nameKey = "weapon_crossbow_name",
 			descKey = "weapon_crossbow_desc",
-			unlockLevel = 30,
+			rarity = "epic",
 			style = "pierce",
 			ranged = true,
 			damage = 95,
@@ -93,7 +108,7 @@ return {
 		axe = {
 			nameKey = "weapon_axe_name",
 			descKey = "weapon_axe_desc",
-			unlockLevel = 45,
+			rarity = "legendary",
 			style = "spin",
 			damage = 95,
 			cooldown = 0.9,
@@ -103,7 +118,7 @@ return {
 		hammer = {
 			nameKey = "weapon_hammer_name",
 			descKey = "weapon_hammer_desc",
-			unlockLevel = 60,
+			rarity = "legendary",
 			style = "slam",
 			damage = 150,
 			cooldown = 1.2,

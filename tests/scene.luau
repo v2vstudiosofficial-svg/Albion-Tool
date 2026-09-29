@@ -321,6 +321,31 @@ test("weapon models build for all eight weapons, welded in hand or anchored when
 	end
 end)
 
+test("chest spots sit on open ground (not inside walls, trees or rocks)", function()
+	local WorldData = loadModule("src/shared/WorldData.luau")
+	local map = workspace:FindFirstChild("LanternValleyMap")
+	assert(map, "map built")
+	for spotId, spot in WorldData.chests do
+		local x, z = spot.position[1], spot.position[3]
+		for _, part in map:GetDescendants() do
+			if part:IsA("BasePart") and part.CanCollide and part.Size.X < 40 and part.Size.Z < 40 then
+				local position = positionOf(part)
+				-- Upright cylinders lie along X (height) with Y/Z as the diameter; blocks are
+				-- treated as unrotated boxes.
+				local cylinder = part:IsA("Part") and part.Shape == roblox.Enum.PartType.Cylinder
+				local width = if cylinder then math.max(part.Size.Y, part.Size.Z) else math.max(part.Size.X, part.Size.Z)
+				local height = if cylinder then part.Size.X else part.Size.Y
+				local reach = width / 2 + 1.6
+				local bottom = position.Y - height / 2
+				local dx, dz = position.X - x, position.Z - z
+				if bottom < 2 and math.sqrt(dx * dx + dz * dz) < reach then
+					error(`{spotId} overlaps {part:GetFullName()}`)
+				end
+			end
+		end
+	end
+end)
+
 print(`scene tests: {passed} passed, {failed} failed`)
 if failed > 0 then
 	error("scene tests failed")

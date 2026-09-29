@@ -35,19 +35,26 @@ Oyun içi tüm metinler İngilizce.
 6. Görev 4: Smith Bram → Forge → Upgrade (yetersiz sikkede uyarı) → köy fenerleri yanar, Shell Charm gelir.
 7. Seviye 3'te WAVE/Q açılır. Görev 5: harabe kapısında dalga → sarmaşıklar temizlenir.
 8. Görev 6: arenada Shadow Warden: kırmızı halkalardan çık, küre halkasındaki boşluktan geç.
-9. **Weapons** menüsü: kilitli silahlar "Lv N" gösterir ve seçilmez; Sv4'te Sunleaf Bow açılınca
-   bildirim gelir, seçince eldeki model ve menzil halkası değişir, saldırı efekti oka döner.
+9. **Sandıklar**: ormanda parlayan sandıklar (Wooden/Silver/Golden/Mystic) → "Take" → sağ üstte
+   **Chests** penceresinde görünür; Sv1'de tek yuva (dolunca uyarı), Sv3/6/10/15'te yeni yuva. "Unlock" ile
+   sayaç başlar (tahta 2 dk … mistik 20 dk), bu sırada diğerleri "Wait"; bitince "Open!" → ödül paneli
+   (sikke, belki silah, yuva seviyesi). Alınan nokta bir süre boş kalır, sonra sandık geri gelir.
+   Sayaçlar oyundan çıkınca da işler. Hazır sandık varken Chests butonunda "!" rozeti çıkar.
+10. **Weapons** menüsü: bulunmamış silahlar "Find in chests" yazar ve seçilmez; alt çizginin rengi nadirliği
+   gösterir; sandıktan silah çıkınca seçilebilir, eldeki model ve menzil halkası değişir. Yuva
+   butonlarında yuva seviyesi ("Main Lv 3") görünür; o yuvaya takılan her silah güçlenir.
    Yüksek seviyeleri denemek için (yalnızca Studio): Play sırasında Server görünümüne geç, Explorer'da
    Workspace'i seç, Properties → Attributes → "+" ile `LvDebugLevel` (number) ekle ve 25/60/100 yaz;
-   tüm oyuncular o seviyeye geçer (Studio kayıt deposuna yazılır, canlı veriye dokunmaz).
-10. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
+   tüm oyuncular o seviyeye geçer. Aynı yolla `LvDebugAllWeapons` (boolean) işaretlenirse 8 silahın hepsi
+   verilir (ikisi de yalnızca Studio'da çalışır, Studio kayıt deposuna yazılır, canlı veriye dokunmaz).
+11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
-11. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).
-12. Yenil → köyde yeniden doğ; XP/sikke/eşya kaybı yok.
-13. **Test → Clients and Servers → 2-4 Players**: aynı düşmana vuran herkes kendi ödülünü alır;
+12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).
+13. Yenil → köyde yeniden doğ; XP/sikke/eşya kaybı yok.
+14. **Test → Clients and Servers → 2-4 Players**: aynı düşmana vuran herkes kendi ödülünü alır;
     diğer oyuncuların yüzen silahları ve saldırı efektleri görünür; sonradan katılan kendi görevinden başlar.
-14. Kayıt (API erişimi açık, yayınlanmış yerde): çık-gir → ilerleme, silah seçimi korunur.
-15. Settings → Performance display: FPS/Ping. Özellikle 4 yüzen silahlı oyuncularla gerçek cihazda ölç;
+15. Kayıt (API erişimi açık, yayınlanmış yerde): çık-gir → ilerleme, silahlar, sandıklar ve sayaçlar korunur.
+16. Settings → Performance display: FPS/Ping. Özellikle 4 yüzen silahlı oyuncularla gerçek cihazda ölç;
     cihaz modelini, grafik ayarını ve oyuncu sayısını not et (emülatör gerçek telefon ölçümü sayılmaz).
 
 ## Otomatik kontroller (Roblox gerektirmez; Lune 0.10 + Rojo 7.x)

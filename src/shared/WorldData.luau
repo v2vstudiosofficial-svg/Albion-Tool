@@ -46,6 +46,18 @@ WorldData.spawns = {
 	{ kind = "Warden", area = "arena", level = 8, position = { 0, 0, -290 } },
 }
 
+-- Chest spots (see ChestData). Each player sees and takes their own chest; it comes back after
+-- the chest type's respawn time. Rarer chests sit deeper in the valley.
+WorldData.chests = {
+	chest_glade_1 = { type = "wood", position = { -22, 0, -120 } },
+	chest_glade_2 = { type = "wood", position = { 20, 0, -96 } },
+	chest_grove_1 = { type = "silver", position = { -62, 0, -166 } },
+	chest_grove_2 = { type = "wood", position = { -30, 0, -180 } },
+	chest_hollow_1 = { type = "gold", position = { 62, 0, -190 } },
+	chest_hollow_2 = { type = "silver", position = { 34, 0, -208 } },
+	chest_ruins = { type = "mystic", position = { 24, 0, -302 } },
+}
+
 WorldData.flowers = {
 	flower_1 = { -18, 0, -84 },
 	flower_2 = { 24, 0, -92 },

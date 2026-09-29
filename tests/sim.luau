@@ -60,6 +60,7 @@ local WorldData = H.loadModule("src/shared/WorldData.luau")
 local Balance = H.loadModule("src/shared/Balance.luau")
 local Progression = H.loadModule("src/shared/Progression.luau")
 local WeaponData = H.loadModule("src/shared/WeaponData.luau")
+local ChestData = H.loadModule("src/shared/ChestData.luau")
 
 local function vec(p: { number }, lift: number?): any
 	return Vector3.new(p[1], p[2] + (lift or 0), p[3])
@@ -175,6 +176,14 @@ end
 
 local function attr(player, name: string)
 	return player:GetAttribute(name)
+end
+
+local function Attrs(player, name: string): { [string]: boolean }
+	local set = {}
+	for item in string.gmatch(attr(player, name) or "", "[^,]+") do
+		set[item] = true
+	end
+	return set
 end
 
 -- Totals of every RewardGranted the server sent to a player (optionally one reason only).
@@ -599,9 +608,91 @@ local function nearAnyEnemy(player, kind: string, area: string)
 	teleport(player, positionOf(model.Body) + Vector3.new(0, 1, 2))
 end
 
-test("weapon choice: unlocked weapons equip, the hand model swaps, attacks use it", function()
+test("chests: pick up nearby, full slots, one unlock at a time, open when the timer is done", function()
+	local spot = WorldData.chests.chest_glade_1
+	local spotPosition = vec(spot.position, 3)
+	remotes.Interact.OnServerEvent:Fire(alice, "chest", "chest_glade_1")
+	advance(0.5)
+	eq(attr(alice, "Chests"), "", "too far away")
+	teleport(alice, spotPosition + Vector3.new(2, 0, 0))
+	remotes.Interact.OnServerEvent:Fire(alice, "chest", "chest_glade_1")
+	advance(0.5)
+	eq(attr(alice, "Chests"), spot.type .. ":0", "chest in the first slot")
+	assert(string.find(attr(alice, "ChestSpots"), "chest_glade_1:", 1, true), "spot taken for alice")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_chest_taken"
+	end), 1, "told about it")
+	remotes.Interact.OnServerEvent:Fire(alice, "chest", "chest_glade_1")
+	advance(0.5)
+	eq(attr(alice, "Chests"), spot.type .. ":0", "the same spot cannot be taken twice")
+	-- Bob's own chest at the same spot is still there; his single slot fills up.
+	teleport(bob, spotPosition + Vector3.new(-2, 0, 0))
+	remotes.Interact.OnServerEvent:Fire(bob, "chest", "chest_glade_1")
+	advance(0.5)
+	eq(attr(bob, "Chests"), spot.type .. ":0", "personal chests")
+	local other = WorldData.chests.chest_glade_2
+	teleport(bob, vec(other.position, 3) + Vector3.new(2, 0, 0))
+	remotes.Interact.OnServerEvent:Fire(bob, "chest", "chest_glade_2")
+	advance(0.5)
+	if Progression.chestSlots(attr(bob, "Level")) == 1 then
+		eq(logCount("Notice", function(e)
+			return e.target == bob and e.args[1] == "notice_chest_full"
+		end), 1, "full slots")
+	end
+	toVillage(bob)
+
+	for _, args in { { "x", 1 }, { "open", 1.5 }, { "open", "1" }, { "unlock", 0 / 0 }, { nil, nil }, { "unlock", 99 } } do
+		remotes.ChestAction.OnServerEvent:Fire(alice, args[1], args[2])
+		advance(0.4)
+	end
+	eq(attr(alice, "Chests"), spot.type .. ":0", "bad requests change nothing")
+	remotes.ChestAction.OnServerEvent:Fire(alice, "open", 1)
+	advance(0.4)
+	eq(attr(alice, "Chests"), spot.type .. ":0", "cannot open before unlocking")
+	remotes.ChestAction.OnServerEvent:Fire(alice, "unlock", 1)
+	advance(0.4)
+	local startedAt = tonumber(string.match(attr(alice, "Chests"), ":(%d+)$"))
+	assert(startedAt and startedAt > 0, "unlocking")
+	remotes.ChestAction.OnServerEvent:Fire(alice, "open", 1)
+	advance(0.4)
+	assert(attr(alice, "Chests") ~= "", "still locked")
+	toVillage(alice)
+	advance(ChestData.chests[spot.type].unlockSeconds)
+	local coins = attr(alice, "Coins")
+	remotes.ChestAction.OnServerEvent:Fire(alice, "open", 1)
+	advance(0.4)
+	eq(attr(alice, "Chests"), "", "opened and removed")
+	local opened = nil
+	for _, entry in H.remoteLog do
+		if entry.remote == "Fx" and entry.target == alice and entry.args[1] == "chestOpened" then
+			opened = entry.args[2]
+		end
+	end
+	assert(opened, "reward shown to alice")
+	assert(attr(alice, "Coins") >= coins + ChestData.chests[spot.type].coins[1], "coins paid")
+	eq(attr(alice, "Coins"), coins + opened.coins, "exactly the coins shown")
+	local levels = string.split(attr(alice, "SlotLevels"), ",")
+	eq(tonumber(levels[1]), ChestData.chests[spot.type].slotLevels, "main slot levelled up")
+	if opened.weapon and not opened.duplicate then
+		assert(Attrs(alice, "Weapons")[opened.weapon], "new weapon owned")
+	end
+	remotes.ChestAction.OnServerEvent:Fire(alice, "open", 1)
+	advance(0.4)
+	eq(logCount("Fx", function(e)
+		return e.target == alice and e.args[1] == "chestOpened"
+	end), 1, "paid once")
+end)
+
+test("weapon choice: owned weapons equip, the hand model swaps, attacks use it", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
 	eq(attr(alice, "Weapon"), "staff")
-	assert(attr(alice, "Level") >= WeaponData.weapons.bow.unlockLevel, "bow unlocked by now")
+	remotes.EquipWeapon.OnServerEvent:Fire(alice, 0, "hammer")
+	advance(0.5)
+	local owned = PlayerProfiles.get(alice).ownedWeapons
+	eq(attr(alice, "Weapon"), if owned.hammer then "hammer" else "staff", "only owned weapons")
+	-- As if a chest had given these.
+	PlayerProfiles.get(alice).ownedWeapons = { staff = true, bow = true, daggers = true, spear = true }
+	PlayerProfiles.sync(alice)
 	remotes.EquipWeapon.OnServerEvent:Fire(alice, 0, "bow")
 	advance(0.5)
 	eq(attr(alice, "Weapon"), "bow")
@@ -625,7 +716,7 @@ test("every 25 levels a floating weapon joins the fight from behind the player",
 	PlayerProfiles.get(alice).xp = Progression.thresholds[25]
 	PlayerProfiles.sync(alice)
 	eq(attr(alice, "Level"), 25)
-	eq(attr(alice, "Companions"), "spear", "auto pick: strongest unlocked weapon not in use")
+	eq(attr(alice, "Companions"), "spear", "auto pick: rarest owned weapon not in use")
 	remotes.EquipWeapon.OnServerEvent:Fire(alice, 1, "daggers")
 	advance(0.5)
 	eq(attr(alice, "Companions"), "daggers", "picked for the slot")
@@ -661,11 +752,15 @@ test("Studio-only LvDebugLevel attribute moves loaded players to a level", funct
 	changed:Fire()
 	advance(0.2)
 	eq(attr(alice, "Level"), 50, "ignored")
+	workspace:SetAttribute("LvDebugAllWeapons", true)
+	H.signalFor(workspace, "attr:LvDebugAllWeapons"):Fire()
+	advance(0.2)
+	eq(#string.split(attr(alice, "Weapons"), ","), #WeaponData.order, "every weapon")
 end)
 
 test("leaving and rejoining restores the saved profile", function()
 	local snapshot = {}
-	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions" } do
+	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots" } do
 		snapshot[key] = attr(alice, key)
 	end
 	leave(alice)
@@ -705,6 +800,7 @@ test("no warnings from ProfileStore and no server thread errors", function()
 	for _, message in warnings do
 		print("warn: " .. message)
 	end
+	if #threadErrors > 0 then print(threadErrors[1]) end
 	eq(#threadErrors, 0, "thread errors")
 end)
 
