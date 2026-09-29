@@ -26,6 +26,46 @@ function TowerLogic.count(floor: number, players: number): number
 	return math.min(tower.maxCount, tower.baseCount + floor // tower.countEvery) + tower.extraPerPlayer * math.max(0, players - 1)
 end
 
+-- Boss floors: a Legendary Shadow, chosen by the floor's level (the same three that guard the east
+-- lands: the Bog Mother, then the Frost Titan, then the Shadow King).
+function TowerLogic.bossFloor(floor: number): boolean
+	return floor >= Balance.tower.bossEvery and floor % Balance.tower.bossEvery == 0
+end
+
+function TowerLogic.bossFor(level: number): string
+	local chosen = nil
+	local best = -1
+	for _, spawn in WorldData.spawns do
+		local stats = Balance.enemies[spawn.kind]
+		if spawn.level and stats.isBoss and stats.scales and spawn.level <= level and spawn.level > best then
+			chosen, best = spawn.kind, spawn.level
+		end
+	end
+	if chosen then
+		return chosen
+	end
+	-- Below the first legend's level: the weakest one.
+	local weakest, lowest = "BogMother", math.huge
+	for _, spawn in WorldData.spawns do
+		local stats = Balance.enemies[spawn.kind]
+		if spawn.level and stats.isBoss and stats.scales and spawn.level < lowest then
+			weakest, lowest = spawn.kind, spawn.level
+		end
+	end
+	return weakest
+end
+
+-- Health and damage multipliers for a tower boss (its own health share, plus the growth past level 100).
+function TowerLogic.bossScale(extra: number): { hp: number, damage: number }
+	local hp, damage = TowerLogic.scale(extra)
+	return { hp = hp * Balance.tower.bossHpFactor, damage = damage }
+end
+
+-- Helpers that come with the boss.
+function TowerLogic.bossHelpers(players: number): number
+	return 2 + math.max(0, players - 1)
+end
+
 function TowerLogic.eliteCount(floor: number): number
 	local tower = Balance.tower
 	return if floor % tower.eliteEvery == 0 then math.min(3, 1 + floor // 25) else 0

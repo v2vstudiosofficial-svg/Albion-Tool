@@ -64,12 +64,23 @@ local function setFloorAttribute(player: Player, floor: number)
 end
 
 local function spawnFloor(current: Run)
-	local count = TowerLogic.count(current.floor, #playersInside(current))
-	local elites = TowerLogic.eliteCount(current.floor)
+	local players = #playersInside(current)
 	local level, extra = TowerLogic.floorLevel(current.anchor, current.floor)
 	local hp, damage = TowerLogic.scale(extra)
 	local kinds = TowerLogic.kindsFor(level)
 	local scale = if extra > 0 then { hp = hp, damage = damage } else nil
+	-- Boss floors: a Legendary Shadow in the middle and a few helpers around it.
+	local bossKind: string? = nil
+	local count = TowerLogic.count(current.floor, players)
+	local elites = TowerLogic.eliteCount(current.floor)
+	if TowerLogic.bossFloor(current.floor) then
+		bossKind = TowerLogic.bossFor(level)
+		local bossScale = TowerLogic.bossScale(extra)
+		local id = EnemyService.spawnTemporary(bossKind :: string, level, center, "tower", "tower", false, bossScale)
+		current.enemies[id] = true
+		count = TowerLogic.bossHelpers(players)
+		elites = 0
+	end
 	for index = 1, count do
 		local angle = index / count * math.pi * 2 + random:NextNumber() * 0.4
 		local position = center + Vector3.new(math.cos(angle), 0, math.sin(angle)) * Balance.tower.ringRadius
@@ -81,7 +92,7 @@ local function spawnFloor(current: Run)
 	current.nextFloorAt = nil
 	for player in current.inside do
 		setFloorAttribute(player, current.floor)
-		fx:FireClient(player, "towerFloor", current.floor, count)
+		fx:FireClient(player, "towerFloor", current.floor, count, if bossKind then Balance.enemies[bossKind].nameKey else nil)
 	end
 end
 
@@ -187,7 +198,8 @@ local function nearGate(player: Player): boolean
 end
 
 -- Returns true when the player entered the tower.
-function TowerService.enter(player: Player): boolean
+-- `startFloor` is only for tests and Studio: a run that has to be created starts on that floor.
+function TowerService.enter(player: Player, startFloor: number?): boolean
 	local profile = PlayerProfiles.get(player)
 	local target = Targets.of(player)
 	if not profile or not target or (run and run.inside[player]) then
@@ -207,7 +219,7 @@ function TowerService.enter(player: Player): boolean
 	if not current then
 		current = {
 			anchor = level,
-			floor = 1,
+			floor = startFloor or 1,
 			enemies = {},
 			helpers = {},
 			inside = {},

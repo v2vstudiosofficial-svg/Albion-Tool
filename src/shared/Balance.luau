@@ -362,6 +362,11 @@ Balance.tower = {
 	maxCount = 12,
 	extraPerPlayer = 2,
 	eliteEvery = 5,
+	-- Every `bossEvery` floors a Legendary Shadow guards the floor (with a few helpers).
+	bossEvery = 10,
+	-- A tower boss has this share of a Legendary Shadow's health (it comes at a higher level than a
+	-- player's own, with helpers, and the run has no timer to rest in).
+	bossHpFactor = 0.4,
 	startDelay = 3,
 	floorDelay = 4,
 	ringRadius = 9,

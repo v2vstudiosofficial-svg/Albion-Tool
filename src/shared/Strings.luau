@@ -36,6 +36,7 @@ local texts = {
 	tower_leave_action = "Leave",
 	tower_floor = "Floor %d",
 	tower_floor_sub = "%d shadows appear",
+	tower_floor_boss = "%s awaits!",
 	tower_hud = "Tower  Floor %d   Best %d",
 	notice_tower_level = "The Shadow Tower opens at level %d.",
 	notice_tower_low = "This climb is too far ahead of your level.",

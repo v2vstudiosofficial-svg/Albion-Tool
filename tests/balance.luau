@@ -273,6 +273,7 @@ local firstHours = climb(0, true)
 check(100, "total hours", firstHours, TARGET.totalHours)
 
 local towerRows = {}
+local bossRows = {}
 
 -- Rebirth: climbing again is faster (arsenal kept, bonus XP) but must stay a real climb.
 for _, rebirths in { 1, Balance.rebirth.maxBonusRebirths } do
@@ -298,6 +299,14 @@ for _, anchor in { 10, 25, 50, 75, 100 } do
 			wall = floor
 			break
 		end
+		-- A boss floor below the wall: a solo fight against one big target must stay a fight, not a wall.
+		if TowerLogic.bossFloor(floor) then
+			local boss = Balance.enemies[TowerLogic.bossFor(level)]
+			local single = player.dps / 1.5
+			local seconds = Progression.enemyStats(boss, level).maxHp * hpScale * Balance.tower.bossHpFactor / single
+			bossRows[#bossRows + 1] = string.format("     tower boss floor %d (level %d %s): %.0f s", floor, level, TowerLogic.bossFor(level), seconds)
+			check(anchor, `tower boss floor {floor} fight seconds`, seconds, { 5, TARGET.bossSeconds[2] * 1.5 })
+		end
 	end
 	table.insert(towerRows, string.format("tower: run opened at level %3d -> too hard from floor %s", anchor, tostring(wall)))
 	check(anchor, "tower wall floor", wall or 999, TARGET.towerWallFloor)
@@ -305,6 +314,11 @@ end
 
 for _, row in towerRows do
 	print(row)
+end
+if verbose then
+	for _, row in bossRows do
+		print(row)
+	end
 end
 print(" lvl  weapon    power  slot  dps           enemy hp     kill     survive     per level  so far")
 for _, row in rows do

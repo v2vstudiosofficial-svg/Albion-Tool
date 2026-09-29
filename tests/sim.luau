@@ -1767,6 +1767,72 @@ test("settings: validated and saved through the server, presets and resets, bad 
 	assert(attr(alice, "Pref_k1") == nil, "no junk attributes")
 end)
 
+test("shadow tower: a Legendary Shadow guards every tenth floor", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local TowerService = H.loadModule("src/server/TowerService.luau")
+	local TowerLogic = H.loadModule("src/server/TowerLogic.luau")
+	local tower = Balance.tower
+	local center = vec(WorldData.areas.tower.center)
+	local profile = PlayerProfiles.get(alice)
+	local savedXp = profile.xp
+	profile.xp = Progression.thresholds[12]
+	PlayerProfiles.sync(alice)
+	local function inArena(): { any }
+		local list = {}
+		for _, model in workspace.Enemies:GetChildren() do
+			local flat = positionOf(model.Body) - center
+			if isAlive(model) and Vector3.new(flat.X, 0, flat.Z).Magnitude < WorldData.areas.tower.radius + 5 then
+				table.insert(list, model)
+			end
+		end
+		return list
+	end
+	toVillage(alice)
+	assert(TowerService.enter(alice, tower.bossEvery - 1), "entered a run that starts on floor 9")
+	advance(tower.startDelay + 1.5)
+	assert(#inArena() > 0, "floor 9 is a normal floor")
+	for _, model in inArena() do
+		assert(not model:GetAttribute("Boss"), "no boss on floor 9")
+	end
+	-- Clear it; the next floor holds the boss.
+	local guard = 0
+	while #inArena() > 0 and guard < 40 do
+		purifyOne(alice, inArena()[1]:GetAttribute("EnemyType"), 40)
+		guard += 1
+	end
+	eq(#inArena(), 0, "floor 9 cleared")
+	advance(tower.floorDelay + 2.5)
+	local boss = nil
+	for _, model in inArena() do
+		if model:GetAttribute("Boss") then
+			boss = model
+		end
+	end
+	assert(boss, "a boss on floor 10")
+	local level = TowerLogic.floorLevel(12, tower.bossEvery)
+	eq(boss:GetAttribute("EnemyType"), TowerLogic.bossFor(level), "the legend that fits the level")
+	eq(boss:GetAttribute("Level"), level, "at the floor's level")
+	local helpers = 0
+	for _, model in inArena() do
+		if not model:GetAttribute("Boss") then
+			helpers += 1
+		end
+	end
+	assert(helpers >= 1 and helpers <= TowerLogic.bossHelpers(1), "a few helpers: " .. helpers)
+	assert(logCount("Fx", function(e)
+		return e.target == alice and e.args[1] == "towerFloor" and e.args[2] == tower.bossEvery and e.args[4] == Balance.enemies[boss:GetAttribute("EnemyType")].nameKey
+	end) == 1, "the banner names the boss")
+	-- Leaving closes the run and removes the boss.
+	teleport(alice, positionOf(workspace.LanternValleyMap.Tower.ExitPad) + Vector3.new(0, 2, 0))
+	workspace.LanternValleyMap.Tower.ExitPad.LeavePrompt.Triggered:Fire(alice)
+	advance(1.6)
+	eq(#inArena(), 0, "the boss is gone with the run")
+	profile.xp = savedXp
+	PlayerProfiles.sync(alice)
+	heal(alice)
+	toVillage(alice)
+end)
+
 test("robux store: receipts granted once and only after saving; unknown ones wait", function()
 	local StoreData = H.loadModule("src/shared/StoreData.luau")
 	local MarketplaceService = H.services.MarketplaceService

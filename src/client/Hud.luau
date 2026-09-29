@@ -508,7 +508,9 @@ function Hud.start()
 				showBanner(Strings.get("banner_boss_down", Strings.get(purified.nameKey)), Strings.get("banner_boss_down_sub"))
 			end
 		elseif kind == "towerFloor" and typeof(first) == "number" and typeof(second) == "number" then
-			showBanner(Strings.get("tower_floor", first), Strings.get("tower_floor_sub", second))
+			local bossKey = select(1, ...)
+			local subtitle = if typeof(bossKey) == "string" then Strings.get("tower_floor_boss", Strings.get(bossKey)) else Strings.get("tower_floor_sub", second)
+			showBanner(Strings.get("tower_floor", first), subtitle)
 		elseif kind == "riftWave" then
 			-- first = zone id, second = rift center; wave numbers follow.
 			local character = player.Character

@@ -1991,6 +1991,29 @@ test("settings data: every setting is complete, presets cover the graphics optio
 	eq(cleaned.settings.quality, "ultra")
 end)
 
+test("tower boss floors: every tenth floor, the legend fits the level, helpers come along", function()
+	local TowerLogic = require("../src/server/TowerLogic")
+	for floor = 1, 9 do
+		eq(TowerLogic.bossFloor(floor), false)
+	end
+	eq(TowerLogic.bossFloor(10), true)
+	eq(TowerLogic.bossFloor(20), true)
+	eq(TowerLogic.bossFloor(25), false)
+	eq(TowerLogic.bossFloor(0), false)
+	eq(TowerLogic.bossFor(1), "BogMother", "below every legend: the weakest")
+	eq(TowerLogic.bossFor(25), "BogMother")
+	eq(TowerLogic.bossFor(49), "BogMother")
+	eq(TowerLogic.bossFor(50), "FrostTitan")
+	eq(TowerLogic.bossFor(99), "FrostTitan")
+	eq(TowerLogic.bossFor(100), "ShadowKing")
+	for level = 1, Progression.MAX_LEVEL do
+		local boss = Balance.enemies[TowerLogic.bossFor(level)]
+		assert(boss and boss.isBoss and boss.scales, "a level-scaled Legendary Shadow at level " .. level)
+	end
+	assert(TowerLogic.bossHelpers(1) >= 1 and TowerLogic.bossHelpers(3) > TowerLogic.bossHelpers(1), "more players, more helpers")
+	assert(TowerLogic.chestFor(10) ~= nil and TowerLogic.chestFor(20) ~= nil, "a boss floor always gives a chest")
+end)
+
 test("game content is English only (no Turkish letters in source)", function()
 	local offenders = {}
 	local function scan(dir: string)
