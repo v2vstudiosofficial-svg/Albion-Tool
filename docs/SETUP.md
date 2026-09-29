@@ -2,9 +2,12 @@
 
 ## Bir kerelik kurulum
 1. Roblox Studio'yu kur ve giriş yap.
-2. Rojo 7.x kur (https://rojo.space/docs — Aftman/Rokit veya VS Code "Rojo" eklentisi).
-3. Studio'da Rojo eklentisini kur (`rojo plugin install` ya da Creator Store'dan resmi "Rojo").
-4. Repoyu klonla: `git clone https://github.com/v2vstudiosofficial-svg/LanternValley`
+2. Rokit'i kur (https://github.com/rojo-rbx/rokit), sonra repo klasöründe `rokit trust rojo-rbx/rojo`,
+   `rokit trust lune-org/lune` ve `rokit install` (Rojo 7.7.0 + Lune 0.10.5 gelir; `rokit.toml`).
+3. Studio'da Rojo eklentisini kur: `rojo plugin install` (ya da Creator Store'dan resmi "Rojo").
+4. Repoyu klonla: `git clone https://github.com/v2vstudiosofficial-svg/Albion-Tool` ve
+   `git checkout claude/LanternValley` (güncel çalışma bu dalda).
+5. Kontrol: `lune run tests/all` (Lune + Rojo yeterli, internet gerekmez).
 
 ## Her çalışmada
 ```
