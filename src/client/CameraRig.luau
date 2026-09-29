@@ -45,6 +45,9 @@ function CameraRig.setShot(newShot: Shot?)
 end
 
 function CameraRig.punch(degrees: number)
+	if player:GetAttribute("PrefShake") == false then
+		return
+	end
 	punchDegrees = math.max(punchDegrees, degrees)
 end
 

@@ -103,6 +103,9 @@ function Effects.popup(position: Vector3, text: string, color: Color3, textSize:
 end
 
 function Effects.shake(strength: number, seconds: number)
+	if player:GetAttribute("PrefShake") == false then
+		return
+	end
 	local now = os.clock()
 	shakeStrength = if now < shakeUntil then math.max(shakeStrength, strength) else strength
 	if now + seconds > shakeUntil then

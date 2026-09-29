@@ -1720,6 +1720,25 @@ test("level hints: one-time signposts, never repeated, none after a rebirth", fu
 	PlayerProfiles.sync(alice)
 end)
 
+test("comfort settings: saved through the server, bad requests ignored", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	eq(attr(alice, "PrefShake"), true)
+	remotes.SetSetting.OnServerEvent:Fire(alice, "shake", false)
+	advance(0.4)
+	eq(attr(alice, "PrefShake"), false, "screen shake turned off")
+	eq(PlayerProfiles.get(alice).settings.shake, false, "and saved in the profile")
+	for _, args in { { "nope", true }, { "shake", "off" }, { 5, true }, { {}, {} } } do
+		advance(0.4)
+		remotes.SetSetting.OnServerEvent:Fire(alice, args[1], args[2])
+	end
+	advance(0.4)
+	eq(attr(alice, "PrefShake"), false, "bad requests change nothing")
+	eq(attr(alice, "PrefCinematics"), true)
+	remotes.SetSetting.OnServerEvent:Fire(alice, "shake", true)
+	advance(0.4)
+	eq(attr(alice, "PrefShake"), true)
+end)
+
 test("robux store: receipts granted once and only after saving; unknown ones wait", function()
 	local StoreData = H.loadModule("src/shared/StoreData.luau")
 	local MarketplaceService = H.services.MarketplaceService

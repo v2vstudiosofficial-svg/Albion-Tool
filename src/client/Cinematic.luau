@@ -182,7 +182,8 @@ function Cinematic.start()
 		end
 		busy, skipRequested, advanceRequested = true, false, false
 		currentScene = sceneId
-		local full = scene.mode == "full"
+		-- With "camera scenes" turned off in Settings every scene is just captions.
+		local full = scene.mode == "full" and player:GetAttribute("PrefCinematics") ~= false
 		local humanoid = select(1, localRoot())
 		if full then
 			blockingControls = true
@@ -191,6 +192,9 @@ function Cinematic.start()
 			-- Full scenes keep the caption above the letterbox bar.
 			region.Position = UDim2.new(0.5, 0, 1 - BAR_HEIGHT, -14)
 		else
+			-- A caption right after a full scene must not inherit its bars.
+			top.Visible, bottom.Visible = false, false
+			top.Size, bottom.Size = UDim2.fromScale(1, 0), UDim2.fromScale(1, 0)
 			region.Position = UDim2.new(0.5, 0, 1, -18)
 		end
 		panel.Visible = true

@@ -233,6 +233,7 @@ local remoteNames = {
 	"EquipPet",
 	"OpenRebirth",
 	"Cinematic",
+	"SetSetting",
 	"ConfirmRebirth",
 	"Fx",
 }

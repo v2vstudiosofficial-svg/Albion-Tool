@@ -140,6 +140,8 @@ function PlayerProfiles.sync(player: Player)
 	player:SetAttribute("Bounties", BountyLogic.encode(profile))
 	player:SetAttribute("TowerBest", profile.towerBest)
 	player:SetAttribute("Rebirths", profile.rebirths)
+	player:SetAttribute("PrefShake", profile.settings.shake)
+	player:SetAttribute("PrefCinematics", profile.settings.cinematics)
 	player:SetAttribute("StoryDone", Stats.storyDone(profile))
 	-- Finished quests in story order (the Story tab in the Bag lets players watch their scenes again).
 	local storyDone = {}

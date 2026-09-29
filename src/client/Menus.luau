@@ -38,6 +38,7 @@ local claimPass = Remotes:WaitForChild("ClaimPass") :: RemoteEvent
 local claimBounty = Remotes:WaitForChild("ClaimBounty") :: RemoteEvent
 local equipPet = Remotes:WaitForChild("EquipPet") :: RemoteEvent
 local confirmRebirth = Remotes:WaitForChild("ConfirmRebirth") :: RemoteEvent
+local setSetting = Remotes:WaitForChild("SetSetting") :: RemoteEvent
 local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
 local player = Players.LocalPlayer
 local colors = UiKit.colors
@@ -1340,7 +1341,7 @@ function Menus.start()
 	end
 
 	-- Settings + performance overlay ---------------------------------------------------------
-	local settings, settingsBody = modal("settings_title", 230)
+	local settings, settingsBody = modal("settings_title", 360)
 	UiKit.create("UIListLayout", { Padding = UDim.new(0, 12), HorizontalAlignment = Enum.HorizontalAlignment.Center }, settingsBody)
 	local perfVisible = false
 	local perfRegion = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 110))
@@ -1353,11 +1354,13 @@ function Menus.start()
 		Visible = false,
 	}, perfRegion)
 	local frames, windowStart = 0, os.clock()
-	local soundButton, perfButton
+	local soundButton, perfButton, shakeButton, scenesButton
 	local function refreshSettings()
 		local on, off = Strings.get("setting_on"), Strings.get("setting_off")
 		soundButton.Text = Strings.get("settings_sound", if Audio.isEnabled() then on else off)
 		perfButton.Text = Strings.get("settings_fps", if perfVisible then on else off)
+		shakeButton.Text = Strings.get("settings_shake", if Attrs.get("PrefShake", true) then on else off)
+		scenesButton.Text = Strings.get("settings_scenes", if Attrs.get("PrefCinematics", true) then on else off)
 	end
 	soundButton = UiKit.button({ Size = UDim2.fromOffset(340, 56) }, settingsBody, function()
 		Audio.setEnabled(not Audio.isEnabled())
@@ -1369,6 +1372,18 @@ function Menus.start()
 		perfLabel.Visible = perfVisible
 		refreshSettings()
 	end)
+	-- Comfort settings are saved with the player (the server checks them).
+	shakeButton = UiKit.button({ Size = UDim2.fromOffset(340, 56) }, settingsBody, function()
+		setSetting:FireServer("shake", not Attrs.get("PrefShake", true))
+		Audio.play("ui")
+	end)
+	scenesButton = UiKit.button({ Size = UDim2.fromOffset(340, 56) }, settingsBody, function()
+		setSetting:FireServer("cinematics", not Attrs.get("PrefCinematics", true))
+		Audio.play("ui")
+	end)
+	for _, name in { "PrefShake", "PrefCinematics" } do
+		player:GetAttributeChangedSignal(name):Connect(refreshSettings)
+	end
 	refreshSettings()
 
 	RunService.RenderStepped:Connect(function()

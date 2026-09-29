@@ -58,6 +58,8 @@ export type Profile = {
 	towerBest: number,
 	-- The pet following the player ("" = none); pets themselves are derived from progress (PetLogic).
 	equippedPet: string,
+	-- Comfort settings the player chose (see Profile.setSetting).
+	settings: { shake: boolean, cinematics: boolean },
 	-- Times the player restarted the climb at level 100 (see Balance.rebirth).
 	rebirths: number,
 	achievements: { [string]: number },
@@ -109,6 +111,7 @@ function Profile.new(): Profile
 		bounties = {},
 		towerBest = 0,
 		equippedPet = "",
+		settings = { shake = true, cinematics = true },
 		rebirths = 0,
 		achievements = {},
 		ownedCosmetics = {},
@@ -262,6 +265,8 @@ function Profile.sanitize(data: any): Profile
 		end
 	end
 	data.bounties = bounties
+	local settings = if type(data.settings) == "table" then data.settings else {}
+	data.settings = { shake = settings.shake ~= false, cinematics = settings.cinematics ~= false }
 	data.equippedPet = if type(data.equippedPet) == "string" and PetData.pets[data.equippedPet] then data.equippedPet else ""
 	data.rebirths = if isValidAmount(data.rebirths) then math.min(math.floor(data.rebirths), 1000) else 0
 	data.towerBest = if isValidAmount(data.towerBest) then math.min(math.floor(data.towerBest), 10000) else 0
@@ -385,6 +390,16 @@ function Profile.sanitize(data: any): Profile
 		end
 	end
 	return data
+end
+
+-- Comfort settings: "shake" (screen shake and camera punches) and "cinematics" (camera moves and
+-- paused controls in story scenes; off = captions only). Returns false for anything else.
+function Profile.setSetting(profile: Profile, key: string, value: boolean): boolean
+	if (key ~= "shake" and key ~= "cinematics") or type(value) ~= "boolean" then
+		return false
+	end
+	profile.settings[key] = value
+	return true
 end
 
 function Profile.applyReward(profile: Profile, reward: Reward)

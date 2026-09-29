@@ -79,6 +79,9 @@
         "Cinematic": {
           "$className": "RemoteEvent"
         },
+        "SetSetting": {
+          "$className": "RemoteEvent"
+        },
         "ConfirmRebirth": {
           "$className": "RemoteEvent"
         },

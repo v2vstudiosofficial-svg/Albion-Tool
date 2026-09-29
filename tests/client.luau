@@ -1066,6 +1066,32 @@ test("story journal: finished scenes can be replayed, the current one is marked,
 	setAttributes({ QuestsDone = "", QuestId = "first_purify", QuestState = "available" })
 end)
 
+test("comfort settings: toggles ask the server; with camera scenes off a full scene is only captions", function()
+	click(findButton(Strings.get("menu_settings")))
+	setAttributes({ PrefShake = true, PrefCinematics = true })
+	local on, off = Strings.get("setting_on"), Strings.get("setting_off")
+	assert(shownText(Strings.get("settings_shake", on)) and shownText(Strings.get("settings_scenes", on)), "both on")
+	click(findButton(Strings.get("settings_shake", on)))
+	eq(sent("SetSetting", function(args)
+		return args[1] == "shake" and args[2] == false
+	end), 1, "shake off requested")
+	click(findButton(Strings.get("settings_scenes", on)))
+	eq(sent("SetSetting", function(args)
+		return args[1] == "cinematics" and args[2] == false
+	end), 1, "camera scenes off requested")
+	setAttributes({ PrefShake = false, PrefCinematics = false })
+	assert(shownText(Strings.get("settings_shake", off)) and shownText(Strings.get("settings_scenes", off)), "labels follow the saved values")
+	click(findButton(Strings.get("menu_settings")))
+	-- A full scene now shows captions only: no bars, the controls stay free.
+	remotes.Cinematic.OnClientEvent:Fire("first_purify")
+	advance(0.5)
+	assert(shownText(Strings.get("npc_elder_name")), "captions still play")
+	assert(not (playerGui.Cinematic.BarTop.Visible or playerGui.Cinematic.BarBottom.Visible), "no letterbox")
+	click(findButton(Strings.get("cinematic_skip")))
+	advance(1)
+	setAttributes({ PrefShake = true, PrefCinematics = true })
+end)
+
 test("bag: equip an owned charm, locked ones do nothing", function()
 	setAttributes({ Charms = "swift", Charm = "" })
 	click(findButton(Strings.get("menu_bag")))

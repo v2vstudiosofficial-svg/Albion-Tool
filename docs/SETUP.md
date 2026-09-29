@@ -106,6 +106,9 @@ Oyun içi tüm metinler İngilizce.
    ilk tırmanışa kadar "!" durur. Seviye atlayınca tek seferlik ipuçları: Sv2 pano, Sv8 doğu topraklar, Sv10 kule, Sv15 pet
    (rebirth sonrası çıkmaz). **Yeni kostümler**: sikkeyle Moon Hat (12K), Comet Cape (40K), Starlit Aura (250K); kule 20. katta
    Tower Crown, 40. katta Skybound Cape; Shadow King bitince Kael's Crown (Shop → Costumes'ta nasıl kazanıldığı yazar).
+10l. M15: **Rahatlık ayarları**: Settings → "Screen shake" (ekran sarsıntısı ve kamera yumruğu) ve "Camera in story scenes" (kapalıysa
+   sahneler yalnızca alt yazı olur, bant/kamera/hareket kilidi yok). İkisi de profile kaydedilir. Sahne sonrası hemen yeni alt yazı
+   gelince siyah bantlar kalmaz.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

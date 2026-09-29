@@ -67,7 +67,13 @@ local function update(dt: number)
 			-- Face the way the owner faces (the pet's front is -Z, like the player's).
 			local look = root.CFrame.LookVector
 			local at = view.position
-			view.model:PivotTo(CFrame.lookAt(at, at + Vector3.new(look.X, 0, look.Z)))
+			local flatLook = Vector3.new(look.X, 0, look.Z)
+			-- Looking straight up or down leaves no direction to face: keep the last one.
+			if flatLook.Magnitude > 0.05 then
+				view.model:PivotTo(CFrame.lookAt(at, at + flatLook))
+			else
+				view.model:PivotTo(CFrame.new(at) * view.model:GetPivot().Rotation)
+			end
 		end
 	end
 end
