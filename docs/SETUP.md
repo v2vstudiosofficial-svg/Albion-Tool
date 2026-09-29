@@ -99,6 +99,9 @@ Oyun içi tüm metinler İngilizce.
    Bittiğinde kamera yumuşakça geri döner. Konuşan NPC baş sallar. **Animasyon**: sandıklar süzülür, vuruşta yaratık ezilir,
    seviye atlayınca yer halkası, düğmeler üstüne gelince büyür, HUD'da seviye/sikke artınca "pop". **Kutsama**: her ana görev
    sonunda "Story blessing! +N% XP"; Smith hikâyeye göre farklı selam verir.
+10j. M13: **Story sekmesi**: Bag → Story: Prologue ve biten görevler "Replay" ile yeniden izlenir (sahne + bitişi), sıradaki
+   görev "Now", sonrakiler "???". Aynı NPC'ye 2 dakika içinde tekrar konuşunca sahne tekrar oynamaz, kısa cevap verir.
+   Rebirth sonrası seviye atlamak Pas XP'si vermez (ilk tırmanışta verir).
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

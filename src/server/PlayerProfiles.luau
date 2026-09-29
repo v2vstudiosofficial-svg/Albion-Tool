@@ -141,6 +141,14 @@ function PlayerProfiles.sync(player: Player)
 	player:SetAttribute("TowerBest", profile.towerBest)
 	player:SetAttribute("Rebirths", profile.rebirths)
 	player:SetAttribute("StoryDone", Stats.storyDone(profile))
+	-- Finished quests in story order (the Story tab in the Bag lets players watch their scenes again).
+	local storyDone = {}
+	for _, questId in QuestData.order do
+		if QuestLogic.isCompleted(profile, questId) then
+			table.insert(storyDone, questId)
+		end
+	end
+	player:SetAttribute("QuestsDone", table.concat(storyDone, ","))
 	player:SetAttribute("Pet", PetLogic.active(profile))
 	player:SetAttribute("PetProgress", PetLogic.encode(profile))
 	local log = {}

@@ -29,6 +29,7 @@ local FOV = 38
 local Cinematic = {}
 
 local busy = false
+local currentScene: string? = nil
 local blockingControls = false
 local queue: { string } = {}
 local skipRequested = false
@@ -180,6 +181,7 @@ function Cinematic.start()
 			return
 		end
 		busy, skipRequested, advanceRequested = true, false, false
+		currentScene = sceneId
 		local full = scene.mode == "full"
 		local humanoid = select(1, localRoot())
 		if full then
@@ -245,6 +247,10 @@ function Cinematic.start()
 			local waited = 0
 			local readSeconds = math.max(SOFT_MIN_SECONDS, #text * SOFT_SECONDS_PER_CHAR)
 			while not skipRequested and not advanceRequested and (full or waited < readSeconds) do
+				if humanoid and humanoid.Health <= 0 then
+					skipRequested = true
+					break
+				end
 				if full then
 					CameraRig.setShot(shotFor(line.speaker, scene.focus, (index - 1 + math.min(1, waited / 6)) / math.max(1, total - 1)))
 				end
@@ -263,6 +269,7 @@ function Cinematic.start()
 			setControls(true)
 		end
 		busy = false
+		currentScene = nil
 		local nextScene = table.remove(queue, 1)
 		if nextScene then
 			task.delay(0.4, Cinematic.play, nextScene)
@@ -271,7 +278,8 @@ function Cinematic.start()
 
 	Cinematic.play = function(sceneId: string)
 		if busy then
-			if #queue < 4 then
+			-- Talking to the same person again must not stack the same scene.
+			if sceneId ~= currentScene and not table.find(queue, sceneId) and #queue < 4 then
 				table.insert(queue, sceneId)
 			end
 			return

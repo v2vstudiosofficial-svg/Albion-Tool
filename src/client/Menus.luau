@@ -19,8 +19,11 @@ local CosmeticData = require(Shared:WaitForChild("CosmeticData"))
 local PassData = require(Shared:WaitForChild("PassData"))
 local BountyData = require(Shared:WaitForChild("BountyData"))
 local PetData = require(Shared:WaitForChild("PetData"))
+local StoryData = require(Shared:WaitForChild("StoryData"))
+local QuestData = require(Shared:WaitForChild("QuestData"))
 local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
+local Cinematic = require(script.Parent.Cinematic)
 local UiKit = require(script.Parent.UiKit)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -108,8 +111,9 @@ function Menus.start()
 	local bagTabRow = UiKit.create("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, bagBody)
 	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, bagTabRow)
 	local bagTabButtons = {}
-	for order, tab in { "charms", "pets" } do
-		bagTabButtons[tab] = UiKit.button({ Size = UDim2.fromOffset(130, 40), TextSize = 18, LayoutOrder = order, Text = Strings.get(if tab == "charms" then "bag_tab_charms" else "bag_tab_pets") }, bagTabRow, function()
+	local BAG_TAB_KEYS = { charms = "bag_tab_charms", pets = "bag_tab_pets", story = "bag_tab_story" }
+	for order, tab in { "charms", "pets", "story" } do
+		bagTabButtons[tab] = UiKit.button({ Size = UDim2.fromOffset(120, 40), TextSize = 18, LayoutOrder = order, Text = Strings.get(BAG_TAB_KEYS[tab]) }, bagTabRow, function()
 			bagTab = tab
 			refreshBag()
 		end)
@@ -242,7 +246,70 @@ function Menus.start()
 		end
 	end
 
+	-- Story: the scenes of the finished quests can be watched again. Nothing here gives rewards.
+	local storyList = UiKit.create("ScrollingFrame", {
+		Position = UDim2.fromOffset(0, 44),
+		Size = UDim2.new(1, 0, 1, -44),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Visible = false,
+	}, bagBody)
+	UiKit.create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, storyList)
+	local storyRows = {}
+	local storyOrder = { "prologue" }
+	for _, questId in QuestData.order do
+		table.insert(storyOrder, questId)
+	end
+	for order, sceneId in storyOrder do
+		local row = UiKit.create("Frame", { LayoutOrder = order, Size = UDim2.new(1, -10, 0, 48), BackgroundColor3 = colors.panelLight, BorderSizePixel = 0 }, storyList)
+		UiKit.corner(row, 10)
+		local title = UiKit.label({ Position = UDim2.fromOffset(12, 0), Size = UDim2.new(1, -140, 1, 0), TextSize = 17, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		local button = UiKit.button({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(104, 36), TextSize = 16 }, row, function()
+			if storyRows[sceneId].watchable then
+				closeModal()
+				Cinematic.play(sceneId)
+				if StoryData.scenes[sceneId .. "_end"] then
+					Cinematic.play(sceneId .. "_end")
+				end
+			end
+		end)
+		storyRows[sceneId] = { title = title, button = button, watchable = false }
+	end
+	local function refreshStory()
+		local done = Attrs.set("QuestsDone")
+		local current = Attrs.get("QuestId", "")
+		local currentState = Attrs.get("QuestState", "")
+		for sceneId, view in storyRows do
+			local quest = QuestData.quests[sceneId]
+			local finished = sceneId == "prologue" or done[sceneId] == true
+			local isCurrent = sceneId == current and (currentState == "active" or currentState == "available" or currentState == "level")
+			view.watchable = finished
+			view.title.Text = if sceneId == "prologue" then Strings.get("story_prologue_title") elseif finished or isCurrent then Strings.get(quest.titleKey) else Strings.get("story_locked")
+			view.title.TextTransparency = if finished or isCurrent then 0 else 0.5
+			if finished then
+				view.button.Text = Strings.get("story_replay")
+				view.button.BackgroundColor3 = colors.accent
+				view.button.TextColor3 = colors.panel
+			else
+				view.button.Text = if isCurrent then Strings.get("story_now") else ""
+				view.button.BackgroundColor3 = colors.panel
+				view.button.TextColor3 = colors.muted
+				view.button.Visible = isCurrent
+			end
+			if finished then
+				view.button.Visible = true
+			end
+		end
+	end
+
 	refreshBag = function()
+		storyList.Visible = bagTab == "story"
+		if bagTab == "story" then
+			refreshStory()
+		end
 		for tab, button in bagTabButtons do
 			button.BackgroundColor3 = if tab == bagTab then colors.accent else colors.panelLight
 			button.TextColor3 = if tab == bagTab then colors.panel else colors.text
@@ -1432,7 +1499,7 @@ function Menus.start()
 			end
 		end
 	end)
-	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Stars", "Pet", "PetProgress", "Chests", "Legends" } do
+	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Stars", "Pet", "PetProgress", "QuestsDone", "QuestId", "QuestState", "Chests", "Legends" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			refreshBadge()
 			if openModal == legends then

@@ -72,7 +72,12 @@ end
 function PassService.start()
 	claimPass.OnServerEvent:Connect(onClaim)
 	PlayerProfiles.onLevelUp(function(player, level, previous)
-		PassService.award(player, "levelUp", level - previous)
+		-- Levels of a first climb count for the pass; climbing again after a rebirth does not
+		-- (otherwise every rebirth would refill a fifth of the season).
+		local profile = PlayerProfiles.get(player)
+		if profile and profile.rebirths == 0 then
+			PassService.award(player, "levelUp", level - previous)
+		end
 		PlayerProfiles.sync(player)
 	end)
 	Players.PlayerRemoving:Connect(function(player)

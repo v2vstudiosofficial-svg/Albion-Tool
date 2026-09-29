@@ -602,6 +602,10 @@ test("Ranger Wren: her quests come in the chain, counters follow the profile, pa
 	eq(said("Elder", "elder_quest_active"), 1, "the Elder knows a quest is running")
 	talk(alice, "Wren")
 	eq(played("marsh_scouts"), 2, "talking to the giver again repeats the story")
+	talk(alice, "Wren")
+	eq(played("marsh_scouts"), 2, "but not again right away")
+	eq(said("Wren", "wren_quest_active"), 1, "she just encourages instead")
+
 	-- Purify the Mudlings; the reward comes once and the next errand is ready.
 	local coins = attr(alice, "Coins")
 	local guard = 0
@@ -611,6 +615,7 @@ test("Ranger Wren: her quests come in the chain, counters follow the profile, pa
 	end
 	eq(attr(alice, "QuestId"), "rift_watch", "marsh scouts done")
 	eq(played("marsh_scouts_end"), 1, "the ending of the errand is shown")
+	assert(string.find(attr(alice, "QuestsDone"), "marsh_scouts", 1, true), "the Story tab knows it is finished: " .. attr(alice, "QuestsDone"))
 	eq(logCount("Notice", function(e)
 		return e.target == alice and e.args[1] == "notice_story_blessing"
 	end) >= 1, true, "a story blessing was announced")
@@ -1667,6 +1672,12 @@ test("rebirth: the Great Lantern asks at level 100, resets once when confirmed n
 		return e.args[1] == "rebirth"
 	end), 1, "everyone sees the burst")
 	eq(humanoid(alice).MaxHealth, Progression.maxHealth(1), "health follows the new level")
+	-- Climbing again does not refill the Light Pass with level-ups.
+	local passXp = attr(alice, "PassXp")
+	PlayerProfiles.grant(alice, { xp = Progression.thresholds[3] }, "test")
+	advance(0.2)
+	assert(attr(alice, "Level") >= 3, "levelled up again")
+	eq(attr(alice, "PassXp"), passXp, "no Pass XP for levels after a rebirth")
 	profile.xp, profile.coins, profile.staffUpgrade, profile.upgrades = saved.xp, saved.coins, saved.staffUpgrade, saved.upgrades
 	profile.skills, profile.skillOffer, profile.pendingPicks = saved.skills, saved.skillOffer, saved.pendingPicks
 	profile.crystals, profile.ownedCosmetics, profile.rebirths = saved.crystals, saved.ownedCosmetics, saved.rebirths

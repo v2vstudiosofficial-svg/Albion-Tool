@@ -18,7 +18,7 @@
 - M11: hata taraması (ilan/kule ödülü sınırı); 6 pet (oynayarak, kozmetik); Ranger Wren + 4 görev
   (sayaç görevleri); Yeniden doğuş (Sv100, +%10 XP en çok 5, koleksiyon kalır).
 - M12: 27 sahnelik hikâye + sinematik mod (Skip, daktilo, kamera); hikâye XP'si (seviye kapılı görevler
-  2–3 seviye, +%1 XP/görev); NPC/sandık/vuruş/seviye animasyonları.
+  2–3 seviye, +%1 XP/görev); animasyonlar; M13: Story sekmesi (sahneleri tekrar izle), Pas/rebirth düzeltmesi.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah kademeleri, üstel düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
@@ -34,7 +34,7 @@
 - Mağaza ürün kimlikleri 0 (`StoreData`); sinematik kamera/PlayerModule kilidi Studio'da denenmedi.
 
 ## Bekleyen elle testler (kullanıcı isteğiyle ertelendi)
-`docs/SETUP.md` → "Elle test listesi" maddelerinin tamamı (1–16, 6b/6c, 10b–10i) oynanmadı.
+`docs/SETUP.md` → "Elle test listesi" maddelerinin tamamı (1–16, 6b/6c, 10b–10j) oynanmadı.
 
 ## Sonraki adım (tek)
 Kullanıcının yeni isteği; ertelenen Studio testleri (yukarıda) yapılınca Output hatalarını düzeltmek.

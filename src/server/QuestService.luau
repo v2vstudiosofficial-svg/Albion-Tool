@@ -30,6 +30,9 @@ local INTERACT_COOLDOWN = 0.25
 local QuestService = {}
 
 local lastInteract: { [Player]: number } = {}
+-- When each player last heard a quest's story again (see RECAP_SECONDS).
+local lastRecap: { [Player]: { [string]: number } } = {}
+local RECAP_SECONDS = 120
 
 local function isNear(player: Player, position: Vector3, distance: number): boolean
 	local target = Targets.of(player)
@@ -120,7 +123,13 @@ local function onTalk(player: Player, npc: string, body: BasePart)
 	local tracked = QuestLogic.tracked(profile, QuestData)
 	if tracked then
 		-- The quest giver tells the story of the running quest again; others just encourage.
-		if (QuestData.quests[tracked].giver or "Elder") ~= npc or not playScene(player, tracked) then
+		local recaps = lastRecap[player] or {}
+		lastRecap[player] = recaps
+		local now = os.clock()
+		local recap = (QuestData.quests[tracked].giver or "Elder") == npc and (recaps[tracked] == nil or now - recaps[tracked] >= RECAP_SECONDS)
+		if recap and playScene(player, tracked) then
+			recaps[tracked] = now
+		else
 			npcSay:FireClient(player, npc, lines.active)
 		end
 		return
@@ -289,6 +298,7 @@ function QuestService.start(map: Folder)
 
 	interact.OnServerEvent:Connect(onInteract)
 	Players.PlayerRemoving:Connect(function(player)
+		lastRecap[player] = nil
 		lastInteract[player] = nil
 	end)
 

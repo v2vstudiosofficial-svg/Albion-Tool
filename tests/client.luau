@@ -999,6 +999,46 @@ test("story scenes: the talking NPC nods and the camera shot follows the speaker
 	assert(math.abs(after - resting) < 0.2, "the head settles when the scene ends")
 end)
 
+test("story journal: finished scenes can be replayed, the current one is marked, later ones hidden", function()
+	local QuestData = H.loadModule("src/shared/QuestData.luau")
+	setAttributes({ QuestsDone = "first_purify,lantern_flowers", QuestId = "forest_explore", QuestState = "active" })
+	click(findButton(Strings.get("menu_bag")))
+	click(findButton(Strings.get("bag_tab_story")))
+	assert(shownText(Strings.get("story_prologue_title")), "the prologue is always there")
+	assert(shownText(Strings.get(QuestData.quests.first_purify.titleKey)), "a finished quest")
+	assert(shownText(Strings.get(QuestData.quests.forest_explore.titleKey)), "the current quest")
+	assert(shownText(Strings.get("story_now")), "marked as current")
+	assert(not shownText(Strings.get(QuestData.quests.shadow_king.titleKey)), "later chapters stay secret")
+	assert(shownText(Strings.get("story_locked")), "hidden titles")
+	local replays = 0
+	for _, descendant in playerGui:GetDescendants() do
+		if descendant:IsA("TextButton") and descendant.Text == Strings.get("story_replay") and isShown(descendant) then
+			replays += 1
+		end
+	end
+	eq(replays, 3, "prologue plus two finished quests")
+	-- The current quest's button does nothing.
+	click(findButton(Strings.get("story_now")))
+	assert(not shownText(Strings.get("cinematic_skip")), "no scene from the current quest's marker")
+	-- Replay the first finished quest: the bag closes and its scene plays.
+	click(findText(Strings.get(QuestData.quests.first_purify.titleKey)).Parent:FindFirstChildOfClass("TextButton"))
+	advance(0.5)
+	assert(not shownText(Strings.get("story_prologue_title")), "the bag closed")
+	assert(shownText(Strings.get("cinematic_skip")), "the scene plays")
+	assert(shownText(Strings.get("npc_elder_name")), "with its speaker")
+	click(findButton(Strings.get("cinematic_skip")))
+	advance(1.5)
+	-- Its ending is queued behind it and plays too, then everything finishes.
+	click(findButton(Strings.get("cinematic_skip")))
+	advance(1.5)
+	assert(not shownText(Strings.get("cinematic_skip")), "all done")
+	-- Leave the bag on its first tab for whoever opens it next.
+	click(findButton(Strings.get("menu_bag")))
+	click(findButton(Strings.get("bag_tab_charms")))
+	click(findButton(Strings.get("menu_bag")))
+	setAttributes({ QuestsDone = "", QuestId = "first_purify", QuestState = "available" })
+end)
+
 test("bag: equip an owned charm, locked ones do nothing", function()
 	setAttributes({ Charms = "swift", Charm = "" })
 	click(findButton(Strings.get("menu_bag")))
