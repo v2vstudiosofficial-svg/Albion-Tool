@@ -3,7 +3,7 @@
 ## Aşama: M12 (hikâye, sinematik sahneler, animasyonlar) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
-- M2–M5 (kısmen): seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil arayüz, tip taraması.
+- M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil arayüz.
 - M6a: oyun İngilizce; takip kamerası, otomatik saldırı; 8 silah; Sv100; yüzen ek silahlar;
   Studio'da `LvDebugLevel` / `LvDebugAllWeapons`.
 - M6b: kişisel süreli sandıklar (4 tür, 2–20 dk, yuva 1→5); ödül: sikke, silah, yuva seviyesi (%5/sv).
@@ -30,7 +30,6 @@
 
 ## Bilinen riskler
 - Silah/kostüm modelleri, açılar ve sandık konumları tahmini; denge bir model (gerçek veriyle ayarlanmalı).
-- Çok oyunculu ağ/efekt yükü ölçülmedi.
 - Ses kimlikleri çoğunlukla boş; animasyonlar prosedürel (Studio'da ince ayar gerekir).
 - Mağaza ürün kimlikleri 0 (`StoreData`); sinematik kamera/PlayerModule kilidi Studio'da denenmedi.
 
