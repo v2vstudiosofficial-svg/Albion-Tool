@@ -1152,6 +1152,10 @@ function Menus.start()
 				setButton(view.button, if price then Strings.get("shop_price_robux", price) else Strings.get("shop_soon"), price ~= nil, colors.good)
 			elseif source.rebirth then
 				setButton(view.button, Strings.get("costume_from_rebirth", source.rebirth), false)
+			elseif source.tower then
+				setButton(view.button, Strings.get("costume_from_tower", source.tower), false)
+			elseif source.legend then
+				setButton(view.button, Strings.get("costume_from_legend", Strings.get(Balance.enemies[source.legend].nameKey)), false)
 			else
 				setButton(view.button, Strings.get("costume_from_pass", source.pass), false)
 			end

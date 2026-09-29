@@ -1273,7 +1273,7 @@ test("store data: fixed contents only, valid references, strings, no ids invente
 		assert(Strings.has(costume.nameKey), "costume name " .. id)
 		assert(table.find(CosmeticData.slots, costume.slot), "slot " .. id)
 		local source = costume.source
-		assert(source.coins or source.pass or source.robux or source.rebirth, "costume source " .. id)
+		assert(source.coins or source.pass or source.robux or source.rebirth or source.tower or source.legend, "costume source " .. id)
 		if source.robux then
 			eq(StoreData.products[source.robux].costume, id, "robux costume product " .. id)
 		end
@@ -1851,6 +1851,42 @@ test("story: every scene is well formed, every quest has its scene, blessing and
 	local viaProfile = Stats.of({ xp = 0, staffUpgrade = 0, questProgress = { a = { state = "completed" }, b = { state = "active" }, c = { state = "completed" } } })
 	assert(math.abs(viaProfile.xpMultiplier - plain.xpMultiplier - 2 * Balance.story.xpPerQuest) < 1e-9, "only completed quests count")
 	assert(Balance.story.xpPerQuest * #QuestData.order <= 0.2, "the blessing stays modest")
+end)
+
+test("earned costumes: tower floors, Legendary Shadows and rebirths give them once, coin ones are sinks", function()
+	local CosmeticLogic = require("../src/server/CosmeticLogic")
+	local CosmeticData = require("../src/shared/CosmeticData")
+	local p = Profile.new()
+	eq(#CosmeticLogic.grantEarned(p), 0, "a new player has earned nothing")
+	p.towerBest = 19
+	eq(#CosmeticLogic.grantEarned(p), 0, "one floor short")
+	p.towerBest = 20
+	eq(CosmeticLogic.grantEarned(p)[1], "tower_crown", "floor 20 gives the Tower Crown")
+	eq(#CosmeticLogic.grantEarned(p), 0, "nothing given twice")
+	p.towerBest = 40
+	eq(CosmeticLogic.grantEarned(p)[1], "skybound_cape", "floor 40 gives the cape")
+	p.legends.BogMother = true
+	eq(#CosmeticLogic.grantEarned(p), 0, "only the Shadow King's win counts for Kael's Crown")
+	p.legends.ShadowKing = true
+	eq(CosmeticLogic.grantEarned(p)[1], "kael_crown")
+	p.rebirths = 3
+	eq(#CosmeticLogic.grantEarned(p), 2, "both rebirth costumes at rebirth 3")
+	-- Costumes bought with coins are a way to spend a lot of them, never a way to get stronger.
+	local coinPrices = {}
+	for id, costume in CosmeticData.costumes do
+		if costume.source.coins then
+			table.insert(coinPrices, costume.source.coins)
+		end
+		local source = costume.source
+		if source.tower then
+			assert(source.tower >= 1 and source.tower <= 100, id)
+		end
+		if source.legend then
+			assert(Balance.enemies[source.legend] and Balance.enemies[source.legend].scales, id)
+		end
+	end
+	table.sort(coinPrices)
+	assert(#coinPrices >= 6 and coinPrices[#coinPrices] >= 200000, "there is always something big to save coins for")
 end)
 
 test("game content is English only (no Turkish letters in source)", function()

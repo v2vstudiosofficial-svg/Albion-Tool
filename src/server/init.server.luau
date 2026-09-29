@@ -16,6 +16,8 @@ local ChestService = require(script.ChestService)
 local PouchService = require(script.PouchService)
 local Profile = require(script.Profile)
 local ChestLogic = require(script.ChestLogic)
+local CosmeticLogic = require(script.CosmeticLogic)
+local CosmeticData = require(Shared.CosmeticData)
 local Balance = require(Shared.Balance)
 local ChestData = require(Shared.ChestData)
 local SkillService = require(script.SkillService)
@@ -115,6 +117,9 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 		QuestService.onPurified(player, enemyType)
 		if profile and Profile.recordLegend(profile, enemyType) then
 			PassService.award(player, "legend")
+			for _, id in CosmeticLogic.grantEarned(profile) do
+				notice:FireClient(player, "notice_costume_new", CosmeticData.costumes[id].nameKey)
+			end
 			local nameKey = Balance.enemies[enemyType].nameKey
 			if ChestLogic.give(profile, "mystic", Progression.levelForXp(profile.xp)) then
 				notice:FireClient(player, "notice_legend", nameKey)
@@ -127,8 +132,24 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position,
 	end
 end)
 
+-- One-time signposts for parts of the game a new player might not find (first climb only).
+local LEVEL_HINTS = {
+	{ level = 2, key = "notice_hint_board" },
+	{ level = 8, key = "notice_hint_east" },
+	{ level = Balance.tower.minLevel, key = "notice_hint_tower" },
+	{ level = 15, key = "notice_hint_pets" },
+}
+
 PlayerProfiles.onLevelUp(function(player, level, previous)
 	fx:FireAllClients("levelUp", player, level)
+	local profile = PlayerProfiles.get(player)
+	if profile and profile.rebirths == 0 then
+		for _, hint in LEVEL_HINTS do
+			if previous < hint.level and level >= hint.level then
+				notice:FireClient(player, hint.key)
+			end
+		end
+	end
 	if Progression.chestSlots(level) > Progression.chestSlots(previous) then
 		notice:FireClient(player, "notice_chest_slot_unlocked")
 	end

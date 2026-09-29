@@ -11,6 +11,8 @@ local ChestData = require(Shared.ChestData)
 local Progression = require(Shared.Progression)
 local TowerLogic = require(script.Parent.TowerLogic)
 local ChestLogic = require(script.Parent.ChestLogic)
+local CosmeticLogic = require(script.Parent.CosmeticLogic)
+local CosmeticData = require(Shared.CosmeticData)
 local EnemyService = require(script.Parent.EnemyService)
 local PassService = require(script.Parent.PassService)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
@@ -126,6 +128,11 @@ local function payFloor(current: Run)
 				local extraCoins = TowerLogic.recordCoins(level)
 				profile.coins += extraCoins
 				coins += extraCoins
+			end
+			if isRecord then
+				for _, id in CosmeticLogic.grantEarned(profile) do
+					notice:FireClient(player, "notice_costume_new", CosmeticData.costumes[id].nameKey)
+				end
 			end
 			PlayerProfiles.sync(player)
 			notice:FireClient(player, if isRecord then "notice_tower_record" else "notice_tower_floor", floor, coins)

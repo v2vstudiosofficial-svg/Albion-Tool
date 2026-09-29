@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local QuestData = require(Shared:WaitForChild("QuestData"))
 local Progression = require(Shared:WaitForChild("Progression"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
+local Balance = require(Shared:WaitForChild("Balance"))
 local ChestData = require(Shared:WaitForChild("ChestData"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local Audio = require(script.Parent.Audio)
@@ -366,6 +367,23 @@ local function refreshMarkers()
 			marker.Enabled = available and giver == npcName
 		end
 	end
+	-- Signposts: a "!" over the Bounty Board when a bounty can be claimed, and over the Shadow Tower
+	-- gate until the player has climbed it once (only for players who may enter).
+	local boardMarker = markers.BountyBoard
+	if boardMarker then
+		local ready = false
+		for _, item in Attrs.list("Bounties") do
+			local _, goal, progress = string.match(item, "^([^:]+):(%d+):(%d+)$")
+			if goal and tonumber(progress) >= tonumber(goal) then
+				ready = true
+			end
+		end
+		boardMarker.Enabled = ready
+	end
+	local gateMarker = markers.TowerGate
+	if gateMarker then
+		gateMarker.Enabled = Attrs.get("Level", 1) >= Balance.tower.minLevel and Attrs.get("TowerBest", 0) == 0 and Attrs.get("TowerFloor", 0) == 0
+	end
 	local affordable = canAffordUpgrade() and isCompleted("first_purify")
 	local smith = markers.Smith
 	if smith then
@@ -639,7 +657,7 @@ function World.start()
 	for _, name in { "QuestState", "QuestId", "QuestFound" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshQuestVisuals)
 	end
-	for _, name in { "Coins", "StaffTier" } do
+	for _, name in { "Coins", "StaffTier", "Bounties", "Level", "TowerBest", "TowerFloor" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshMarkers)
 	end
 	-- The first Flags value after joining is saved progress, not a new unlock: no celebration.
@@ -689,6 +707,8 @@ function World.start()
 		markers.Elder = buildMarker("Elder")
 		markers.Wren = buildMarker("Wren")
 		markers.Smith = buildMarker("Smith")
+		markers.BountyBoard = buildMarker("BountyBoard")
+		markers.TowerGate = buildMarker("TowerGate")
 		refreshMarkers()
 	end)
 	task.spawn(animateNpcs)

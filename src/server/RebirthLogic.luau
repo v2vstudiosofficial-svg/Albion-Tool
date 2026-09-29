@@ -21,16 +21,9 @@ function RebirthLogic.xpBonus(rebirths: number): number
 	return Balance.rebirth.xpPerRebirth * math.clamp(rebirths, 0, Balance.rebirth.maxBonusRebirths)
 end
 
--- Gives every costume whose rebirth requirement is met; returns the ones newly given.
+-- Gives every costume earned by progress (rebirths included); returns the ones newly given.
 function RebirthLogic.grantRewards(profile: any): { string }
-	local given = {}
-	for _, id in CosmeticData.order do
-		local needed = CosmeticData.costumes[id].source.rebirth
-		if needed and profile.rebirths >= needed and CosmeticLogic.grant(profile, id) then
-			table.insert(given, id)
-		end
-	end
-	return given
+	return CosmeticLogic.grantEarned(profile)
 end
 
 -- Restarts the climb: level, weapon power, forge upgrades, skills and the pouch reset; coins become

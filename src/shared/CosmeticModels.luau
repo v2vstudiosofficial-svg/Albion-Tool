@@ -56,6 +56,43 @@ local builders: { [string]: (Color3) -> { Spec } } = {
 			{ name = "Trim", size = Vector3.new(2.05, 0.15, 0.16), at = CFrame.new(0, -2.55, 0.25), color = Color3.fromRGB(200, 130, 255), neon = true },
 		}
 	end,
+	moon_hat = function(color)
+		return {
+			{ name = "Brim", shape = Enum.PartType.Cylinder, size = Vector3.new(0.2, 2.1, 2.1), at = SIDE, color = Color3.fromRGB(70, 70, 120) },
+			{ name = "Cone", size = Vector3.new(1.1, 1.5, 1.1), at = CFrame.new(0, 0.85, 0), color = Color3.fromRGB(70, 70, 120) },
+			{ name = "Moon", shape = Enum.PartType.Ball, size = Vector3.new(0.7, 0.7, 0.25), at = CFrame.new(0, 1.7, 0), color = color, neon = true },
+		}
+	end,
+	comet_cape = function(color)
+		return {
+			{ name = "Cape", size = Vector3.new(1.8, 2.6, 0.12), at = CFrame.new(0, -1.1, 0.1) * CFrame.Angles(math.rad(8), 0, 0), color = Color3.fromRGB(40, 50, 100) },
+			{ name = "Tail", size = Vector3.new(0.5, 1.4, 0.1), at = CFrame.new(0, -3, 0.25), color = color, neon = true },
+			{ name = "Star", shape = Enum.PartType.Ball, size = Vector3.new(0.5, 0.5, 0.15), at = CFrame.new(0, -0.9, 0.2), color = color, neon = true },
+		}
+	end,
+	tower_crown = function(color)
+		local parts = { { name = "Band", shape = Enum.PartType.Cylinder, size = Vector3.new(0.4, 1.9, 1.9), at = SIDE, color = Color3.fromRGB(60, 50, 80) } }
+		for index = 1, 4 do
+			local angle = index / 4 * math.pi * 2
+			table.insert(parts, { name = "Spike" .. index, size = Vector3.new(0.3, 0.9, 0.3), at = CFrame.new(math.cos(angle) * 0.8, 0.6, math.sin(angle) * 0.8), color = color, neon = true })
+		end
+		return parts
+	end,
+	skybound_cape = function(color)
+		return {
+			{ name = "Cape", size = Vector3.new(2, 2.8, 0.14), at = CFrame.new(0, -1.2, 0.1) * CFrame.Angles(math.rad(6), 0, 0), color = Color3.fromRGB(50, 90, 140) },
+			{ name = "Cloud", shape = Enum.PartType.Ball, size = Vector3.new(1.6, 0.6, 0.4), at = CFrame.new(0, -2.7, 0.25), color = color, neon = true },
+		}
+	end,
+	kael_crown = function(color)
+		local parts = { { name = "Band", shape = Enum.PartType.Cylinder, size = Vector3.new(0.45, 2, 2), at = SIDE, color = color } }
+		for index = 1, 6 do
+			local angle = index / 6 * math.pi * 2
+			table.insert(parts, { name = "Point" .. index, size = Vector3.new(0.3, 0.8 + (index % 2) * 0.4, 0.3), at = CFrame.new(math.cos(angle) * 0.9, 0.6, math.sin(angle) * 0.9), color = color, neon = true })
+		end
+		table.insert(parts, { name = "Gem", shape = Enum.PartType.Ball, size = Vector3.new(0.5, 0.5, 0.5), at = CFrame.new(0, 0.3, -0.95), color = Color3.fromRGB(255, 255, 255), neon = true })
+		return parts
+	end,
 	phoenix_wings = function(color)
 		return {
 			{ name = "WingL", size = Vector3.new(2.4, 1.6, 0.1), at = CFrame.new(-1.4, 0.35, 0) * CFrame.Angles(0, math.rad(20), math.rad(35)), color = color, neon = true },

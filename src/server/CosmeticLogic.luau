@@ -13,6 +13,22 @@ function CosmeticLogic.grant(profile: any, id: string): boolean
 	return true
 end
 
+-- Gives every costume the player has earned by progress: rebirths, the best Shadow Tower floor or
+-- a purified Legendary Shadow. Returns the ids newly given (in CosmeticData order).
+function CosmeticLogic.grantEarned(profile: any): { string }
+	local given = {}
+	for _, id in CosmeticData.order do
+		local source = CosmeticData.costumes[id].source
+		local earned = (source.rebirth ~= nil and profile.rebirths >= source.rebirth)
+			or (source.tower ~= nil and profile.towerBest >= source.tower)
+			or (source.legend ~= nil and profile.legends[source.legend] == true)
+		if earned and CosmeticLogic.grant(profile, id) then
+			table.insert(given, id)
+		end
+	end
+	return given
+end
+
 -- Buys a coin-priced costume. Returns ok, or false and "unknown" | "owned" | "notForCoins" | "coins".
 function CosmeticLogic.buy(profile: any, id: string): (boolean, string?)
 	local costume = CosmeticData.costumes[id]

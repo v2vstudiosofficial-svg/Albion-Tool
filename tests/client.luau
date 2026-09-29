@@ -398,6 +398,33 @@ test("quests from Ranger Wren: hint, marker and waypoint follow the giver", func
 	assert(markerOn("Elder"), "the Elder's ! is back")
 end)
 
+test("signposts: a ! over the Bounty Board with a bounty to claim and over the Tower gate for newcomers", function()
+	local Balance = H.loadModule("src/shared/Balance.luau")
+	local function markerOn(name: string): boolean
+		for _, child in playerGui:GetChildren() do
+			if child:IsA("BillboardGui") and child.Enabled and child.Adornee == workspace.LanternValleyMap.Village[name].Body then
+				return true
+			end
+		end
+		return false
+	end
+	setAttributes({ Level = 3, Bounties = "purify:40:12,chest:2:0,rift:1:0", TowerBest = 0, TowerFloor = 0 })
+	advance(0.3)
+	assert(not markerOn("BountyBoard"), "nothing to claim yet")
+	assert(not markerOn("TowerGate"), "the tower is not open at this level")
+	setAttributes({ Bounties = "purify:40:40,chest:2:0,rift:1:0" })
+	assert(markerOn("BountyBoard"), "a finished bounty waits at the board")
+	setAttributes({ Bounties = "purify:40:0,chest:2:0,rift:1:0" })
+	assert(not markerOn("BountyBoard"), "claimed")
+	setAttributes({ Level = Balance.tower.minLevel })
+	assert(markerOn("TowerGate"), "the gate calls a player who can enter")
+	setAttributes({ TowerFloor = 2 })
+	assert(not markerOn("TowerGate"), "not while inside")
+	setAttributes({ TowerFloor = 0, TowerBest = 1 })
+	assert(not markerOn("TowerGate"), "not after the first climb")
+	setAttributes({ Level = 1, TowerBest = 0, Bounties = "" })
+end)
+
 test("server events render: rewards, notices, dialog, effects", function()
 	remotes.RewardGranted.OnClientEvent:Fire("purify", 10, 5)
 	remotes.RewardGranted.OnClientEvent:Fire("quest", 50, 20)
@@ -1262,6 +1289,8 @@ test("rebirth: the panel says what resets, confirms only at level 100, badge and
 	click(findButton(Strings.get("menu_shop")))
 	click(findButton(Strings.get("shop_tab_costumes")))
 	assert(shownText(Strings.get("costume_from_rebirth", 1)) and shownText(Strings.get("costume_from_rebirth", 3)), "rebirth costumes explained")
+	assert(shownText(Strings.get("costume_from_tower", 20)) and shownText(Strings.get("costume_from_tower", 40)), "tower costumes explained")
+	assert(shownText(Strings.get("costume_from_legend", Strings.get(Balance.enemies.ShadowKing.nameKey))), "Kael's Crown explained")
 	click(findButton(Strings.get("menu_shop")))
 	setAttributes({ Level = 3 })
 end)

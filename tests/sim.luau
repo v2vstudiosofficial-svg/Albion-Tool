@@ -1686,6 +1686,40 @@ test("rebirth: the Great Lantern asks at level 100, resets once when confirmed n
 	toVillage(alice)
 end)
 
+test("level hints: one-time signposts, never repeated, none after a rebirth", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local profile = PlayerProfiles.get(alice)
+	local savedXp, savedRebirths = profile.xp, profile.rebirths
+	local function hint(key: string): number
+		return logCount("Notice", function(e)
+			return e.target == alice and e.args[1] == key
+		end)
+	end
+	profile.rebirths = 0
+	profile.xp = Progression.thresholds[1]
+	PlayerProfiles.sync(alice)
+	local board, tower = hint("notice_hint_board"), hint("notice_hint_tower")
+	PlayerProfiles.grant(alice, { xp = Progression.thresholds[2] - profile.xp }, "test")
+	advance(0.2)
+	eq(hint("notice_hint_board"), board + 1, "the board is pointed out at level 2")
+	PlayerProfiles.grant(alice, { xp = 1 }, "test")
+	advance(0.2)
+	eq(hint("notice_hint_board"), board + 1, "only once")
+	PlayerProfiles.grant(alice, { xp = Progression.thresholds[Balance.tower.minLevel] - profile.xp }, "test")
+	advance(0.2)
+	eq(hint("notice_hint_tower"), tower + 1, "the tower gate is pointed out when it opens")
+	-- After a rebirth the veteran is not told again.
+	profile.rebirths = 1
+	profile.xp = Progression.thresholds[1]
+	PlayerProfiles.sync(alice)
+	local before = hint("notice_hint_east")
+	PlayerProfiles.grant(alice, { xp = Progression.thresholds[9] }, "test")
+	advance(0.2)
+	eq(hint("notice_hint_east"), before, "no hints for a reborn player")
+	profile.xp, profile.rebirths = savedXp, savedRebirths
+	PlayerProfiles.sync(alice)
+end)
+
 test("robux store: receipts granted once and only after saving; unknown ones wait", function()
 	local StoreData = H.loadModule("src/shared/StoreData.luau")
 	local MarketplaceService = H.services.MarketplaceService
