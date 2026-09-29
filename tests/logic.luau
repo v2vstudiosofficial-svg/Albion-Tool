@@ -2041,6 +2041,84 @@ test("new skills: healing, brave heart and treasure hunter are complete and add 
 	assert(richer > base)
 end)
 
+test("fuzz: a corrupted saved profile is always repaired, and repairing twice changes nothing", function()
+	local state = 987
+	local function random(n: number): number
+		state = (state * 1103515245 + 12345) % 2147483648
+		return math.floor(state / 2147483648 * n) + 1
+	end
+	local function junk(depth: number): any
+		local kind = random(depth > 2 and 9 or 11)
+		if kind == 1 then
+			return nil
+		elseif kind == 2 then
+			return true
+		elseif kind == 3 then
+			return false
+		elseif kind == 4 then
+			return random(1000) - 500
+		elseif kind == 5 then
+			return ({ 0 / 0, math.huge, -math.huge, 1e308, -1, 0.5 })[random(6)]
+		elseif kind == 6 then
+			return ({ "", "x", "sword", "power", "glade", "hat", string.rep("z", 300) })[random(7)]
+		elseif kind == 7 then
+			return { 1, 2, 3 }
+		elseif kind == 8 then
+			return {}
+		elseif kind == 9 then
+			return "wood"
+		elseif kind == 10 then
+			local t = {}
+			for _ = 1, random(4) do
+				t[({ "a", "b", "wood", "bow", "friends", "hat", "glade", "swift", "power" })[random(9)]] = junk(depth + 1)
+			end
+			return t
+		end
+		return { junk(depth + 1), junk(depth + 1) }
+	end
+	local function serialize(value: any, seen: { [any]: boolean }?): string
+		if type(value) ~= "table" then
+			return tostring(value)
+		end
+		local list = {}
+		for key, inner in value do
+			table.insert(list, tostring(key) .. "=" .. serialize(inner))
+		end
+		table.sort(list)
+		return "{" .. table.concat(list, ",") .. "}"
+	end
+	local template = Profile.new()
+	local keys = {}
+	for key in template do
+		table.insert(keys, key)
+	end
+	table.sort(keys)
+	for round = 1, 300 do
+		local data = Profile.new()
+		-- Corrupt a few fields (or all of them) with junk.
+		for _ = 1, if round % 10 == 0 then #keys else random(4) do
+			data[keys[random(#keys)]] = junk(0)
+		end
+		local ok, err = pcall(Profile.sanitize, data)
+		assert(ok, "sanitize raised on round " .. round .. ": " .. tostring(err))
+		local once = serialize(data)
+		Profile.sanitize(data)
+		eq(serialize(data), once, "sanitize is idempotent (round " .. round .. ")")
+		-- The repaired profile must be safe to use everywhere.
+		assert(type(data.xp) == "number" and data.xp >= 0 and data.xp == data.xp and data.xp < math.huge, "xp is a real number")
+		assert(type(data.coins) == "number" and data.coins >= 0 and data.coins < math.huge, "coins")
+		assert(type(data.chests) == "table" and #data.chests <= 5, "chests")
+		assert(type(data.settings) == "table" and type(data.settings.fov) == "number", "settings")
+		assert(data.ownedWeapons.staff == true, "the starter weapon is always there")
+		assert(type(data.equippedWeapon) == "string" and data.ownedWeapons[data.equippedWeapon], "an equipped weapon that is owned")
+		assert(Progression.levelForXp(data.xp) >= 1, "a real level")
+		assert(type(data.bounties) == "table" and #data.bounties <= 3, "bounties")
+		-- And the game's own stats on it never fail.
+		local stats = Stats.of(data)
+		assert(stats.maxHealth > 0 and stats.maxHealth < math.huge, "stats are finite")
+	end
+end)
+
 test("game content is English only (no Turkish letters in source)", function()
 	local offenders = {}
 	local function scan(dir: string)

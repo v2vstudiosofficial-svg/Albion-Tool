@@ -2017,6 +2017,91 @@ test("light pass: playing earns tiers, free claims, premium only after buying it
 	eq(attr(alice, "PassFree"), "1,2,3", "bad claims ignored")
 end)
 
+test("fuzz: garbage sent to every server remote never errors and never changes a player's progress", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local profile = PlayerProfiles.get(alice)
+	local function snapshot(): string
+		local weapons = {}
+		for id in profile.ownedWeapons do
+			table.insert(weapons, id)
+		end
+		table.sort(weapons)
+		return table.concat({ profile.xp, profile.coins, profile.staffUpgrade, profile.rebirths, profile.towerBest, profile.crystals, table.concat(weapons, "+"), #profile.chests, profile.pass.xp }, "|")
+	end
+	toVillage(alice)
+	local before = snapshot()
+	local errorsBefore = #H.threadErrors
+	-- A small deterministic generator, so a failure can be reproduced.
+	local state = 12345
+	local function random(n: number): number
+		state = (state * 1103515245 + 12345) % 2147483648
+		return math.floor(state / 2147483648 * n) + 1
+	end
+	local nested = {}
+	nested.self = nested
+	local garbage = {
+		function() return nil end,
+		function() return true end,
+		function() return false end,
+		function() return 0 end,
+		function() return -1 end,
+		function() return 1.5 end,
+		function() return 1e308 end,
+		function() return -1e308 end,
+		function() return 0 / 0 end,
+		function() return math.huge end,
+		function() return "" end,
+		function() return "x" end,
+		function() return string.rep("a", 5000) end,
+		function() return "../../etc" end,
+		function() return {} end,
+		function() return { 1, 2, 3 } end,
+		function() return { a = { b = { c = {} } } } end,
+		function() return nested end,
+		function() return function() end end,
+		function() return alice end,
+		function() return bob end,
+		function() return Vector3.new(1e9, 0, 0) end,
+		function() return "coins_small" end,
+		function() return "power" end,
+		function() return "sword" end,
+		function() return "lantern_hat" end,
+		function() return 1 end,
+		function() return "all" end,
+		function() return "premium" end,
+		function() return "free" end,
+	}
+	local names = {}
+	for name, remote in remotes do
+		if type(remote) == "table" and remote.OnServerEvent then
+			table.insert(names, name)
+		end
+	end
+	table.sort(names)
+	assert(#names >= 25, "many remotes: " .. #names)
+	local fired = 0
+	for _, name in names do
+		for round = 1, 45 do
+			local args = {}
+			local count = random(5) - 1
+			for index = 1, count do
+				args[index] = garbage[random(#garbage)]()
+			end
+			remotes[name].OnServerEvent:Fire(if round % 9 == 0 then bob else alice, table.unpack(args, 1, count))
+			fired += 1
+			if round % 3 == 0 then
+				advance(0.35)
+			end
+		end
+	end
+	advance(1)
+	eq(#H.threadErrors, errorsBefore, "no server thread errors after " .. fired .. " garbage requests")
+	eq(snapshot(), before, "nothing about the player's progress changed")
+	heal(alice)
+	toVillage(alice)
+	toVillage(bob)
+end)
+
 test("leaving and rejoining restores the saved profile", function()
 	local snapshot = {}
 	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "ChestSpots", "Upgrades", "Crystals", "Skills", "SkillOffer", "PendingPicks", "Costumes", "Worn", "PassXp", "PassFree", "PassPremium", "OneTime" } do

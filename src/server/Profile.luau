@@ -351,12 +351,12 @@ function Profile.sanitize(data: any): Profile
 	if not isValidAmount(data.boostUntil) then
 		data.boostUntil = 0
 	end
+	-- Always one entry per floating slot ("" = automatic), whatever was saved.
 	local companions = {}
-	if type(data.companions) == "table" then
-		for slot = 1, WeaponData.maxCompanions do
-			local weaponId = data.companions[slot]
-			companions[slot] = if type(weaponId) == "string" and WeaponData.weapons[weaponId] then weaponId else ""
-		end
+	local savedPicks = if type(data.companions) == "table" then data.companions else {}
+	for slot = 1, WeaponData.maxCompanions do
+		local weaponId = savedPicks[slot]
+		companions[slot] = if type(weaponId) == "string" and WeaponData.weapons[weaponId] then weaponId else ""
 	end
 	data.companions = companions
 
