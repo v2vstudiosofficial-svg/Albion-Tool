@@ -521,8 +521,14 @@ test("quest 6: boss fight with telegraphed attacks, rewards, festival", function
 			return e.args[1] == kind
 		end) > 0, "boss used " .. kind)
 	end
-	eq(attr(alice, "QuestState"), "done")
+	eq(attr(alice, "QuestId"), "bog_mother", "chapter 2 is next")
+	eq(attr(alice, "QuestState"), "level", "and waits for a stronger player")
 	eq(attr(alice, "Flags"), "festival,gardens,lanterns")
+	eq(attr(alice, "Legends"), "Warden", "first Legendary Shadow")
+	eq(attr(alice, "Chests"), "mystic:0", "a Mystic chest for the first win")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_legend"
+	end), 1, "told once")
 end)
 
 test("a defeated character is not revived by a level-up", function()
@@ -618,6 +624,9 @@ local function nearAnyEnemy(player, kind: string, area: string)
 end
 
 test("chests: pick up nearby, full slots, one unlock at a time, open when the timer is done", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	PlayerProfiles.get(alice).chests = {} -- start with empty slots (the legend chest is tested above)
+	PlayerProfiles.sync(alice)
 	local spot = WorldData.chests.chest_glade_1
 	local spotPosition = vec(spot.position, 3)
 	remotes.Interact.OnServerEvent:Fire(alice, "chest", "chest_glade_1")
@@ -770,8 +779,10 @@ test("crystals: purifies fill the pouch (not coins), the Great Lantern turns the
 	end
 	assert(attr(alice, "Crystals") > crystals, "crystals in the pouch")
 	eq(attr(alice, "Coins"), coins, "purifies pay no coins directly")
-	local carried = attr(alice, "Crystals")
 	toVillage(alice)
+	advance(1) -- let rewards from the last fight arrive
+	local carried = attr(alice, "Crystals")
+	coins = attr(alice, "Coins")
 	teleport(alice, vec(WorldData.plaza, 3) + Vector3.new(3, 0, 0))
 	advance(1)
 	eq(attr(alice, "Crystals"), 0, "pouch emptied at the lantern")
@@ -911,6 +922,52 @@ test("Studio-only LvDebugLevel attribute moves loaded players to a level", funct
 	H.signalFor(workspace, "attr:LvDebugAllWeapons"):Fire()
 	advance(0.2)
 	eq(#string.split(attr(alice, "Weapons"), ","), #WeaponData.order, "every weapon")
+end)
+
+test("east lands: packs roll levels in their range; the Bog Mother is a legend", function()
+	for index, spawn in WorldData.spawns do
+		if spawn.levels then
+			for _, model in workspace.Enemies:GetChildren() do
+				if model:GetAttribute("EnemyType") == spawn.kind and model:GetAttribute("Alive") then
+					local level = model:GetAttribute("Level")
+					assert(level >= 1 and level <= 100, "level set")
+				end
+			end
+		end
+		local _ = index
+	end
+	local levels = {}
+	for _, model in workspace.Enemies:GetChildren() do
+		if model:GetAttribute("EnemyType") == "Mudling" then
+			table.insert(levels, model:GetAttribute("Level"))
+		end
+	end
+	assert(#levels > 0, "mudlings in the marsh")
+	for _, level in levels do
+		assert(level >= 8 and level <= 25, "marsh levels " .. level)
+	end
+
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local profile = PlayerProfiles.get(alice)
+	profile.chests = {}
+	PlayerProfiles.sync(alice)
+	local boss = enemiesOf("BogMother")[1]
+	assert(boss, "Bog Mother waits in the bog")
+	eq(boss:GetAttribute("Level"), 25)
+	assert(boss:GetAttribute("MaxHp") > Balance.enemies.BogMother.maxHp, "scaled to its level")
+	local elapsed = 0
+	while isAlive(boss) and elapsed < 240 do
+		local bossPosition = positionOf(boss.Body)
+		teleport(alice, Vector3.new(bossPosition.X, 3, bossPosition.Z + 10))
+		advance(0.5)
+		heal(alice)
+		elapsed += 0.5
+	end
+	assert(not isAlive(boss), "Bog Mother purified in " .. elapsed .. " s")
+	advance(0.3)
+	assert(string.find(attr(alice, "Legends"), "BogMother", 1, true), "second legend recorded")
+	eq(attr(alice, "Chests"), "mystic:0", "legend chest")
+	toVillage(alice)
 end)
 
 test("leaving and rejoining restores the saved profile", function()

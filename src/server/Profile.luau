@@ -38,6 +38,8 @@ export type Profile = {
 	chests: { Chest },
 	-- os.time() when this player last took the chest at each world spot.
 	chestSpots: { [string]: number },
+	-- Legendary Shadows purified at least once (boss kind -> true).
+	legends: { [string]: boolean },
 	ownedCharms: { [string]: boolean },
 	equippedCharm: string?,
 	questProgress: { [string]: QuestProgress },
@@ -71,6 +73,7 @@ function Profile.new(): Profile
 		slotLevels = { 0, 0, 0, 0, 0 },
 		chests = {},
 		chestSpots = {},
+		legends = {},
 		ownedCharms = {},
 		equippedCharm = nil,
 		questProgress = {},
@@ -173,6 +176,16 @@ function Profile.sanitize(data: any): Profile
 		end
 	end
 	data.chestSpots = spots
+
+	local legends = {}
+	if type(data.legends) == "table" then
+		for kind, value in data.legends do
+			if value == true and table.find(Balance.legends, kind) then
+				legends[kind] = true
+			end
+		end
+	end
+	data.legends = legends
 	local companions = {}
 	if type(data.companions) == "table" then
 		for slot = 1, WeaponData.maxCompanions do
@@ -330,6 +343,15 @@ function Profile.loadout(profile: Profile): (string, { string })
 		end
 	end
 	return main, companions
+end
+
+-- Records a Legendary Shadow; returns true only the first time.
+function Profile.recordLegend(profile: Profile, kind: string): boolean
+	if not table.find(Balance.legends, kind) or profile.legends[kind] then
+		return false
+	end
+	profile.legends[kind] = true
+	return true
 end
 
 function Profile.grantCharm(profile: Profile, charmId: string): boolean

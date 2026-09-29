@@ -354,15 +354,19 @@ test("full chain is completable with a short grind at most, paying each reward o
 	purify("Warden", 8)
 	purify("Warden", 8)
 
-	for _, questId in QuestData.order do
+	local chapterOne = { "first_purify", "lantern_flowers", "forest_explore", "first_upgrade", "ruin_vines", "warden" }
+	for _, questId in chapterOne do
 		eq(QuestLogic.isCompleted(p, questId), true, questId)
 	end
-	eq(QuestLogic.nextAvailable(p, QuestData), nil)
+	eq(QuestLogic.nextAvailable(p, QuestData), "bog_mother", "chapter 2 comes next")
+	local canStart, reason = QuestLogic.canStart(p, QuestData, "bog_mother", level(p))
+	eq(canStart, false, "the legends wait for a stronger player")
+	eq(reason, "level")
 	eq(p.ownedCharms.swift and p.ownedCharms.guard and p.ownedCharms.glow, true, "all charms")
 	eq(p.restorationFlags.gardens and p.restorationFlags.lanterns and p.restorationFlags.festival, true, "all flags")
 
 	local expectedXp, expectedCoins = 0, -(Progression.upgradeCost("power", 0) :: number)
-	for _, questId in QuestData.order do
+	for _, questId in chapterOne do
 		local reward = QuestData.quests[questId].reward
 		expectedXp += reward.xp or 0
 		expectedCoins += reward.coins or 0
@@ -673,7 +677,11 @@ test("enemy levels scale health, damage and rewards; bosses keep their tuning", 
 	eq(boss.maxHp, Balance.enemies.Warden.maxHp, "boss hp")
 	eq(boss.reward.xp, Balance.enemies.Warden.reward.xp, "boss reward")
 	for _, spawn in WorldData.spawns do
-		assert(type(spawn.level) == "number" and spawn.level >= 1, "spawn level set")
+		local fixed = type(spawn.level) == "number" and spawn.level >= 1
+		local ranged = type(spawn.levels) == "table" and spawn.levels[1] >= 1 and spawn.levels[2] >= spawn.levels[1]
+		assert(fixed or ranged, "spawn level set")
+		assert(Balance.enemies[spawn.kind], "known kind " .. spawn.kind)
+		assert(WorldData.areas[spawn.area], "known area " .. spawn.area)
 	end
 	-- Fighting same-level reference creatures, every level takes the designed number of purifies,
 	-- and health keeps growing.
@@ -1029,6 +1037,73 @@ test("sanitize: upgrades, crystals, skills and offers are cleaned", function()
 	eq(p.skills.sharp, nil)
 	eq(table.concat(p.skillOffer, ","), "swift,coins,sharp", "unknown cards dropped, at most three")
 	eq(p.pendingPicks, 0)
+end)
+
+-- East lands and Legendary Shadows ------------------------------------------------------------
+
+test("creature zones cover every level from 1 to 100 without big gaps", function()
+	local covered = {}
+	for _, area in WorldData.areas do
+		if area.levels then
+			for level = area.levels[1], area.levels[2] do
+				covered[level] = true
+			end
+		end
+	end
+	local gap = 0
+	for level = 1, Progression.MAX_LEVEL do
+		gap = if covered[level] then 0 else gap + 1
+		assert(gap <= 2, "no creatures near level " .. level)
+	end
+	-- Spawn level ranges stay inside their zone's range.
+	for _, spawn in WorldData.spawns do
+		local area = WorldData.areas[spawn.area]
+		if spawn.levels and area.levels then
+			assert(spawn.levels[1] >= area.levels[1] and spawn.levels[2] <= area.levels[2], "pack fits its zone: " .. spawn.kind)
+		end
+		assert(spawn.position[1] >= WorldData.bounds.minX and spawn.position[1] <= WorldData.bounds.maxX, "inside the map")
+	end
+end)
+
+test("legendary shadows: data, level-scaled fights, first win recorded once", function()
+	local previousLevel = 0
+	for index, kind in Balance.legends do
+		local stats = Balance.enemies[kind]
+		assert(stats and stats.isBoss, "legend is a boss: " .. kind)
+		assert(Strings.has(stats.nameKey), "legend name " .. kind)
+		local level = nil
+		for _, spawn in WorldData.spawns do
+			if spawn.kind == kind then
+				level = spawn.level
+			end
+		end
+		assert(level and level > previousLevel, "legends get stronger in order: " .. kind)
+		previousLevel = level :: number
+		if index > 1 then
+			assert(stats.scales, "east-land legends scale with level")
+			local scaled = Progression.enemyStats(stats, level :: number)
+			assert(scaled.maxHp > stats.maxHp and scaled.damageMultiplier > 1, "scaled " .. kind)
+		end
+	end
+	local p = Profile.new()
+	eq(Profile.recordLegend(p, "Warden"), true)
+	eq(Profile.recordLegend(p, "Warden"), false, "only the first win counts")
+	eq(Profile.recordLegend(p, "Gloomling"), false, "not a legend")
+	eq(ChestLogic.give(p, "mystic", 1), true, "legend chest into a free slot")
+	eq(ChestLogic.give(p, "mystic", 1), false, "slots full")
+	local clean = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, legends = { Warden = true, Gloomling = true, BogMother = "x" } })
+	eq(clean.legends.Warden, true)
+	eq(clean.legends.Gloomling, nil)
+	eq(clean.legends.BogMother, nil)
+	-- Chapter 2 quests wait for the right levels, in order.
+	local gates = {}
+	for _, questId in { "bog_mother", "frost_titan", "shadow_king" } do
+		local quest = QuestData.quests[questId]
+		assert(quest and quest.minLevel, "chapter 2 quest " .. questId)
+		table.insert(gates, quest.minLevel)
+		assert(Balance.enemies[quest.objective.enemyType].isBoss, "boss objective " .. questId)
+	end
+	assert(gates[1] < gates[2] and gates[2] < gates[3] and gates[3] <= Progression.MAX_LEVEL, "rising level gates")
 end)
 
 test("game content is English only (no Turkish letters in source)", function()

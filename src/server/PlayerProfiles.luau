@@ -121,6 +121,7 @@ function PlayerProfiles.sync(player: Player)
 	end
 	table.sort(spots)
 	player:SetAttribute("ChestSpots", table.concat(spots, ","))
+	player:SetAttribute("Legends", csv(profile.legends))
 	player:SetAttribute("Charm", profile.equippedCharm or "")
 	player:SetAttribute("Charms", csv(profile.ownedCharms))
 	player:SetAttribute("Flags", csv(profile.restorationFlags))

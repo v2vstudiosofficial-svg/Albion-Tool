@@ -14,16 +14,29 @@ WorldData.npcs = {
 }
 
 -- Enemy zones; enemies in a zone sleep while no player is within radius + WorldData.wakeMargin.
+-- `levels` = creature levels there (the waypoint picks a zone that fits the player's level).
+-- The east lands (x > 82) are reached through openings in the rock ridge.
 WorldData.wakeMargin = 70
 WorldData.areas = {
-	glade = { center = { 0, 0, -112 }, radius = 26 },
-	grove = { center = { -46, 0, -162 }, radius = 24 },
-	hollow = { center = { 44, 0, -186 }, radius = 24 },
+	glade = { center = { 0, 0, -112 }, radius = 26, levels = { 1, 2 } },
+	grove = { center = { -46, 0, -162 }, radius = 24, levels = { 3, 4 } },
+	hollow = { center = { 44, 0, -186 }, radius = 24, levels = { 5, 6 } },
 	gate = { center = { 0, 0, -224 }, radius = 12 },
 	arena = { center = { 0, 0, -285 }, radius = 34 },
+	marsh = { center = { 165, 0, 10 }, radius = 48, levels = { 8, 25 } },
+	bog = { center = { 222, 0, 48 }, radius = 20 },
+	peaks = { center = { 160, 0, -130 }, radius = 48, levels = { 26, 50 } },
+	summit = { center = { 225, 0, -172 }, radius = 20 },
+	citadel = { center = { 150, 0, -245 }, radius = 40, levels = { 51, 75 } },
+	keep = { center = { 210, 0, -292 }, radius = 30, levels = { 76, 100 } },
+	throne = { center = { 118, 0, -305 }, radius = 20 },
 }
 
--- Enemy packs. `level` scales health, damage and rewards (Progression.enemyStats).
+-- Rock ridge between the valley and the east lands; players pass through these openings (z ranges).
+WorldData.ridge = { x = 83, openings = { { 2, 26 }, { -132, -106 }, { -304, -280 } } }
+
+-- Enemy packs. `level` scales health, damage and rewards (Progression.enemyStats); `levels`
+-- ({min, max}) rolls a new level on every respawn.
 WorldData.spawns = {
 	{ kind = "Gloomling", area = "glade", level = 1, position = { -10, 0, -104 } },
 	{ kind = "Gloomling", area = "glade", level = 1, position = { 11, 0, -112 } },
@@ -46,6 +59,32 @@ WorldData.spawns = {
 	{ kind = "Warden", area = "arena", level = 8, position = { 0, 0, -290 } },
 }
 
+-- East-land packs: `count` creatures in a small circle around `at`.
+local function pack(kind: string, area: string, levels: { number }, at: { number }, count: number)
+	for index = 1, count do
+		local angle = index / count * math.pi * 2
+		table.insert(WorldData.spawns, {
+			kind = kind,
+			area = area,
+			levels = levels,
+			position = { at[1] + math.cos(angle) * 7, 0, at[3] + math.sin(angle) * 7 },
+		})
+	end
+end
+pack("Mudling", "marsh", { 8, 12 }, { 128, 0, 40 }, 4)
+pack("Bubbler", "marsh", { 12, 18 }, { 172, 0, 2 }, 3)
+pack("Mudling", "marsh", { 18, 25 }, { 196, 0, -28 }, 4)
+pack("Snowpuff", "peaks", { 26, 33 }, { 128, 0, -100 }, 4)
+pack("Frostling", "peaks", { 33, 42 }, { 180, 0, -118 }, 3)
+pack("Snowpuff", "peaks", { 42, 50 }, { 156, 0, -162 }, 4)
+pack("Shade", "citadel", { 51, 62 }, { 136, 0, -228 }, 4)
+pack("Hexcap", "citadel", { 62, 75 }, { 178, 0, -250 }, 3)
+pack("Obsidian", "keep", { 76, 88 }, { 200, 0, -282 }, 4)
+pack("Shade", "keep", { 88, 100 }, { 222, 0, -308 }, 4)
+table.insert(WorldData.spawns, { kind = "BogMother", area = "bog", level = 25, position = { 222, 0, 50 } })
+table.insert(WorldData.spawns, { kind = "FrostTitan", area = "summit", level = 50, position = { 225, 0, -175 } })
+table.insert(WorldData.spawns, { kind = "ShadowKing", area = "throne", level = 100, position = { 118, 0, -308 } })
+
 -- Chest spots (see ChestData). Each player sees and takes their own chest; it comes back after
 -- the chest type's respawn time. Rarer chests sit deeper in the valley.
 WorldData.chests = {
@@ -56,6 +95,10 @@ WorldData.chests = {
 	chest_hollow_1 = { type = "gold", position = { 62, 0, -190 } },
 	chest_hollow_2 = { type = "silver", position = { 34, 0, -208 } },
 	chest_ruins = { type = "mystic", position = { 24, 0, -302 } },
+	chest_marsh = { type = "gold", position = { 150, 0, 52 } },
+	chest_peaks = { type = "gold", position = { 128, 0, -150 } },
+	chest_citadel = { type = "mystic", position = { 178, 0, -222 } },
+	chest_keep = { type = "mystic", position = { 238, 0, -270 } },
 }
 
 WorldData.flowers = {
@@ -81,7 +124,7 @@ WorldData.vines = {
 }
 
 -- Playable bounds (x, z) used for invisible walls.
-WorldData.bounds = { minX = -80, maxX = 80, minZ = -330, maxZ = 70 }
+WorldData.bounds = { minX = -80, maxX = 250, minZ = -330, maxZ = 70 }
 
 function WorldData.vector(p: { number }): Vector3
 	return Vector3.new(p[1], p[2], p[3])

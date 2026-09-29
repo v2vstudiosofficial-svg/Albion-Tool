@@ -8,6 +8,10 @@ return {
 		"first_upgrade",
 		"ruin_vines",
 		"warden",
+		-- Chapter 2: the Legendary Shadows of the east lands.
+		"bog_mother",
+		"frost_titan",
+		"shadow_king",
 	},
 	quests = {
 		first_purify = {
@@ -59,6 +63,33 @@ return {
 			minLevel = 5,
 			objective = { kind = "purify", enemyType = "Warden", count = 1, area = "arena" },
 			reward = { xp = 300, coins = 120, flag = "festival" },
+		},
+		bog_mother = {
+			id = "bog_mother",
+			titleKey = "quest_bog_mother_title",
+			offerKey = "elder_offer_bog_mother",
+			objectiveKey = "quest_bog_mother_objective",
+			minLevel = 22,
+			objective = { kind = "purify", enemyType = "BogMother", count = 1, area = "bog" },
+			reward = { xp = 3000, coins = 500 },
+		},
+		frost_titan = {
+			id = "frost_titan",
+			titleKey = "quest_frost_titan_title",
+			offerKey = "elder_offer_frost_titan",
+			objectiveKey = "quest_frost_titan_objective",
+			minLevel = 46,
+			objective = { kind = "purify", enemyType = "FrostTitan", count = 1, area = "summit" },
+			reward = { xp = 9000, coins = 2000 },
+		},
+		shadow_king = {
+			id = "shadow_king",
+			titleKey = "quest_shadow_king_title",
+			offerKey = "elder_offer_shadow_king",
+			objectiveKey = "quest_shadow_king_objective",
+			minLevel = 92,
+			objective = { kind = "purify", enemyType = "ShadowKing", count = 1, area = "throne" },
+			reward = { xp = 30000, coins = 8000 },
 		},
 	},
 }

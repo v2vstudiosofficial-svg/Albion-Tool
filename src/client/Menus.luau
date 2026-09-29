@@ -77,8 +77,8 @@ function Menus.start()
 	end
 
 	-- Top-right buttons ---------------------------------------------------------------------
-	-- A 2x2 grid keeps the buttons clear of the quest panel in the top center.
-	local topRight = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -12, 0, 12), Vector2.new(208, 104))
+	-- A two-column grid keeps the buttons clear of the quest panel in the top center.
+	local topRight = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -12, 0, 12), Vector2.new(208, 160))
 	UiKit.create("UIGridLayout", {
 		CellSize = UDim2.fromOffset(100, 48),
 		CellPadding = UDim2.fromOffset(8, 8),
@@ -480,6 +480,65 @@ function Menus.start()
 		end
 	end)
 
+	-- Legendary Shadows --------------------------------------------------------------------
+	-- Purified legends show in color; the others stay dark silhouettes.
+	local legends, legendsBody = modal("legends_title", 330)
+	UiKit.label({ Size = UDim2.new(1, 0, 0, 26), Text = Strings.get("legends_hint"), TextSize = 17, TextColor3 = colors.muted }, legendsBody)
+	local legendRow = UiKit.create("Frame", {
+		Position = UDim2.fromOffset(0, 34),
+		Size = UDim2.new(1, 0, 0, 210),
+		BackgroundTransparency = 1,
+	}, legendsBody)
+	UiKit.create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		Padding = UDim.new(0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, legendRow)
+	local legendLevels = {}
+	for _, spawn in WorldData.spawns do
+		if spawn.level and Balance.enemies[spawn.kind].isBoss then
+			legendLevels[spawn.kind] = spawn.level
+		end
+	end
+	local legendCards = {}
+	for order, kind in Balance.legends do
+		local stats = Balance.enemies[kind]
+		local card = UiKit.create("Frame", {
+			LayoutOrder = order,
+			Size = UDim2.fromOffset(94, 200),
+			BackgroundColor3 = colors.panelLight,
+			BorderSizePixel = 0,
+		}, legendRow)
+		UiKit.corner(card, 12)
+		local face = UiKit.create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 12),
+			Size = UDim2.fromOffset(64, 64),
+			BorderSizePixel = 0,
+		}, card)
+		UiKit.corner(face, 32)
+		local name = UiKit.label({ Position = UDim2.fromOffset(4, 84), Size = UDim2.new(1, -8, 0, 40), TextSize = 15, TextWrapped = true }, card)
+		UiKit.label({
+			Position = UDim2.fromOffset(0, 126),
+			Size = UDim2.new(1, 0, 0, 22),
+			Text = Strings.get("legend_level", legendLevels[kind] or 1),
+			TextSize = 15,
+			TextColor3 = colors.xp,
+		}, card)
+		local done = UiKit.label({ Position = UDim2.fromOffset(0, 160), Size = UDim2.new(1, 0, 0, 26), TextSize = 16, TextColor3 = colors.good }, card)
+		legendCards[kind] = { face = face, name = name, done = done, stats = stats }
+	end
+	local function refreshLegends()
+		local purified = Attrs.set("Legends")
+		for kind, view in legendCards do
+			local known = purified[kind] == true
+			view.face.BackgroundColor3 = if known then UiKit.rgb(view.stats.color) else Color3.fromRGB(25, 20, 35)
+			view.name.Text = if known then Strings.get(view.stats.nameKey) else Strings.get("legend_unknown")
+			view.done.Text = if known then Strings.get("legend_done") else ""
+		end
+	end
+
 	-- Forge (the Smith's shop) ------------------------------------------------------------
 	-- One row per upgrade: level, what it does and the price of the next level.
 	local shop, shopBody = modal("shop_title", 420)
@@ -612,14 +671,18 @@ function Menus.start()
 		Visible = false,
 	}, chestsButton)
 	UiKit.corner(chestBadge, 12)
-	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_bag"), LayoutOrder = 2 }, topRight, function()
+	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_legends"), LayoutOrder = 2, BackgroundColor3 = colors.boss }, topRight, function()
+		refreshLegends()
+		showModal(legends)
+	end)
+	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_bag"), LayoutOrder = 3 }, topRight, function()
 		refreshBag()
 		showModal(bag)
 	end)
 	UiKit.button({
 		Size = UDim2.fromOffset(100, 48),
 		Text = Strings.get("menu_settings"),
-		LayoutOrder = 3,
+		LayoutOrder = 4,
 		BackgroundColor3 = colors.panelLight,
 		TextColor3 = colors.text,
 	}, topRight, function()
@@ -652,10 +715,12 @@ function Menus.start()
 			end
 		end
 	end)
-	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests" } do
+	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Chests", "Legends" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			refreshBadge()
-			if openModal == chestsModal then
+			if openModal == legends then
+				refreshLegends()
+			elseif openModal == chestsModal then
 				refreshChests()
 			elseif openModal == weapons then
 				refreshWeapons()

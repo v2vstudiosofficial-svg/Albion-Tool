@@ -301,6 +301,12 @@ if returning then
 end
 
 local enemies = {}
+local wardenIndex = 0
+for index, spawn in WorldData.spawns do
+	if spawn.kind == "Warden" then
+		wardenIndex = index
+	end
+end
 test("client boots with every module", function()
 	for index, spawn in WorldData.spawns do
 		if index <= 4 or spawn.kind == "Warden" then
@@ -371,7 +377,7 @@ test("server events render: rewards, notices, dialog, effects", function()
 	fx:Fire("telegraph", at, 7, 1.4)
 	fx:Fire("slam", at, 7)
 	fx:Fire("windup", gloom, 0.9)
-	fx:Fire("bossPhase", enemies[#WorldData.spawns])
+	fx:Fire("bossPhase", enemies[wardenIndex])
 	fx:Fire("levelUp", friend, 2)
 	fx:Fire("upgrade", friend, 1)
 	fx:Fire("purify", at, "Gloomling", Vector3.new(0, 0, 1))
@@ -448,7 +454,7 @@ test("a cancelled boss attack clears its warning circles", function()
 	advance(0.1)
 	local before = #workspace.ClientFx:GetChildren()
 	assert(before >= 4, "telegraph discs drawn")
-	remotes.Fx.OnClientEvent:Fire("attackCancel", enemies[#WorldData.spawns])
+	remotes.Fx.OnClientEvent:Fire("attackCancel", enemies[wardenIndex])
 	advance(0.1)
 	eq(#workspace.ClientFx:GetChildren(), before - 4, "warnings removed")
 	advance(2)
@@ -698,6 +704,34 @@ test("skill cards: open on a new offer, pick sends the card, later hides, button
 	assert(not shownText(Strings.get("skills_title")), "closed when nothing is left")
 end)
 
+test("legends: silhouettes until purified; the waypoint picks a zone for the player's level", function()
+	setAttributes({ Legends = "Warden" })
+	click(findButton(Strings.get("menu_legends")))
+	assert(shownText(Strings.get("legends_hint")), "legends open")
+	assert(shownText(Strings.get(Balance.enemies.Warden.nameKey)), "purified legend named")
+	assert(shownText(Strings.get("legend_done")), "purified mark")
+	assert(not shownText(Strings.get(Balance.enemies.ShadowKing.nameKey)), "unknown legends stay hidden")
+	assert(shownText(Strings.get("legend_unknown")), "silhouette")
+	setAttributes({ Legends = "BogMother,Warden" })
+	assert(shownText(Strings.get(Balance.enemies.BogMother.nameKey)), "updates live")
+	click(findButton(Strings.get("menu_legends")))
+
+	-- A level-30 player who is waiting for the next legend quest is guided to the Frost Peaks.
+	setAttributes({ Level = 30, QuestId = "frost_titan", QuestState = "level", Crystals = 0 })
+	advance(0.5)
+	local anchorPart = nil
+	for _, child in playerGui:GetChildren() do
+		if child:IsA("BillboardGui") and child.Enabled and child.Adornee and child.Adornee.Name == "WaypointAnchor" then
+			anchorPart = child.Adornee
+		end
+	end
+	assert(anchorPart, "waypoint shown")
+	local at = H.read(anchorPart, "Position")
+	local peaks = vec(WorldData.areas.peaks.center)
+	assert(Vector3.new(at.X - peaks.X, 0, at.Z - peaks.Z).Magnitude < 1, "guided to the Frost Peaks")
+	setAttributes({ Level = 3, QuestId = "first_purify", QuestState = "available" })
+end)
+
 test("bag: equip an owned charm, locked ones do nothing", function()
 	setAttributes({ Charms = "swift", Charm = "" })
 	click(findButton(Strings.get("menu_bag")))
@@ -754,17 +788,18 @@ test("forge opens from the server with every upgrade, buys, and closes when walk
 end)
 
 test("boss bar and intro banner near an engaged boss", function()
-	local boss = enemies[#WorldData.spawns]
+	local boss = enemies[wardenIndex]
 	H.setAttribute(boss, "Engaged", true)
 	teleport(vec(WorldData.areas.arena.center, 3) + Vector3.new(0, 0, 10))
 	advance(0.6)
-	assert(shownText(Strings.get("banner_boss")), "boss banner")
-	assert(shownText(Strings.get(Balance.enemies.Warden.nameKey)), "boss bar name")
+	local wardenName = Strings.get(Balance.enemies.Warden.nameKey)
+	assert(shownText(Strings.get("banner_boss", wardenName)), "boss banner")
+	assert(shownText(Strings.get("enemy_label", 1, wardenName)), "boss bar name with level")
 	boss:SetAttribute("Hp", 450)
 	advance(0.6)
 	remotes.Fx.OnClientEvent:Fire("purify", H.read(boss.Body, "Position"), "Warden", Vector3.new(0, 0, 1))
 	advance(0.2)
-	assert(shownText(Strings.get("banner_boss_down")), "boss defeated banner")
+	assert(shownText(Strings.get("banner_boss_down", wardenName)), "boss defeated banner")
 end)
 
 test("level up banner and respawn reassurance", function()

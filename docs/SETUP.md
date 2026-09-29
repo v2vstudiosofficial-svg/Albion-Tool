@@ -55,6 +55,13 @@ Oyun içi tüm metinler İngilizce.
    Workspace'i seç, Properties → Attributes → "+" ile `LvDebugLevel` (number) ekle ve 25/60/100 yaz;
    tüm oyuncular o seviyeye geçer. Aynı yolla `LvDebugAllWeapons` (boolean) işaretlenirse 8 silahın hepsi
    verilir (ikisi de yalnızca Studio'da çalışır, Studio kayıt deposuna yazılır, canlı veriye dokunmaz).
+10b. **Doğu toprakları**: köyün doğusundaki, orman açıklığının doğusundaki ve harabelerin doğusundaki kaya
+   sırtı geçitlerinden Misty Marsh (Sv8–25), Frost Peaks (Sv26–50), Shadow Citadel (Sv51–100) bölgelerine geç;
+   zemin/dekor her bölgede farklı; yaratık adları ve "Lv.N" seviyeleri bölgeye uygun. Hikâye bitince Elder
+   Nora 2. bölümü verir (Sv22/46/92'de); elmas işaret oyuncunun seviyesine uygun bölgeyi gösterir.
+10c. Efsane boss'lar (Bog Mother, Frost Titan, Shadow King): yaklaşınca "X woke up!" afişi ve seviyeli boss
+   çubuğu; ilk zaferde Mistik sandık (yuva doluysa sikke). Sağ üstte **Legends**: yenilenler renkli ve adıyla,
+   diğerleri "???" siluet. Yüksek seviyeyi hızlı denemek için `LvDebugLevel` + `LvDebugAllWeapons`.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

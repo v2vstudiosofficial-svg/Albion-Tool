@@ -33,14 +33,19 @@ local function nearestUnfound(ids: { string }, lookup: (string) -> { number }?, 
 	return best
 end
 
+-- The creature zone that best fits the player's level (closest level range, then distance).
 local function nearestCreatureZone(from: Vector3): (Vector3?, number)
-	local best, bestDistance, bestRadius = nil, math.huge, 0
-	for _, name in { "glade", "grove", "hollow" } do
-		local area = WorldData.areas[name]
-		local center = WorldData.vector(area.center)
-		local distance = (center - from).Magnitude
-		if distance < bestDistance then
-			best, bestDistance, bestRadius = center, distance, area.radius
+	local level = Attrs.get("Level", 1)
+	local best, bestScore, bestRadius = nil, math.huge, 0
+	for _, area in WorldData.areas do
+		local levels = area.levels
+		if levels then
+			local gap = if level < levels[1] then (levels[1] - level) * 2 elseif level > levels[2] then level - levels[2] else 0
+			local center = WorldData.vector(area.center)
+			local score = gap * 1000 + (center - from).Magnitude
+			if score < bestScore then
+				best, bestScore, bestRadius = center, score, area.radius
+			end
 		end
 	end
 	return best, bestRadius

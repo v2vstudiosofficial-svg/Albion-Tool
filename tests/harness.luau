@@ -417,6 +417,10 @@ local Random = {
 				local low, high = min or 0, max or 1
 				return low + (high - low) * state / 2147483648
 			end,
+			NextInteger = function(_, min: number, max: number)
+				state = (state * 1103515245 + 12345) % 2147483648
+				return min + math.floor((max - min + 1) * state / 2147483648)
+			end,
 		}
 	end,
 }

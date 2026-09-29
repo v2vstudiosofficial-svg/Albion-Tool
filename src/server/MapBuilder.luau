@@ -32,7 +32,20 @@ local COLOR = {
 	star = Color3.fromRGB(255, 225, 120),
 	fire = Color3.fromRGB(255, 140, 60),
 	skin = Color3.fromRGB(240, 200, 160),
+	marsh = Color3.fromRGB(95, 115, 72),
+	mud = Color3.fromRGB(70, 80, 55),
+	reed = Color3.fromRGB(120, 160, 80),
+	snow = Color3.fromRGB(236, 242, 250),
+	ice = Color3.fromRGB(170, 215, 245),
+	pine = Color3.fromRGB(60, 110, 85),
+	citadel = Color3.fromRGB(82, 72, 98),
+	shadowStone = Color3.fromRGB(58, 50, 72),
+	torch = Color3.fromRGB(230, 130, 255),
+	ridge = Color3.fromRGB(120, 112, 105),
 }
+
+-- The old valley's east edge; the east lands lie beyond the rock ridge.
+local VALLEY_EDGE = 80
 
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- cylinders are X-axis aligned
 
@@ -561,8 +574,7 @@ end
 local function buildRuins(map: Instance)
 	local ruins = ensure(map, "Ruins", "Folder")
 	local gate = WorldData.gate
-	local b = WorldData.bounds
-	local sideLength = (b.maxX - gate.halfWidth) - 1.5
+	local sideLength = (VALLEY_EDGE - gate.halfWidth) - 1.5
 	for index, side in { -1, 1 } do
 		local centerX = side * (gate.halfWidth + 1.5 + sideLength / 2)
 		part(ruins, "Wall" .. index, {
@@ -637,6 +649,177 @@ local function buildRuins(map: Instance)
 	end
 end
 
+-- East lands -------------------------------------------------------------------------------------
+-- Misty Marsh (north), Frost Peaks (middle) and the Shadow Citadel (south), each with its
+-- Legendary Shadow's arena, behind a rock ridge with three openings.
+
+local EAST_PATH_X = 165
+
+local function eastAvoid(): { { number } }
+	local list = {}
+	for name, area in WorldData.areas do
+		if area.center[1] > VALLEY_EDGE then
+			local keepClear = if area.levels then area.radius * 0.45 else area.radius + 4
+			table.insert(list, { area.center[1], area.center[3], keepClear })
+		end
+		local _ = name
+	end
+	for _, spot in WorldData.chests do
+		table.insert(list, { spot.position[1], spot.position[3], 5 })
+	end
+	for z = 70, -330, -10 do
+		table.insert(list, { EAST_PATH_X, z, 7 })
+	end
+	for _, opening in WorldData.ridge.openings do
+		local z = (opening[1] + opening[2]) / 2
+		for x = VALLEY_EDGE, EAST_PATH_X, 10 do
+			table.insert(list, { x, z, 7 })
+		end
+	end
+	return list
+end
+
+local function buildEastGround(east: Instance)
+	local width = WorldData.bounds.maxX - VALLEY_EDGE
+	local midX = VALLEY_EDGE + width / 2
+	for _, spec in {
+		{ "MarshGround", 70, -60, COLOR.marsh, Enum.Material.Mud },
+		{ "PeaksGround", -60, -200, COLOR.snow, Enum.Material.Snow },
+		{ "CitadelGround", -200, -330, COLOR.citadel, Enum.Material.Slate },
+	} do
+		part(east, spec[1], {
+			Size = Vector3.new(width, 2, spec[2] - spec[3]),
+			Position = Vector3.new(midX, -1, (spec[2] + spec[3]) / 2),
+			Color = spec[4],
+			Material = spec[5],
+		})
+	end
+	-- Rock ridge along the valley's east edge, open where the paths cross.
+	local ridge = WorldData.ridge
+	local index = 0
+	for z = 60, -320, -20 do
+		local open = false
+		for _, opening in ridge.openings do
+			if z + 10 > opening[2] and z - 10 < opening[1] then
+				open = true
+			end
+		end
+		if not open then
+			index += 1
+			part(east, "Ridge_" .. index, {
+				Size = Vector3.new(7, 14 + (index % 3) * 3, 20.5),
+				Position = Vector3.new(ridge.x, 7, z),
+				Color = COLOR.ridge,
+				Material = Enum.Material.Slate,
+			})
+		end
+	end
+	-- Paths: one north-south road and a branch through each opening.
+	local paths = ensure(east, "Paths", "Folder")
+	local count = 0
+	for z = 64, -324, -10 do
+		count += 1
+		local color = if z > -60 then COLOR.path elseif z > -200 then COLOR.ice else COLOR.stoneDark
+		part(paths, "Road_" .. count, {
+			Size = Vector3.new(8, 0.2, 10.5),
+			Position = Vector3.new(EAST_PATH_X, 0.1, z),
+			Color = color,
+			Material = Enum.Material.Sand,
+		})
+	end
+	for branch, opening in ridge.openings do
+		local z = (opening[1] + opening[2]) / 2
+		for x = VALLEY_EDGE - 4, EAST_PATH_X - 6, 10 do
+			count += 1
+			part(paths, "Branch" .. branch .. "_" .. count, {
+				Size = Vector3.new(10.5, 0.2, 8),
+				Position = Vector3.new(x + 5, 0.1, z),
+				Color = COLOR.path,
+				Material = Enum.Material.Sand,
+			})
+		end
+	end
+end
+
+local function buildArena(parent: Instance, name: string, areaId: string, floor: Color3, pillar: Color3, material: Enum.Material)
+	local area = WorldData.areas[areaId]
+	local center = v(area.center)
+	disc(parent, name .. "Floor", area.radius * 2, center, floor, material)
+	for index = 1, 6 do
+		local angle = index / 6 * math.pi * 2
+		cylinder(parent, name .. "Pillar" .. index, if index % 2 == 0 then 6 else 10, 2.6, center + Vector3.new(math.cos(angle) * (area.radius + 3), 0, math.sin(angle) * (area.radius + 3)), pillar, {
+			Material = material,
+		})
+	end
+end
+
+local function buildEastProps(east: Instance, avoid: { { number } })
+	local props = ensure(east, "Props", "Folder")
+	local minX, maxX = VALLEY_EDGE + 8, WorldData.bounds.maxX - 4
+	-- Misty Marsh: reeds, mud pools, bare trees.
+	scatter(21, 14, { minX, maxX, -56, 66 }, 0, avoid, function(index, x, z, rng)
+		for blade = 1, 3 do
+			cylinder(props, "Reed_" .. index .. "_" .. blade, rng:NextNumber(2.5, 4.5), 0.35, Vector3.new(x + blade * 0.6 - 1.2, 0, z + rng:NextNumber(-0.6, 0.6)), COLOR.reed, {
+				CanCollide = false,
+			})
+		end
+	end)
+	scatter(22, 8, { minX, maxX, -56, 66 }, 0, avoid, function(index, x, z, rng)
+		disc(props, "MudPool_" .. index, rng:NextNumber(6, 11), Vector3.new(x, 0, z), COLOR.mud, Enum.Material.Mud)
+	end)
+	scatter(23, 6, { minX, maxX, -56, 66 }, 0, avoid, function(index, x, z, rng)
+		local height = rng:NextNumber(6, 9)
+		cylinder(props, "BareTree_" .. index .. "_Trunk", height, 1.6, Vector3.new(x, 0, z), COLOR.trunk)
+		ballPart(props, "BareTree_" .. index .. "_Top", rng:NextNumber(4, 6), Vector3.new(x, height, z), COLOR.mud)
+	end)
+	-- Frost Peaks: ice spikes, snow boulders, pines.
+	scatter(31, 12, { minX, maxX, -196, -64 }, 0, avoid, function(index, x, z, rng)
+		cylinder(props, "IceSpike_" .. index, rng:NextNumber(4, 9), rng:NextNumber(1, 2), Vector3.new(x, 0, z), COLOR.ice, {
+			Material = Enum.Material.Ice,
+		})
+	end)
+	scatter(32, 10, { minX, maxX, -196, -64 }, 0, avoid, function(index, x, z, rng)
+		local size = rng:NextNumber(2.5, 5)
+		ballPart(props, "SnowRock_" .. index, size, Vector3.new(x, size * 0.3, z), COLOR.snow, { Material = Enum.Material.Snow })
+	end)
+	scatter(33, 6, { minX, maxX, -196, -64 }, 0, avoid, function(index, x, z, rng)
+		local height = rng:NextNumber(6, 9)
+		cylinder(props, "Pine_" .. index .. "_Trunk", height, 1.4, Vector3.new(x, 0, z), COLOR.trunk)
+		ballPart(props, "Pine_" .. index .. "_Low", 6, Vector3.new(x, height * 0.6, z), COLOR.pine)
+		ballPart(props, "Pine_" .. index .. "_High", 4, Vector3.new(x, height + 1, z), COLOR.pine)
+	end)
+	-- Shadow Citadel: dark pillars, wall pieces, glowing torches (neon, no extra lights).
+	scatter(41, 10, { minX, maxX, -326, -204 }, 0, avoid, function(index, x, z, rng)
+		cylinder(props, "DarkPillar_" .. index, rng:NextNumber(6, 12), 2.4, Vector3.new(x, 0, z), COLOR.shadowStone, {
+			Material = Enum.Material.Slate,
+		})
+	end)
+	scatter(42, 6, { minX, maxX, -326, -204 }, 0, avoid, function(index, x, z, rng)
+		part(props, "CitadelWall_" .. index, {
+			Size = Vector3.new(rng:NextNumber(8, 14), rng:NextNumber(5, 9), 2.5),
+			CFrame = CFrame.new(x, 3, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0),
+			Color = COLOR.citadel,
+			Material = Enum.Material.Slate,
+		})
+	end)
+	scatter(43, 6, { minX, maxX, -326, -204 }, 0, avoid, function(index, x, z)
+		cylinder(props, "Torch_" .. index .. "_Post", 4, 0.5, Vector3.new(x, 0, z), COLOR.shadowStone, { CanCollide = false })
+		ballPart(props, "Torch_" .. index .. "_Flame", 1.1, Vector3.new(x, 4.4, z), COLOR.torch, {
+			Material = Enum.Material.Neon,
+			CanCollide = false,
+		})
+	end)
+end
+
+local function buildEast(map: Instance)
+	local east = ensure(map, "East", "Folder")
+	buildEastGround(east)
+	buildArena(east, "Bog", "bog", COLOR.mud, COLOR.reed, Enum.Material.Mud)
+	buildArena(east, "Summit", "summit", COLOR.ice, COLOR.snow, Enum.Material.Ice)
+	buildArena(east, "Throne", "throne", COLOR.shadowStone, COLOR.torch, Enum.Material.Slate)
+	buildEastProps(east, eastAvoid())
+end
+
 local MapBuilder = {}
 
 function MapBuilder.build(): Folder
@@ -645,6 +828,7 @@ function MapBuilder.build(): Folder
 	buildVillage(map)
 	buildForest(map)
 	buildRuins(map)
+	buildEast(map)
 	return map :: Folder
 end
 

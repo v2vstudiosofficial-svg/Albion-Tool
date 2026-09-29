@@ -1,4 +1,5 @@
--- Shadow Warden boss: two readable, telegraphed attacks that alternate with vulnerable rests.
+-- Legendary boss behavior (Shadow Warden and the east-land legends): two readable, telegraphed
+-- attacks that alternate with vulnerable rests. Damage follows the boss's level multiplier.
 --  * Slam: warning circles appear under players, then burst after a delay (step out to dodge).
 --  * Orb ring: a wind-up glow, then a ring of slow orbs with a visible gap to walk through.
 -- Phase 2 (below phase2At health) shortens warnings/rests and adds circles and a second ring.
@@ -40,22 +41,22 @@ end
 
 local function reset(enemy, ctx)
 	local stats = enemy.stats
-	enemy.logic.maxHp = stats.maxHp
-	enemy.logic.hp = stats.maxHp
+	enemy.logic.maxHp = enemy.baseMaxHp
+	enemy.logic.hp = enemy.baseMaxHp
 	table.clear(enemy.logic.hitters)
 	table.clear(enemy.memory)
 	enemy.state = "idle"
 	enemy.body.Color = Color3.fromRGB(stats.color[1], stats.color[2], stats.color[3])
 	enemy.model:SetAttribute("Engaged", false)
 	ctx.publishHp(enemy)
-	ctx.noticeNear(enemy.areaCenter, stats.leashRadius + 40, "notice_boss_reset")
+	ctx.noticeNear(enemy.areaCenter, stats.leashRadius + 40, "notice_boss_reset", stats.nameKey)
 end
 
 local function engage(enemy, ctx, playerCount: number, now: number)
 	local stats = enemy.stats
 	local scale = 1 + stats.extraHpPerPlayer * math.max(playerCount - 1, 0)
 	local ratio = enemy.logic.hp / enemy.logic.maxHp
-	enemy.logic.maxHp = math.floor(stats.maxHp * scale)
+	enemy.logic.maxHp = math.floor(enemy.baseMaxHp * scale)
 	enemy.logic.hp = math.max(1, math.ceil(enemy.logic.maxHp * ratio))
 	enemy.memory.engaged = true
 	enemy.memory.phase = 1
@@ -98,7 +99,7 @@ local function resolveSlam(enemy, ctx)
 		ctx.fx("slam", point, stats.slamRadius)
 		for _, target in ctx.targets do
 			if flat(target.root.Position - point).Magnitude <= stats.slamRadius then
-				ctx.hurt(target, stats.slamDamage)
+				ctx.hurt(target, stats.slamDamage * enemy.damageMultiplier)
 			end
 		end
 	end
@@ -118,7 +119,7 @@ local function fireRing(enemy, ctx, offset: number)
 				origin + direction * stats.size * 0.5,
 				direction * stats.orbSpeed,
 				stats.orbRadius,
-				stats.orbDamage,
+				stats.orbDamage * enemy.damageMultiplier,
 				stats.orbLifetime,
 				"shadow"
 			)

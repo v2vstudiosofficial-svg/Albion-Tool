@@ -89,16 +89,17 @@ end
 
 function builders.Warden(model: Model, body: BasePart, stats)
 	local s = stats.size
-	eyes(model, body, 1.6, 1.6, 1, s * 0.44, Color3.fromRGB(220, 190, 255))
+	local accent = if stats.accent then rgb(stats.accent) else Color3.fromRGB(150, 90, 220)
+	eyes(model, body, 1.6, 1.6, 1, s * 0.44, accent:Lerp(WHITE, 0.5))
 	for index = 1, 5 do
 		local angle = (index - 3) * 0.45
-		local flame = ball("Flame" .. index, 1.8, Color3.fromRGB(150, 90, 220), Enum.Material.Neon)
+		local flame = ball("Flame" .. index, 1.8, accent, Enum.Material.Neon)
 		attach(model, body, flame, CFrame.new(math.sin(angle) * s * 0.3, s * 0.5, math.cos(angle) * s * 0.1))
 	end
 	for _, side in { -1, 1 } do
 		local hand = ball("Hand", 3, rgb(stats.color):Lerp(WHITE, 0.1))
 		attach(model, body, hand, CFrame.new(side * (s * 0.68), -1.2, -1))
-		local glow = ball("HandGlow", 1.2, Color3.fromRGB(190, 140, 255), Enum.Material.Neon)
+		local glow = ball("HandGlow", 1.2, accent:Lerp(WHITE, 0.3), Enum.Material.Neon)
 		attach(model, body, glow, CFrame.new(side * (s * 0.68), -1.2, -2.4))
 	end
 end
@@ -113,7 +114,8 @@ function EnemyModels.build(kind: string, stats, cframe: CFrame): (Model, BasePar
 	body.CFrame = cframe
 	body.Parent = model
 	model.PrimaryPart = body
-	local builder = builders[kind]
+	-- Variants (east-land creatures, legends) share a base creature's shape.
+	local builder = builders[stats.model or kind]
 	if builder then
 		builder(model, body, stats)
 	end

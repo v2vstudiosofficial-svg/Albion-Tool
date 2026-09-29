@@ -21,6 +21,7 @@ local TARGET = {
 	surviveSeconds = { 8, 90 }, -- three same-level creatures hitting at once
 	minutesPerLevel = { 0.3, 13 }, -- the last levels are a long-term goal
 	totalHours = { 6, 30 },
+	bossSeconds = { 20, 150 }, -- a solo legend fight at the boss's own level (single target)
 }
 
 -- Model assumptions.
@@ -128,6 +129,15 @@ local function averageChestCoins(): number
 	return total / #ChestData.order
 end
 
+local WorldData = require("../src/shared/WorldData")
+local bossLevels = {}
+for _, spawn in WorldData.spawns do
+	if spawn.level and Balance.enemies[spawn.kind].isBoss then
+		-- The last level is 100; fights at 100 are modelled with level-99 power.
+		bossLevels[spawn.kind] = math.min(spawn.level, Progression.MAX_LEVEL - 1)
+	end
+end
+
 local state = { power = 0, upgrades = {}, coins = 0, slotLevel = 0, minutes = 0 }
 local rows = {}
 local failures = {}
@@ -183,6 +193,17 @@ for level = 1, Progression.MAX_LEVEL - 1 do
 	state.coins += crystals + chests * averageChestCoins()
 	state.slotLevel = math.min(WeaponData.maxSlotLevel, state.slotLevel + chests * 2.5 / (1 + Progression.companionSlots(level)))
 	shop(state)
+
+	-- Legendary Shadows of this level: a solo fight against one big target (no pack bonus).
+	for _, kind in Balance.legends do
+		local boss = Balance.enemies[kind]
+		if boss.scales and bossLevels[kind] == level then
+			local single = dps / PACK_TARGETS[WeaponData.weapons[main].style]
+			local seconds = Progression.enemyStats(boss, level).maxHp / single
+			check(level, kind .. " fight seconds", seconds, TARGET.bossSeconds)
+			table.insert(rows, string.format("     %s fight: %.0f s", kind, seconds))
+		end
+	end
 
 	check(level, "kill seconds", killSeconds, TARGET.killSeconds)
 	check(level, "survive seconds", surviveSeconds, TARGET.surviveSeconds)

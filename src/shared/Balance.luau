@@ -1,5 +1,5 @@
 -- All tuning values live here. Colors are {r, g, b} so the table stays plain data.
-return {
+local Balance = {
 	levels = {
 		-- XP needed to go from level L to L + 1 is xpBase + xpScale * L ^ xpPower.
 		maxLevel = 100,
@@ -207,3 +207,120 @@ return {
 	discoverRadius = 12,
 	vineHitTolerance = 3,
 }
+
+-- East-land creatures and legendary bosses reuse a base creature's behavior and model (`model`)
+-- with their own colors and numbers.
+local function variant(baseKind: string, overrides: { [string]: any })
+	local stats = table.clone(Balance.enemies[baseKind])
+	stats.model = baseKind
+	for key, value in overrides do
+		stats[key] = value
+	end
+	return stats
+end
+
+local enemies = Balance.enemies
+enemies.Mudling = variant("Gloomling", {
+	nameKey = "enemy_mudling_name",
+	maxHp = 70,
+	size = 3.8,
+	contactDamage = 9,
+	reward = { xp = 10, coins = 6 },
+	color = { 120, 100, 65 },
+	friendColor = { 190, 230, 150 },
+})
+enemies.Bubbler = variant("Sporeling", {
+	nameKey = "enemy_bubbler_name",
+	reward = { xp = 14, coins = 8 },
+	color = { 90, 175, 110 },
+	friendColor = { 200, 255, 210 },
+})
+enemies.Snowpuff = variant("Gloomling", {
+	nameKey = "enemy_snowpuff_name",
+	maxHp = 75,
+	speed = 10,
+	reward = { xp = 11, coins = 6 },
+	color = { 215, 235, 255 },
+	friendColor = { 255, 255, 255 },
+})
+enemies.Frostling = variant("Rockling", {
+	nameKey = "enemy_frostling_name",
+	reward = { xp = 18, coins = 10 },
+	color = { 140, 195, 240 },
+	friendColor = { 220, 245, 255 },
+})
+enemies.Shade = variant("Gloomling", {
+	nameKey = "enemy_shade_name",
+	maxHp = 80,
+	speed = 11,
+	reward = { xp = 12, coins = 7 },
+	color = { 75, 45, 115 },
+	friendColor = { 230, 200, 255 },
+})
+enemies.Hexcap = variant("Sporeling", {
+	nameKey = "enemy_hexcap_name",
+	reward = { xp = 15, coins = 8 },
+	color = { 125, 60, 165 },
+	friendColor = { 255, 210, 250 },
+})
+enemies.Obsidian = variant("Rockling", {
+	nameKey = "enemy_obsidian_name",
+	maxHp = 150,
+	reward = { xp = 20, coins = 11 },
+	color = { 55, 50, 65 },
+	friendColor = { 210, 200, 230 },
+})
+
+-- Legendary bosses: level-scaled (`scales`), each guarding its own arena. maxHp is the level-1
+-- equivalent; the fight lands around a minute for a player of the boss's level.
+enemies.BogMother = variant("Warden", {
+	nameKey = "enemy_bogmother_name",
+	scales = true,
+	maxHp = 5000,
+	size = 10,
+	leashRadius = 32,
+	aggroRadius = 30,
+	respawnDelay = 60,
+	reward = { xp = 4000, coins = 600 },
+	color = { 70, 110, 60 },
+	accent = { 170, 230, 120 },
+	friendColor = { 210, 255, 190 },
+})
+enemies.FrostTitan = variant("Warden", {
+	nameKey = "enemy_frosttitan_name",
+	scales = true,
+	maxHp = 3000,
+	size = 11,
+	hoverHeight = 6,
+	leashRadius = 32,
+	aggroRadius = 30,
+	orbCount = 14,
+	respawnDelay = 60,
+	reward = { xp = 12000, coins = 2500 },
+	color = { 150, 200, 250 },
+	accent = { 230, 250, 255 },
+	friendColor = { 255, 255, 255 },
+})
+enemies.ShadowKing = variant("Warden", {
+	nameKey = "enemy_shadowking_name",
+	scales = true,
+	maxHp = 900,
+	size = 12,
+	hoverHeight = 6.5,
+	leashRadius = 32,
+	aggroRadius = 30,
+	orbCount = 16,
+	slamCountPhase2 = 6,
+	respawnDelay = 60,
+	reward = { xp = 40000, coins = 10000 },
+	color = { 40, 20, 70 },
+	accent = { 255, 120, 220 },
+	friendColor = { 255, 230, 180 },
+})
+
+-- The Legendary Shadows collection, in the order they are met. The first win against each
+-- gives a Mystic chest (or legendCoins when every chest slot is full).
+Balance.legends = { "Warden", "BogMother", "FrostTitan", "ShadowKing" }
+Balance.legendCoins = 300
+
+return Balance

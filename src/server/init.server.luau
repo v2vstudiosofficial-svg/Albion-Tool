@@ -14,7 +14,13 @@ local EnemyService = require(script.EnemyService)
 local CombatService = require(script.CombatService)
 local ChestService = require(script.ChestService)
 local PouchService = require(script.PouchService)
+local Profile = require(script.Profile)
+local ChestLogic = require(script.ChestLogic)
+local Balance = require(Shared.Balance)
 local SkillService = require(script.SkillService)
+
+local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
+local notice = ReplicatedStorage.Remotes.Notice :: RemoteEvent
 
 local map = MapBuilder.build()
 CharacterService.start()
@@ -37,11 +43,19 @@ EnemyService.connectPurified(function(enemyType, reward, participants, position)
 		PlayerProfiles.grant(player, { xp = math.floor(reward.xp * xpMultiplier + 0.5), coins = 0 }, "purify")
 		PouchService.give(player, reward.coins, position)
 		QuestService.onPurified(player, enemyType)
+		if profile and Profile.recordLegend(profile, enemyType) then
+			local nameKey = Balance.enemies[enemyType].nameKey
+			if ChestLogic.give(profile, "mystic", Progression.levelForXp(profile.xp)) then
+				notice:FireClient(player, "notice_legend", nameKey)
+			else
+				profile.coins += Balance.legendCoins
+				notice:FireClient(player, "notice_legend_coins", nameKey, Balance.legendCoins)
+			end
+			PlayerProfiles.sync(player)
+		end
 	end
 end)
 
-local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
-local notice = ReplicatedStorage.Remotes.Notice :: RemoteEvent
 PlayerProfiles.onLevelUp(function(player, level, previous)
 	fx:FireAllClients("levelUp", player, level)
 	if Progression.chestSlots(level) > Progression.chestSlots(previous) then

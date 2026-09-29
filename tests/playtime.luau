@@ -337,7 +337,7 @@ mark("5 Harabelere Hazırlık", t)
 t = startQuest("warden")
 walkTo(vec(WorldData.areas.arena.center, 3) + Vector3.new(0, 0, 14), 3)
 local guard = 0
-while attr("QuestState") ~= "done" do
+while questId() == "warden" do
 	guard += 1
 	assert(guard < 40000, "boss fight stuck")
 	local boss = nearestEnemy(root().Position, math.huge, "Warden")

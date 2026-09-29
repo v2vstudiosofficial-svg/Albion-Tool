@@ -390,13 +390,13 @@ function Hud.start()
 			showDialog(npc, Strings.get(key, table.unpack(translateArgs(...))))
 		end
 	end)
-	local arenaCenter = WorldData.vector(WorldData.areas.arena.center)
 	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, first, second)
-		if kind == "purify" and second == "Warden" then
+		local purified = if kind == "purify" and typeof(second) == "string" then Balance.enemies[second] else nil
+		if purified and purified.isBoss and typeof(first) == "Vector3" then
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-			if root and (root.Position - arenaCenter).Magnitude <= Balance.enemies.Warden.leashRadius + 30 then
-				showBanner(Strings.get("banner_boss_down"), Strings.get("banner_boss_down_sub"))
+			if root and (root.Position - first).Magnitude <= purified.leashRadius + 30 then
+				showBanner(Strings.get("banner_boss_down", Strings.get(purified.nameKey)), Strings.get("banner_boss_down_sub"))
 			end
 		elseif kind == "questComplete" then
 			local def = QuestData.quests[first]
@@ -405,28 +405,34 @@ function Hud.start()
 		end
 	end)
 
-	-- Boss bar polling (the boss model is replaced on every respawn).
-	local arena = WorldData.vector(WorldData.areas.arena.center)
-	local bossStats = Balance.enemies.Warden
-	bossName.Text = Strings.get(bossStats.nameKey)
+	-- Boss bar polling: the nearest engaged boss (boss models are replaced on every respawn).
+	local shownBoss: Instance? = nil
 	task.spawn(function()
 		local enemies = workspace:WaitForChild("Enemies")
 		while true do
 			task.wait(0.25)
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-			local boss: Instance? = nil
+			local boss: Model? = nil
+			local bossStats = nil
 			for _, model in enemies:GetChildren() do
-				if model:GetAttribute("Boss") and model:GetAttribute("Alive") then
-					boss = model
-					break
+				local stats = Balance.enemies[model:GetAttribute("EnemyType") or ""]
+				local body = model:FindFirstChild("Body") :: BasePart?
+				if root and body and stats and model:GetAttribute("Boss") and model:GetAttribute("Alive") and model:GetAttribute("Engaged") then
+					if (root.Position - body.Position).Magnitude <= stats.leashRadius + 30 then
+						boss, bossStats = model :: Model, stats
+						break
+					end
 				end
 			end
-			local near = root ~= nil and (root.Position - arena).Magnitude <= bossStats.leashRadius + 30
-			local show = boss ~= nil and near and boss:GetAttribute("Engaged") == true
-			if show and not bossPanel.Visible then
-				showBanner(Strings.get("banner_boss"), Strings.get("banner_boss_sub"))
+			local show = boss ~= nil
+			if boss and bossStats then
+				bossName.Text = Strings.get("enemy_label", boss:GetAttribute("Level") or 1, Strings.get(bossStats.nameKey))
+				if not bossPanel.Visible or shownBoss ~= boss then
+					showBanner(Strings.get("banner_boss", Strings.get(bossStats.nameKey)), Strings.get("banner_boss_sub"))
+				end
 			end
+			shownBoss = boss
 			bossPanel.Visible = show
 			if show and boss then
 				local hp = boss:GetAttribute("Hp") or 0

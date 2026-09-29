@@ -25,6 +25,8 @@ export type Enemy = {
 	kind: string,
 	stats: any,
 	level: number,
+	-- Level-scaled full health (bosses rescale from this when a fight starts or resets).
+	baseMaxHp: number,
 	-- Level-scaled values: damage multiplier for its attacks and the purify reward.
 	damageMultiplier: number,
 	reward: any,
@@ -46,6 +48,7 @@ export type Enemy = {
 local EnemyService = {}
 
 local enemies: { [number]: Enemy } = {}
+local random = Random.new()
 local purifiedListeners: { (string, any, { Player }, Vector3) -> () } = {}
 local folder: Folder
 local nextId = 0
@@ -127,10 +130,10 @@ function ctx.publishHp(enemy: Enemy)
 	publishHp(enemy)
 end
 
-function ctx.noticeNear(center: Vector3, radius: number, key: string)
+function ctx.noticeNear(center: Vector3, radius: number, key: string, ...)
 	for _, target in ctx.targets do
 		if flatDistance(target.root.Position, center) <= radius then
-			notice:FireClient(target.player, key)
+			notice:FireClient(target.player, key, ...)
 		end
 	end
 end
@@ -306,7 +309,7 @@ local function spawnAt(spawnIndex: number)
 	local spawn = WorldData.spawns[spawnIndex]
 	local stats = Balance.enemies[spawn.kind]
 	local area = WorldData.areas[spawn.area]
-	local level = spawn.level or 1
+	local level = spawn.level or (if spawn.levels then random:NextInteger(spawn.levels[1], spawn.levels[2]) else 1)
 	local scaled = Progression.enemyStats(stats, level)
 	nextId += 1
 	local home = WorldData.vector(spawn.position) + Vector3.new(0, stats.hoverHeight, 0)
@@ -322,6 +325,7 @@ local function spawnAt(spawnIndex: number)
 		kind = spawn.kind,
 		stats = stats,
 		level = level,
+		baseMaxHp = scaled.maxHp,
 		damageMultiplier = scaled.damageMultiplier,
 		reward = scaled.reward,
 		model = model,
