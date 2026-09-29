@@ -11,6 +11,7 @@ local Goals = require(Shared:WaitForChild("Goals"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 local Attrs = require(script.Parent.Attrs)
+local Format = require(Shared:WaitForChild("Format"))
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -195,16 +196,16 @@ function Hud.start()
 		local level, into, span = Progression.levelProgress(xp)
 		levelLabel.Text = Strings.get("hud_level", level)
 		if span then
-			xpLabel.Text = Strings.get("hud_xp", into, span)
+			xpLabel.Text = Strings.get("hud_xp", Format.short(into), Format.short(span))
 			UiKit.tween(xpFill, 0.3, { Size = UDim2.fromScale(math.clamp(into / span, 0, 1), 1) })
 		else
 			xpLabel.Text = Strings.get("hud_xp_max")
 			xpFill.Size = UDim2.fromScale(1, 1)
 		end
-		coinsLabel.Text = Strings.get("hud_coins", player:GetAttribute("Coins") or 0)
+		coinsLabel.Text = Strings.get("hud_coins", Format.short(player:GetAttribute("Coins") or 0))
 		local capacity = Attrs.stats().pouchCapacity
 		local crystals = player:GetAttribute("Crystals") or 0
-		crystalsLabel.Text = Strings.get("hud_crystals", crystals, capacity)
+		crystalsLabel.Text = Strings.get("hud_crystals", Format.short(crystals), Format.short(capacity))
 		crystalsLabel.TextColor3 = if crystals >= capacity then colors.bad else Color3.fromRGB(150, 210, 255)
 	end
 

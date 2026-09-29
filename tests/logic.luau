@@ -1106,6 +1106,20 @@ test("legendary shadows: data, level-scaled fights, first win recorded once", fu
 	assert(gates[1] < gates[2] and gates[2] < gates[3] and gates[3] <= Progression.MAX_LEVEL, "rising level gates")
 end)
 
+test("short numbers: 950, 12.3K, 150K, 4.5M, 2.1B", function()
+	local Format = require("../src/shared/Format")
+	eq(Format.short(0), "0")
+	eq(Format.short(950), "950")
+	eq(Format.short(999.7), "999")
+	eq(Format.short(1000), "1K")
+	eq(Format.short(12345), "12.3K")
+	eq(Format.short(99999), "99.9K", "rounds down, never up to the next unit")
+	eq(Format.short(150000), "150K")
+	eq(Format.short(4500000), "4.5M")
+	eq(Format.short(2100000000), "2.1B")
+	eq(Format.short(-2500), "-2.5K")
+end)
+
 test("game content is English only (no Turkish letters in source)", function()
 	local offenders = {}
 	local function scan(dir: string)

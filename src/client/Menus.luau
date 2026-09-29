@@ -11,6 +11,7 @@ local Strings = require(Shared:WaitForChild("Strings"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
 local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local ChestData = require(Shared:WaitForChild("ChestData"))
+local Format = require(Shared:WaitForChild("Format"))
 local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
@@ -454,7 +455,7 @@ function Menus.start()
 		end
 		local data = ChestData.chests[reward.chest]
 		line(Strings.get("chest_reward_title", Strings.get(if data then data.nameKey else "chests_title")), colors.accent, 24)
-		line(Strings.get("chest_reward_coins", reward.coins or 0), colors.coin)
+		line(Strings.get("chest_reward_coins", Format.short(reward.coins or 0)), colors.coin)
 		local weapon = WeaponData.weapons[reward.weapon or ""]
 		if weapon then
 			local rarity = WeaponData.rarities[weapon.rarity]
@@ -598,7 +599,7 @@ function Menus.start()
 				view.button.TextColor3 = colors.muted
 			else
 				local affordable = coins >= cost
-				view.button.Text = Strings.get("hud_coins", cost)
+				view.button.Text = Strings.get("hud_coins", Format.short(cost))
 				view.button.BackgroundColor3 = if affordable then colors.accent else colors.panel
 				view.button.TextColor3 = if affordable then colors.panel else colors.muted
 			end

@@ -75,8 +75,8 @@ local texts = {
 	goal_all = "All goals done! You are a true Light Keeper",
 
 	hud_level = "Lv %d",
-	hud_coins = "%d",
-	hud_xp = "%d / %d XP",
+	hud_coins = "%s",
+	hud_xp = "%s / %s XP",
 	hud_xp_max = "MAX LEVEL",
 	reward_purify = "Friend made! +%d XP",
 	reward_quest = "Quest complete! +%d XP  +%d Coins",
@@ -108,7 +108,7 @@ local texts = {
 	hint_wave_pc = "Q: Light Wave",
 
 	enemy_label = "Lv.%d %s",
-	hud_crystals = "%d/%d",
+	hud_crystals = "%s/%s",
 	notice_pouch_full = "Your pouch is full! Bring crystals to the Great Lantern.",
 	notice_deposit = "Crystals turned into %d coins!",
 
@@ -210,7 +210,7 @@ local texts = {
 	notice_chest_busy = "Another chest is already unlocking.",
 	notice_chest_slot_unlocked = "A new chest slot opened!",
 	chest_reward_title = "%s opened!",
-	chest_reward_coins = "+%d coins",
+	chest_reward_coins = "+%s coins",
 	chest_reward_weapon = "New weapon: %s (%s)!",
 	chest_reward_duplicate = "%s again - turned into coins",
 	chest_reward_slot = "%s slot is now Lv %d (+%d)",

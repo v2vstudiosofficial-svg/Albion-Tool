@@ -10,6 +10,7 @@ local Balance = require(Shared:WaitForChild("Balance"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local Progression = require(Shared:WaitForChild("Progression"))
+local Format = require(Shared:WaitForChild("Format"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 
@@ -330,9 +331,9 @@ local function onHit(model: Model?, position: Vector3, amount: number, crit: boo
 	end
 	local jitter = Vector3.new(math.random() * 2 - 1, 0, math.random() * 2 - 1)
 	if crit then
-		Effects.popup(position + jitter, tostring(amount) .. "!", CRIT_COLOR, 34)
+		Effects.popup(position + jitter, Format.short(amount) .. "!", CRIT_COLOR, 34)
 	else
-		Effects.popup(position + jitter, tostring(amount), GOLD, 24)
+		Effects.popup(position + jitter, Format.short(amount), GOLD, 24)
 	end
 	Audio.play("hit")
 end

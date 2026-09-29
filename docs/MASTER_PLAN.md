@@ -70,6 +70,8 @@ M6 — Otomatik savaş dönüşümü (kullanıcı isteği, XP Hero tarzı). Oyun
 - M6d: "Efsane Gölgeler" boss koleksiyonu, yeni zorlu bölgeler (seviye 100'e kadar içerik); mevcut 6 görev giriş bölümü olarak kalır.
 Bitiş (her parça): `lune run tests/all` geçer, sim senaryoları yeni sunucu davranışını kapsar, Studio'da elle test listesi güncellenir.
 
+M7 — Eğlence turu (kullanıcı isteği): büyük sayıların kısaltılması (K/M); nadir elit yaratıklar (güçlü, altın taçlı, sandık şansı); bölgelerde zaman zaman açılan 3 dalgalık Gölge Yarığı olayları (katılanlara ödül sandığı); doğu yaratıklarına özel saldırılar (çoklu atış, ışınlanma). Bitiş: `lune run tests/all` geçer, sim yeni sunucu davranışlarını kapsar.
+
 6. TOKEN VE ÇALIŞMA KURALLARI
 
 - Bu planı MASTER_PLAN.md’ye bir kez kaydet; her mesajda yeniden yazma ve yeniden tasarlama.

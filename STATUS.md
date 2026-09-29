@@ -35,6 +35,8 @@
 - Denge bir model; gerçek oyuncu verisiyle (Studio/test sürümü) yeniden ayarlanmalı.
 - Çok oyunculu ağ/efekt yükü ölçülmedi (uzak efektler çizilmiyor).
 - Ses kimlikleri çoğunlukla boş; animasyonlar prosedürel.
+## Bekleyen elle testler (kullanıcı isteğiyle ertelendi)
+`docs/SETUP.md` → "Elle test listesi" maddelerinin tamamı (1–16, 6b/6c, 10b/10c) Studio'da oynanmadı.
+
 ## Sonraki adım (tek)
-Kullanıcı Studio'da `docs/SETUP.md` elle test listesini oynayıp Output hatalarını iletsin;
-ardından M5'e dönüş (test sürümü, mağaza metinleri) veya yeni istek.
+M7 geliştirme turu (kullanıcı isteği): sayı kısaltma, elit yaratıklar, Gölge Yarığı dalgaları.
