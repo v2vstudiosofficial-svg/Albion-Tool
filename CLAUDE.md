@@ -13,7 +13,8 @@
   kodu değişince `tests/sim.luau` senaryosunu da güncelle. Kurulum/elle test:
   `docs/SETUP.md`.
 - Saf modüller `if script then require(...) else require("./X")` ile hem Roblox'ta
-  hem Lune'da çalışır. Metinler `Strings`, denge `Balance`, dünya noktaları
+  hem Lune'da çalışır. Metinler `Strings` (oyun içi her şey İngilizce; kullanıcıya
+  raporlar Türkçe), silahlar `WeaponData`, denge `Balance`, dünya noktaları
   `WorldData`, görevler `QuestData` tablolarında.
 - Kod: Luau (`.luau` uzantısı). Sunucu her zaman otorite: hasar, ödül,
   para, seviye, görev tamamlama, ekipman sahipliği sunucuda doğrulanır.

@@ -28,7 +28,7 @@ local loading: { [Player]: boolean } = {}
 local lastRetry: { [Player]: number } = {}
 local readyListeners: { (Player) -> () } = {}
 local changedListeners: { (Player) -> () } = {}
-local levelListeners: { (Player, number) -> () } = {}
+local levelListeners: { (Player, number, number) -> () } = {}
 
 local PlayerProfiles = {}
 
@@ -61,7 +61,8 @@ function PlayerProfiles.onChanged(listener: (Player) -> ())
 	table.insert(changedListeners, listener)
 end
 
-function PlayerProfiles.onLevelUp(listener: (Player, number) -> ())
+-- listener(player, newLevel, previousLevel)
+function PlayerProfiles.onLevelUp(listener: (Player, number, number) -> ())
 	table.insert(levelListeners, listener)
 end
 
@@ -76,6 +77,9 @@ function PlayerProfiles.sync(player: Player)
 	player:SetAttribute("XP", profile.xp)
 	player:SetAttribute("Coins", profile.coins)
 	player:SetAttribute("StaffTier", profile.staffUpgrade)
+	local main, companions = Profile.loadout(profile)
+	player:SetAttribute("Weapon", main)
+	player:SetAttribute("Companions", table.concat(companions, ","))
 	player:SetAttribute("Charm", profile.equippedCharm or "")
 	player:SetAttribute("Charms", csv(profile.ownedCharms))
 	player:SetAttribute("Flags", csv(profile.restorationFlags))
@@ -118,7 +122,7 @@ function PlayerProfiles.grant(player: Player, reward: Profile.Reward, reason: st
 	rewardGranted:FireClient(player, reason, reward.xp or 0, reward.coins or 0)
 	if after > before then
 		for _, listener in levelListeners do
-			task.spawn(listener, player, after)
+			task.spawn(listener, player, after, before)
 		end
 	end
 end
@@ -183,6 +187,22 @@ function PlayerProfiles.start()
 			session:EndSession()
 		end
 	end)
+
+	-- Studio-only test helper: set the Workspace attribute LvDebugLevel (server view) to move every
+	-- loaded player to that level, e.g. to look at late weapons and floating slots. Never in live games.
+	if RunService:IsStudio() then
+		workspace:GetAttributeChangedSignal("LvDebugLevel"):Connect(function()
+			local level = workspace:GetAttribute("LvDebugLevel")
+			if typeof(level) ~= "number" then
+				return
+			end
+			local xp = Progression.thresholds[math.clamp(math.floor(level), 1, Progression.MAX_LEVEL)]
+			for player, session in sessions do
+				session.Data.xp = xp
+				PlayerProfiles.sync(player)
+			end
+		end)
+	end
 
 	retryLoad.OnServerEvent:Connect(function(player)
 		local now = os.clock()

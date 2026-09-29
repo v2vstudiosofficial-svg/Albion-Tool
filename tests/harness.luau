@@ -207,7 +207,7 @@ Harness.workspace = Harness.game:GetService("Workspace")
 Harness.remoteLog = {} :: { { remote: string, direction: string, target: any, args: { any } } }
 
 local remoteNames = {
-	"RequestAttack",
+	"EquipWeapon",
 	"RequestWave",
 	"Interact",
 	"UpgradeStaff",

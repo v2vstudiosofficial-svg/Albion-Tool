@@ -1,7 +1,8 @@
 -- Pure profile rules (schema, rewards, purchases, charms). No Roblox APIs, so Lune can test it.
-local Balance = if script
-	then require(game:GetService("ReplicatedStorage").Shared.Balance)
-	else require("../shared/Balance")
+local Shared = if script then game:GetService("ReplicatedStorage").Shared else nil
+local Balance = if Shared then require(Shared.Balance) else require("../shared/Balance")
+local Progression = if Shared then require(Shared.Progression) else require("../shared/Progression")
+local WeaponData = if Shared then require(Shared.WeaponData) else require("../shared/WeaponData")
 
 export type QuestProgress = {
 	state: "active" | "completed",
@@ -14,6 +15,9 @@ export type Profile = {
 	xp: number,
 	coins: number,
 	staffUpgrade: number,
+	-- Main weapon, and explicit picks for floating slots (empty slots are auto-filled).
+	equippedWeapon: string,
+	companions: { string },
 	ownedCharms: { [string]: boolean },
 	equippedCharm: string?,
 	questProgress: { [string]: QuestProgress },
@@ -36,6 +40,8 @@ function Profile.new(): Profile
 		xp = 0,
 		coins = 0,
 		staffUpgrade = 0,
+		equippedWeapon = "staff",
+		companions = {},
 		ownedCharms = {},
 		equippedCharm = nil,
 		questProgress = {},
@@ -63,6 +69,19 @@ function Profile.sanitize(data: any): Profile
 		data.staffUpgrade = 0
 	end
 	data.staffUpgrade = math.min(data.staffUpgrade, MAX_UPGRADE)
+
+	local level = Progression.levelForXp(data.xp)
+	if type(data.equippedWeapon) ~= "string" or not Progression.weaponUnlocked(data.equippedWeapon, level) then
+		data.equippedWeapon = "staff"
+	end
+	local companions = {}
+	if type(data.companions) == "table" then
+		for slot = 1, WeaponData.maxCompanions do
+			local weaponId = data.companions[slot]
+			companions[slot] = if type(weaponId) == "string" and WeaponData.weapons[weaponId] then weaponId else ""
+		end
+	end
+	data.companions = companions
 
 	if type(data.ownedCharms) ~= "table" then
 		data.ownedCharms = {}
@@ -121,6 +140,62 @@ function Profile.tryUpgradeStaff(profile: Profile): (boolean, string?, number?)
 	profile.coins -= cost
 	profile.staffUpgrade += 1
 	return true
+end
+
+-- slot 0 is the main weapon, 1..n the floating slots unlocked at this level; "" clears a
+-- floating slot back to the automatic pick.
+function Profile.equipWeapon(profile: Profile, slot: number, weaponId: string): boolean
+	local level = Progression.levelForXp(profile.xp)
+	if slot == 0 then
+		if not Progression.weaponUnlocked(weaponId, level) then
+			return false
+		end
+		profile.equippedWeapon = weaponId
+		return true
+	end
+	if slot < 1 or slot > Progression.companionSlots(level) or slot % 1 ~= 0 then
+		return false
+	end
+	if weaponId ~= "" and not Progression.weaponUnlocked(weaponId, level) then
+		return false
+	end
+	for index = #profile.companions + 1, slot - 1 do
+		profile.companions[index] = ""
+	end
+	profile.companions[slot] = weaponId
+	return true
+end
+
+-- The weapons actually in use: the main one plus one per unlocked floating slot. Empty or
+-- no-longer-valid slots take the strongest unlocked weapon that is not already in use.
+function Profile.loadout(profile: Profile): (string, { string })
+	local level = Progression.levelForXp(profile.xp)
+	local main = if Progression.weaponUnlocked(profile.equippedWeapon, level) then profile.equippedWeapon else "staff"
+	local used = { [main] = true }
+	local companions = {}
+	local slots = Progression.companionSlots(level)
+	for slot = 1, slots do
+		local picked = profile.companions[slot]
+		if picked and picked ~= "" and Progression.weaponUnlocked(picked, level) then
+			companions[slot] = picked
+			used[picked] = true
+		end
+	end
+	for slot = 1, slots do
+		if not companions[slot] then
+			local choice = main
+			for index = #WeaponData.order, 1, -1 do
+				local weaponId = WeaponData.order[index]
+				if not used[weaponId] and Progression.weaponUnlocked(weaponId, level) then
+					choice = weaponId
+					break
+				end
+			end
+			companions[slot] = choice
+			used[choice] = true
+		end
+	end
+	return main, companions
 end
 
 function Profile.grantCharm(profile: Profile, charmId: string): boolean

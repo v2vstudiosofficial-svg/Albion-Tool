@@ -25,9 +25,22 @@ EnemyService.connectPurified(function(enemyType, reward, participants)
 	end
 end)
 
+local Shared = ReplicatedStorage.Shared
+local WeaponData = require(Shared.WeaponData)
+local Progression = require(Shared.Progression)
 local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
-PlayerProfiles.onLevelUp(function(player, level)
+local notice = ReplicatedStorage.Remotes.Notice :: RemoteEvent
+PlayerProfiles.onLevelUp(function(player, level, previous)
 	fx:FireAllClients("levelUp", player, level)
+	for _, weaponId in WeaponData.order do
+		local weapon = WeaponData.weapons[weaponId]
+		if weapon.unlockLevel > previous and weapon.unlockLevel <= level then
+			notice:FireClient(player, "notice_weapon_unlocked", weapon.nameKey)
+		end
+	end
+	if Progression.companionSlots(level) > Progression.companionSlots(previous) then
+		notice:FireClient(player, "notice_companion_unlocked")
+	end
 end)
 
 print("[LanternValley] Server started")

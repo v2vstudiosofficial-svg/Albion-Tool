@@ -1,4 +1,4 @@
--- Bag (charms), staff shop, settings, performance overlay and the save-loading overlay.
+-- Weapons, bag (charms), weapon-power shop, settings, performance overlay and the save-loading overlay.
 -- Only one modal is open at a time so the screen never fills up with windows.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,6 +9,7 @@ local Balance = require(Shared:WaitForChild("Balance"))
 local Progression = require(Shared:WaitForChild("Progression"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
+local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
@@ -16,6 +17,7 @@ local UiKit = require(script.Parent.UiKit)
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local equipCharm = Remotes:WaitForChild("EquipCharm") :: RemoteEvent
 local upgradeStaff = Remotes:WaitForChild("UpgradeStaff") :: RemoteEvent
+local equipWeapon = Remotes:WaitForChild("EquipWeapon") :: RemoteEvent
 local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
 local player = Players.LocalPlayer
 local colors = UiKit.colors
@@ -73,7 +75,7 @@ function Menus.start()
 	end
 
 	-- Top-right buttons ---------------------------------------------------------------------
-	local topRight = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -12, 0, 12), Vector2.new(236, 52))
+	local topRight = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -12, 0, 12), Vector2.new(340, 52))
 	UiKit.create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
@@ -168,6 +170,125 @@ function Menus.start()
 		end
 	end
 
+	-- Weapons -------------------------------------------------------------------------------
+	-- Slot 0 is the main weapon; slots 1..4 float behind the player once unlocked (every 25 levels).
+	local weapons, weaponsBody = modal("menu_weapons", 430)
+	local editingSlot = 0
+	local slotRow = UiKit.create("Frame", { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1 }, weaponsBody)
+	UiKit.create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		Padding = UDim.new(0, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, slotRow)
+	local weaponHint = UiKit.label({
+		Position = UDim2.fromOffset(0, 50),
+		Size = UDim2.new(1, 0, 0, 22),
+		TextSize = 15,
+		TextWrapped = true,
+		TextColor3 = colors.muted,
+	}, weaponsBody)
+	local grid = UiKit.create("Frame", {
+		Position = UDim2.fromOffset(0, 78),
+		Size = UDim2.new(1, 0, 0, 172),
+		BackgroundTransparency = 1,
+	}, weaponsBody)
+	UiKit.create("UIGridLayout", {
+		CellSize = UDim2.fromOffset(96, 80),
+		CellPadding = UDim2.fromOffset(6, 8),
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, grid)
+	local weaponInfo = UiKit.label({
+		Position = UDim2.fromOffset(0, 256),
+		Size = UDim2.new(1, 0, 0, 44),
+		TextSize = 16,
+		TextWrapped = true,
+	}, weaponsBody)
+	local refreshWeapons: () -> ()
+
+	local slotButtons: { [number]: TextButton } = {}
+	for slot = 0, WeaponData.maxCompanions do
+		slotButtons[slot] = UiKit.button({ Size = UDim2.fromOffset(74, 44), TextSize = 16, LayoutOrder = slot }, slotRow, function()
+			if slot <= Progression.companionSlots(Attrs.get("Level", 1)) then
+				editingSlot = slot
+				Audio.play("ui")
+				refreshWeapons()
+			end
+		end)
+	end
+	local tiles: { [string]: { button: TextButton, stripe: Frame } } = {}
+	for order, weaponId in WeaponData.order do
+		local weapon = WeaponData.weapons[weaponId]
+		local button = UiKit.button({
+			LayoutOrder = order,
+			Text = Strings.get(weapon.nameKey),
+			TextSize = 14,
+			TextWrapped = true,
+			BackgroundColor3 = colors.panelLight,
+			TextColor3 = colors.text,
+		}, grid, function()
+			if Progression.weaponUnlocked(weaponId, Attrs.get("Level", 1)) then
+				equipWeapon:FireServer(editingSlot, weaponId)
+				Audio.play("ui")
+			end
+		end)
+		local stripe = UiKit.create("Frame", {
+			Position = UDim2.new(0, 8, 1, -10),
+			Size = UDim2.new(1, -16, 0, 5),
+			BackgroundColor3 = UiKit.rgb(weapon.color),
+			BorderSizePixel = 0,
+		}, button)
+		UiKit.corner(stripe, 3)
+		tiles[weaponId] = { button = button, stripe = stripe }
+	end
+	local autoButton = UiKit.button({
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -4),
+		Size = UDim2.fromOffset(180, 48),
+		Text = Strings.get("bag_auto"),
+		BackgroundColor3 = colors.panelLight,
+		TextColor3 = colors.text,
+	}, weaponsBody, function()
+		if editingSlot > 0 then
+			equipWeapon:FireServer(editingSlot, "")
+			Audio.play("ui")
+		end
+	end)
+
+	refreshWeapons = function()
+		local level = Attrs.get("Level", 1)
+		local slots = Progression.companionSlots(level)
+		if editingSlot > slots then
+			editingSlot = 0
+		end
+		local companions = Attrs.list("Companions")
+		local current = if editingSlot == 0 then Attrs.get("Weapon", "staff") else companions[editingSlot]
+		for slot, button in slotButtons do
+			local open = slot <= slots
+			button.Text = if slot == 0
+				then Strings.get("bag_main")
+				elseif open then Strings.get("bag_slot", slot)
+				else Strings.get("weapon_locked", slot * WeaponData.companionEvery)
+			button.BackgroundColor3 = if slot == editingSlot then colors.accent elseif open then colors.panelLight else colors.panel
+			button.TextColor3 = if slot == editingSlot then colors.panel elseif open then colors.text else colors.muted
+		end
+		weaponHint.Text = Strings.get(if editingSlot == 0 then "bag_main_hint" else "bag_slot_hint")
+		for weaponId, tile in tiles do
+			local weapon = WeaponData.weapons[weaponId]
+			local unlocked = Progression.weaponUnlocked(weaponId, level)
+			tile.button.Text = if unlocked then Strings.get(weapon.nameKey) else Strings.get("weapon_locked", weapon.unlockLevel)
+			tile.button.BackgroundColor3 = if weaponId == current then colors.good elseif unlocked then colors.panelLight else colors.panel
+			tile.button.TextColor3 = if weaponId == current then colors.panel elseif unlocked then colors.text else colors.muted
+			tile.stripe.BackgroundTransparency = if unlocked then 0 else 0.7
+		end
+		local weapon = current and WeaponData.weapons[current]
+		weaponInfo.Text = if weapon
+			then Strings.get("weapon_info", Strings.get(weapon.descKey), Progression.weaponDamage(current, Attrs.get("StaffTier", 0), level, editingSlot > 0))
+			else ""
+		autoButton.Visible = editingSlot > 0
+	end
+
 	-- Shop ----------------------------------------------------------------------------------
 	local shop, shopBody = modal("shop_title", 300)
 	local shopTier = UiKit.label({ Size = UDim2.new(1, 0, 0, 30) }, shopBody)
@@ -195,7 +316,8 @@ function Menus.start()
 			return
 		end
 		local cost = Progression.nextStaffCost(tier) :: number
-		shopDamage.Text = Strings.get("shop_damage", Progression.staffDamage(tier, level), Progression.staffDamage(tier + 1, level))
+		local weaponId = Attrs.get("Weapon", "staff")
+		shopDamage.Text = Strings.get("shop_damage", Progression.weaponDamage(weaponId, tier, level), Progression.weaponDamage(weaponId, tier + 1, level))
 		shopCost.Text = Strings.get("shop_cost", cost)
 		shopButton.Visible = true
 		local affordable = Attrs.get("Coins", 0) >= cost
@@ -248,6 +370,10 @@ function Menus.start()
 		end
 	end)
 
+	UiKit.button({ Size = UDim2.fromOffset(110, 48), Text = Strings.get("menu_weapons"), LayoutOrder = 0 }, topRight, function()
+		refreshWeapons()
+		showModal(weapons)
+	end)
 	UiKit.button({ Size = UDim2.fromOffset(110, 48), Text = Strings.get("menu_bag"), LayoutOrder = 1 }, topRight, function()
 		refreshBag()
 		showModal(bag)
@@ -268,9 +394,11 @@ function Menus.start()
 			showModal(shop)
 		end
 	end)
-	for _, name in { "StaffTier", "Coins", "Level", "Charm", "Charms" } do
+	for _, name in { "StaffTier", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
-			if openModal == bag then
+			if openModal == weapons then
+				refreshWeapons()
+			elseif openModal == bag then
 				refreshBag()
 			elseif openModal == shop then
 				refreshShop()

@@ -11,6 +11,8 @@ local WorldData = require("../src/shared/WorldData")
 local Progression = require("../src/shared/Progression")
 local Sounds = require("../src/shared/Sounds")
 local Goals = require("../src/shared/Goals")
+local WeaponData = require("../src/shared/WeaponData")
+local WeaponLogic = require("../src/server/WeaponLogic")
 
 local passed, failed = 0, 0
 
@@ -158,20 +160,27 @@ end)
 -- Progression -----------------------------------------------------------------------------------
 
 test("levels follow the thresholds and cap at max", function()
-	local thresholds = Balance.levels.xpThresholds
+	local thresholds = Progression.thresholds
 	eq(Progression.levelForXp(0), 1)
 	eq(Progression.levelForXp(thresholds[2] - 1), 1)
 	eq(Progression.levelForXp(thresholds[2]), 2)
-	eq(Progression.levelForXp(10 ^ 7), Progression.MAX_LEVEL)
-	eq(Progression.MAX_LEVEL, 10)
+	eq(Progression.levelForXp(10 ^ 9), Progression.MAX_LEVEL)
+	eq(Progression.MAX_LEVEL, 100)
+	eq(#thresholds, 100)
+	for level = 1, 100 do
+		eq(Progression.levelForXp(thresholds[level]), level, "exact threshold " .. level)
+		if level > 1 then
+			eq(Progression.levelForXp(thresholds[level] - 1), level - 1, "just below " .. level)
+		end
+	end
 	local lvl, into, span = Progression.levelProgress(thresholds[3] + 50)
 	eq(lvl, 3)
 	eq(into, 50)
 	eq(span, thresholds[4] - thresholds[3])
-	local _, _, maxSpan = Progression.levelProgress(10 ^ 7)
+	local _, _, maxSpan = Progression.levelProgress(10 ^ 9)
 	eq(maxSpan, nil, "no span at max level")
 	local previous = -1
-	for _, needed in Balance.levels.xpThresholds do
+	for _, needed in thresholds do
 		assert(needed > previous, "thresholds must increase")
 		previous = needed
 	end
@@ -195,11 +204,14 @@ end)
 
 test("post-story goals: affordable upgrade, then level cap, then remaining tiers, then done", function()
 	local tiers = Balance.staff.tiers
-	local maxXp = Balance.levels.xpThresholds[Progression.MAX_LEVEL]
+	local maxXp = Progression.thresholds[Progression.MAX_LEVEL]
 	local g = Goals.next(0, tiers[2].cost, 0)
 	eq(g.kind, "staff", "affordable upgrade first")
 	eq(g.affordable, true)
-	eq(Goals.next(0, 0, 0).kind, "level", "otherwise level up")
+	local levelGoal = Goals.next(0, 0, 0)
+	eq(levelGoal.kind, "level", "otherwise level up")
+	eq(levelGoal.target, WeaponData.weapons.bow.unlockLevel, "toward the next weapon unlock")
+	eq(Goals.next(Progression.thresholds[24], 0, 0).target, 25, "floating slot is a milestone")
 	local lastTier = Progression.maxStaffUpgrade()
 	local staffOnly = Goals.next(maxXp, 0, lastTier - 1)
 	eq(staffOnly.kind, "staff", "at max level, remaining tiers")
@@ -295,14 +307,17 @@ test("full chain is completable with a short grind at most, paying each reward o
 	local function event(e)
 		payCompleted(p, QuestLogic.record(p, QuestData, e))
 	end
-	local function purify(kind: string)
-		Profile.applyReward(p, Balance.enemies[kind].reward)
+	local fights = {}
+	local function purify(kind: string, enemyLevel: number)
+		local reward = Progression.enemyStats(Balance.enemies[kind], enemyLevel).reward
+		table.insert(fights, reward)
+		Profile.applyReward(p, reward)
 		event({ kind = "purify", target = kind })
 	end
 
 	start("first_purify")
 	for _ = 1, QuestData.quests.first_purify.objective.count do
-		purify("Gloomling")
+		purify("Gloomling", 1)
 	end
 	start("lantern_flowers")
 	for _, id in QuestData.quests.lantern_flowers.objective.ids do
@@ -320,16 +335,16 @@ test("full chain is completable with a short grind at most, paying each reward o
 	for _, id in QuestData.quests.ruin_vines.objective.ids do
 		event({ kind = "vine", id = id })
 	end
-	-- The boss quest is level-gated; a player may need a few extra fights on the way.
+	-- The boss quest is level-gated; a player may need a few extra fights in the hollow.
 	local extraFights = 0
 	while not QuestLogic.canStart(p, QuestData, "warden", level(p)) do
-		purify("Gloomling")
+		purify("Gloomling", 5)
 		extraFights += 1
 	end
-	assert(extraFights <= 15, "grind before the boss stays short: " .. extraFights .. " Gloomlings")
+	assert(extraFights <= 8, "grind before the boss stays short: " .. extraFights .. " Gloomlings")
 	start("warden")
-	purify("Warden")
-	purify("Warden")
+	purify("Warden", 8)
+	purify("Warden", 8)
 
 	for _, questId in QuestData.order do
 		eq(QuestLogic.isCompleted(p, questId), true, questId)
@@ -344,13 +359,9 @@ test("full chain is completable with a short grind at most, paying each reward o
 		expectedXp += reward.xp or 0
 		expectedCoins += reward.coins or 0
 	end
-	local fights = { "Warden", "Warden" }
-	for _ = 1, QuestData.quests.first_purify.objective.count + extraFights do
-		table.insert(fights, "Gloomling")
-	end
-	for _, kind in fights do
-		expectedXp += Balance.enemies[kind].reward.xp
-		expectedCoins += Balance.enemies[kind].reward.coins
+	for _, reward in fights do
+		expectedXp += reward.xp
+		expectedCoins += reward.coins
 	end
 	eq(p.xp, expectedXp, "xp")
 	eq(p.coins, expectedCoins, "coins")
@@ -527,6 +538,175 @@ test("every literal string key used in source exists", function()
 	end
 	scan("src")
 	eq(#missing, 0, "missing keys: " .. table.concat(missing, ", "))
+end)
+
+-- Weapons ---------------------------------------------------------------------------------------
+
+local function foe(id: number, x: number, z: number, size: number?)
+	return { id = id, x = x, z = z, size = size or 2 }
+end
+
+local function sorted(list: { number }): string
+	local copy = table.clone(list)
+	table.sort(copy)
+	return table.concat(copy, ",")
+end
+
+test("weapon data: eight weapons, strings, rising unlocks, known styles", function()
+	eq(#WeaponData.order, 8, "eight weapons")
+	local previous = 0
+	local styles = {}
+	for index, weaponId in WeaponData.order do
+		local weapon = WeaponData.weapons[weaponId]
+		assert(weapon, "missing weapon " .. weaponId)
+		assert(Strings.has(weapon.nameKey) and Strings.has(weapon.descKey), "weapon strings " .. weaponId)
+		assert(weapon.unlockLevel > previous or index == 1, "unlock levels rise: " .. weaponId)
+		assert(weapon.unlockLevel <= Progression.MAX_LEVEL, "reachable " .. weaponId)
+		previous = weapon.unlockLevel
+		assert(weapon.damage > 0 and weapon.cooldown > 0 and weapon.range > 0, "stats " .. weaponId)
+		styles[weapon.style] = true
+		-- Each weapon plans an attack without erroring.
+		assert(WeaponLogic.plan(weapon, { x = 0, z = 0 }, { x = 0, z = -1 }, { foe(1, 0, -3) }), "plan " .. weaponId)
+	end
+	eq(WeaponData.weapons.staff.unlockLevel, 1, "starter weapon")
+	local count = 0
+	for _ in styles do
+		count += 1
+	end
+	eq(count, 8, "every weapon attacks differently")
+	eq(#WeaponData.companionOffsets, WeaponData.maxCompanions, "a hover spot per floating slot")
+end)
+
+test("weapon logic: nearest target, range, line-of-sight veto", function()
+	local staff = WeaponData.weapons.staff
+	local foes = { foe(1, 0, -20), foe(2, 0, -10), foe(3, 0, -40) }
+	local plan = WeaponLogic.plan(staff, { x = 0, z = 0 }, { x = 0, z = -1 }, foes)
+	eq(plan and plan.primary.id, 2, "nearest first")
+	eq(plan and sorted(plan.hits), "2", "single target")
+	local blocked = WeaponLogic.plan(staff, { x = 0, z = 0 }, { x = 0, z = -1 }, foes, function(f)
+		return f.id ~= 2
+	end)
+	eq(blocked and blocked.primary.id, 1, "skips a hidden target")
+	eq(WeaponLogic.plan(staff, { x = 0, z = 0 }, { x = 0, z = -1 }, { foe(1, 0, -40) }), nil, "out of range")
+	-- Edge of a big enemy counts: center 25 away, radius 2 reaches inside range 24.
+	assert(WeaponLogic.plan(staff, { x = 0, z = 0 }, { x = 0, z = -1 }, { foe(1, 0, -25, 4) }), "big enemy edge")
+end)
+
+test("weapon logic: area styles hit the right groups", function()
+	local w = WeaponData.weapons
+	local origin, facing = { x = 0, z = 0 }, { x = 0, z = -1 }
+	-- Sword arc: front ones only.
+	local arc = WeaponLogic.plan(w.sword, origin, facing, { foe(1, 0, -5), foe(2, 3, -5), foe(3, 0, 6), foe(4, 0, -30) })
+	eq(arc and sorted(arc.hits), "1,2", "sword hits the front, not behind or far")
+	-- Axe spin: everything close, any side.
+	local spin = WeaponLogic.plan(w.axe, origin, facing, { foe(1, 0, -5), foe(2, 0, 6), foe(3, -6, 0), foe(4, 0, -30) })
+	eq(spin and sorted(spin.hits), "1,2,3", "axe hits all around")
+	-- Spear thrust / crossbow pierce: a line, capped.
+	local line = { foe(1, 0, -3), foe(2, 0.5, -7), foe(3, 0, -11), foe(4, 6, -6) }
+	local thrust = WeaponLogic.plan(w.spear, origin, facing, line)
+	eq(thrust and sorted(thrust.hits), "1,2,3", "spear goes through the line only")
+	local many = {}
+	for i = 1, 8 do
+		table.insert(many, foe(i, 0, -3 * i))
+	end
+	local pierce = WeaponLogic.plan(w.crossbow, origin, facing, many)
+	eq(pierce and #pierce.hits, w.crossbow.maxHits, "crossbow pierce cap")
+	eq(pierce and pierce.hits[1], 1, "nearest first along the line")
+	-- Hammer slam: a circle around the target.
+	local slam = WeaponLogic.plan(w.hammer, origin, facing, { foe(1, 0, -10), foe(2, 4, -12), foe(3, 0, -30) })
+	eq(slam and sorted(slam.hits), "1,2", "hammer hits the group at the target")
+	-- Daggers: middle always hits the target, sides hit whatever is in their lane.
+	local fan = WeaponLogic.plan(w.daggers, origin, facing, { foe(1, 0, -10) })
+	eq(fan and #fan.hits, 1, "lone target: one dagger lands")
+	local sideX = math.sin(math.rad(w.daggers.spread)) * 10
+	local spread = WeaponLogic.plan(w.daggers, origin, facing, { foe(1, 0, -10), foe(2, sideX, -10), foe(3, -sideX, -10) })
+	eq(spread and sorted(spread.hits), "1,2,3", "three daggers, three targets")
+end)
+
+test("progression: weapon unlocks, damage scaling, floating slots every 25 levels", function()
+	eq(Progression.weaponUnlocked("staff", 1), true)
+	eq(Progression.weaponUnlocked("bow", WeaponData.weapons.bow.unlockLevel - 1), false)
+	eq(Progression.weaponUnlocked("bow", WeaponData.weapons.bow.unlockLevel), true)
+	eq(Progression.weaponUnlocked("nope", 100), false)
+	eq(Progression.weaponDamage("staff", 0, 1), WeaponData.weapons.staff.damage, "base damage")
+	assert(Progression.weaponDamage("staff", 1, 1) > Progression.weaponDamage("staff", 0, 1), "power tier helps")
+	assert(Progression.weaponDamage("staff", 0, 50) > Progression.weaponDamage("staff", 0, 1), "levels help")
+	assert(Progression.weaponDamage("sword", 0, 20, true) < Progression.weaponDamage("sword", 0, 20), "floating hits softer")
+	assert(Progression.weaponCooldown("sword", true) > Progression.weaponCooldown("sword"), "floating attacks slower")
+	eq(Progression.companionSlots(24), 0)
+	eq(Progression.companionSlots(25), 1)
+	eq(Progression.companionSlots(74), 2)
+	eq(Progression.companionSlots(100), 4)
+	eq(Progression.nextMilestone(1), WeaponData.weapons.bow.unlockLevel)
+	eq(Progression.nextMilestone(61), 75)
+	eq(Progression.nextMilestone(99), 100)
+	eq(Progression.nextMilestone(100), 100)
+end)
+
+test("enemy levels scale health, damage and rewards; bosses keep their tuning", function()
+	local gloom = Balance.enemies.Gloomling
+	local one = Progression.enemyStats(gloom, 1)
+	eq(one.maxHp, gloom.maxHp)
+	eq(one.damageMultiplier, 1)
+	eq(one.reward.xp, gloom.reward.xp)
+	local five = Progression.enemyStats(gloom, 5)
+	assert(five.maxHp > one.maxHp and five.damageMultiplier > 1, "tougher")
+	assert(five.reward.xp > one.reward.xp and five.reward.coins > one.reward.coins, "more rewarding")
+	local boss = Progression.enemyStats(Balance.enemies.Warden, 8)
+	eq(boss.maxHp, Balance.enemies.Warden.maxHp, "boss hp")
+	eq(boss.reward.xp, Balance.enemies.Warden.reward.xp, "boss reward")
+	for _, spawn in WorldData.spawns do
+		assert(type(spawn.level) == "number" and spawn.level >= 1, "spawn level set")
+	end
+	-- Fighting same-level creatures, a level never needs an absurd number of purifies.
+	for level = 1, Progression.MAX_LEVEL - 1 do
+		local span = Progression.thresholds[level + 1] - Progression.thresholds[level]
+		local kills = span / Progression.enemyStats(gloom, level).reward.xp
+		assert(kills >= 1 and kills <= 40, `level {level} needs {kills} same-level purifies`)
+	end
+end)
+
+test("profile weapons: equip rules, floating slots, auto picks, sanitize", function()
+	local p = Profile.new()
+	eq(p.equippedWeapon, "staff")
+	eq(Profile.equipWeapon(p, 0, "bow"), false, "locked weapon")
+	eq(Profile.equipWeapon(p, 0, "nope"), false, "unknown weapon")
+	eq(Profile.equipWeapon(p, 1, "staff"), false, "no floating slot yet")
+	local main, companions = Profile.loadout(p)
+	eq(main, "staff")
+	eq(#companions, 0)
+
+	p.xp = Progression.thresholds[25]
+	eq(Profile.equipWeapon(p, 0, "spear"), true)
+	main, companions = Profile.loadout(p)
+	eq(main, "spear")
+	eq(#companions, 1, "one floating slot at 25")
+	eq(companions[1], "sword", "auto pick: strongest unlocked weapon not in use")
+	eq(Profile.equipWeapon(p, 2, "bow"), false, "second slot still closed")
+	eq(Profile.equipWeapon(p, 1, "bow"), true)
+	main, companions = Profile.loadout(p)
+	eq(companions[1], "bow")
+	eq(Profile.equipWeapon(p, 1, ""), true, "back to auto")
+	main, companions = Profile.loadout(p)
+	eq(companions[1], "sword")
+
+	p.xp = Progression.thresholds[100]
+	main, companions = Profile.loadout(p)
+	eq(#companions, 4, "four floating slots at 100")
+	local seen = { [main] = true }
+	for _, weaponId in companions do
+		assert(not seen[weaponId], "auto picks do not repeat: " .. weaponId)
+		seen[weaponId] = true
+	end
+
+	local bad = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, equippedWeapon = "hammer", companions = { "x", 5, "bow" } })
+	eq(bad.equippedWeapon, "staff", "locked main weapon reset")
+	eq(bad.companions[1], "", "unknown pick cleared")
+	eq(bad.companions[2], "", "bad pick cleared")
+	eq(bad.companions[3], "bow", "valid pick kept for later")
+	local missing = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 })
+	eq(missing.equippedWeapon, "staff")
+	eq(type(missing.companions), "table")
 end)
 
 test("game content is English only (no Turkish letters in source)", function()

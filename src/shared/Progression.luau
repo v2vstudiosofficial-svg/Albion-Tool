@@ -5,17 +5,32 @@ local Balance = if script
 
 local Progression = {}
 
-local thresholds = Balance.levels.xpThresholds
-Progression.MAX_LEVEL = #thresholds
+local WeaponData = if script
+	then require(script.Parent.WeaponData)
+	else require("./WeaponData")
+
+local levels = Balance.levels
+Progression.MAX_LEVEL = levels.maxLevel
+
+-- thresholds[level] = total XP needed to reach that level.
+local thresholds = { 0 }
+for level = 1, levels.maxLevel - 1 do
+	thresholds[level + 1] = thresholds[level] + math.floor(levels.xpBase + levels.xpScale * level ^ levels.xpPower)
+end
+Progression.thresholds = thresholds
 
 function Progression.levelForXp(xp: number): number
-	local level = 1
-	for index, needed in thresholds do
-		if xp >= needed then
-			level = index
+	-- Binary search: the highest level whose threshold is reached.
+	local low, high = 1, #thresholds
+	while low < high do
+		local mid = (low + high + 1) // 2
+		if xp >= thresholds[mid] then
+			low = mid
+		else
+			high = mid - 1
 		end
 	end
-	return level
+	return low
 end
 
 -- Returns level, xp earned inside the level, xp span of the level (nil at max level).
@@ -47,9 +62,75 @@ function Progression.nextStaffCost(staffUpgrade: number): number?
 	return nextTier and nextTier.cost
 end
 
+local function levelMultiplier(level: number): number
+	return 1 + Balance.levels.damageBonusPerLevel * (level - 1)
+end
+
+-- Weapon power tier multiplier (tier 0 = 1).
+function Progression.tierMultiplier(staffUpgrade: number): number
+	return Progression.staffTier(staffUpgrade).damage / Balance.staff.tiers[1].damage
+end
+
+-- Damage of the light wave's base (the staff's power at this tier and level).
 function Progression.staffDamage(staffUpgrade: number, level: number): number
 	local tier = Progression.staffTier(staffUpgrade)
-	return math.floor(tier.damage * (1 + Balance.levels.damageBonusPerLevel * (level - 1)) + 0.5)
+	return math.floor(tier.damage * levelMultiplier(level) + 0.5)
+end
+
+function Progression.weaponUnlocked(weaponId: string, level: number): boolean
+	local weapon = WeaponData.weapons[weaponId]
+	return weapon ~= nil and level >= weapon.unlockLevel
+end
+
+function Progression.weaponDamage(weaponId: string, staffUpgrade: number, level: number, companion: boolean?): number
+	local weapon = WeaponData.weapons[weaponId]
+	local damage = weapon.damage * Progression.tierMultiplier(staffUpgrade) * levelMultiplier(level)
+	if companion then
+		damage *= WeaponData.companionDamage
+	end
+	return math.max(1, math.floor(damage + 0.5))
+end
+
+function Progression.weaponCooldown(weaponId: string, companion: boolean?): number
+	local cooldown = WeaponData.weapons[weaponId].cooldown
+	return if companion then cooldown * WeaponData.companionCooldown else cooldown
+end
+
+-- Floating weapon slots unlocked at this level (one every WeaponData.companionEvery levels).
+function Progression.companionSlots(level: number): number
+	return math.min(WeaponData.maxCompanions, level // WeaponData.companionEvery)
+end
+
+-- The next level that unlocks a weapon or a floating slot (or the level cap).
+function Progression.nextMilestone(level: number): number
+	local best = Progression.MAX_LEVEL
+	for _, weapon in WeaponData.weapons do
+		if weapon.unlockLevel > level and weapon.unlockLevel < best then
+			best = weapon.unlockLevel
+		end
+	end
+	local nextSlot = (level // WeaponData.companionEvery + 1) * WeaponData.companionEvery
+	if nextSlot > level and nextSlot < best then
+		best = nextSlot
+	end
+	return math.max(best, math.min(level + 1, Progression.MAX_LEVEL))
+end
+
+-- Level-scaled stats for a regular enemy; bosses keep their hand-tuned values.
+function Progression.enemyStats(stats: any, level: number)
+	local scaling = Balance.enemyScaling
+	if stats.isBoss then
+		return { maxHp = stats.maxHp, damageMultiplier = 1, reward = stats.reward }
+	end
+	local steps = level - 1
+	return {
+		maxHp = math.floor(stats.maxHp * (1 + scaling.hpPerLevel * steps) + 0.5),
+		damageMultiplier = 1 + scaling.damagePerLevel * steps,
+		reward = {
+			xp = math.floor(stats.reward.xp * level ^ scaling.xpPower + 0.5),
+			coins = math.floor(stats.reward.coins * (1 + scaling.coinsPerLevel * steps) + 0.5),
+		},
+	}
 end
 
 function Progression.waveUnlocked(level: number): boolean

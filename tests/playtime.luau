@@ -43,6 +43,9 @@ H.services.HttpService = {
 local WorldData = H.loadModule("src/shared/WorldData.luau")
 local Balance = H.loadModule("src/shared/Balance.luau")
 local Progression = H.loadModule("src/shared/Progression.luau")
+local WeaponData = H.loadModule("src/shared/WeaponData.luau")
+-- The bot keeps the starter staff; attacks are automatic, so it only walks and casts the wave.
+local RANGE = WeaponData.weapons.staff.range
 local QuestData = H.loadModule("src/shared/QuestData.luau")
 
 local STEP = 1 / 15
@@ -89,7 +92,7 @@ end
 spawnCharacter()
 
 local stats = { deaths = 0 }
-local lastAttack, lastWave = -math.huge, -math.huge
+local lastWave = -math.huge
 local seenLog = #H.remoteLog
 local dodgeUntil, dodgeTarget = 0, nil
 
@@ -152,11 +155,6 @@ local function tick()
 	local now = H.now()
 	local position = root().Position
 	local level = Progression.levelForXp(attr("XP") or 0)
-	local target = nearestEnemy(position, Balance.staff.range)
-	if target and now - lastAttack >= Balance.staff.cooldown then
-		lastAttack = now
-		remotes.RequestAttack.OnServerEvent:Fire(bot, target:GetAttribute("EnemyId"))
-	end
 	local charm = attr("Charm")
 	local wave = Progression.waveStats(attr("StaffTier") or 0, level, if charm ~= "" then charm else nil)
 	if Progression.waveUnlocked(level) and now - lastWave >= wave.cooldown and nearestEnemy(position, wave.radius) then
@@ -180,7 +178,7 @@ local function walkTo(goal, arrive: number)
 		local destination = goal
 		if H.now() < dodgeUntil and dodgeTarget then
 			destination = dodgeTarget
-		elseif nearestEnemy(position, Balance.staff.range * 0.8) then
+		elseif nearestEnemy(position, RANGE * 0.8) then
 			destination = nil -- stand and fight
 		end
 		if destination == goal and flat(goal - position).Magnitude <= arrive then
@@ -207,8 +205,8 @@ local function grind(areaName: string, done: () -> boolean, kind: string?)
 		local target = nearestEnemy(vec(area.center), area.radius + 20, kind)
 		if target then
 			local body = positionOf(target.Body)
-			if flat(body - root().Position).Magnitude > Balance.staff.range * 0.7 then
-				walkTo(body + Vector3.new(0, 1, 0), Balance.staff.range * 0.7)
+			if flat(body - root().Position).Magnitude > RANGE * 0.7 then
+				walkTo(body + Vector3.new(0, 1, 0), RANGE * 0.7)
 			else
 				tick()
 			end
@@ -340,8 +338,8 @@ while attr("QuestState") ~= "done" do
 	local boss = nearestEnemy(root().Position, math.huge, "Warden")
 	if boss then
 		local body = positionOf(boss.Body)
-		if flat(body - root().Position).Magnitude > Balance.staff.range * 0.8 or (H.now() < dodgeUntil) then
-			walkTo(body + Vector3.new(0, 1, 0), Balance.staff.range * 0.8)
+		if flat(body - root().Position).Magnitude > RANGE * 0.8 or (H.now() < dodgeUntil) then
+			walkTo(body + Vector3.new(0, 1, 0), RANGE * 0.8)
 		else
 			tick()
 		end
@@ -358,7 +356,7 @@ for _, row in timeline do
 	print(string.format("%-26s %5.1f dk  %2d  %5d  %4d", row.label, row.seconds / 60, row.level, row.coins, row.deaths))
 end
 print(string.format("Toplam (bot, alt sınır):   %5.1f dk", (H.now() - startAll) / 60))
-print(string.format("Seviye 10'a kalan XP: %d, asa kademe 3'e kalan sikke: %d",
-	math.max(0, Balance.levels.xpThresholds[10] - (attr("XP") or 0)),
+print(string.format("Seviye 25'e (ilk yüzen silah) kalan XP: %d, güç kademe 3-4 için kalan sikke: %d",
+	math.max(0, Progression.thresholds[25] - (attr("XP") or 0)),
 	math.max(0, Balance.staff.tiers[3].cost + Balance.staff.tiers[4].cost - (attr("Coins") or 0))))
 assert(#H.threadErrors == 0, "server thread errors:\n" .. (H.threadErrors[1] or ""))

@@ -1,5 +1,5 @@
 -- Post-story goals shown once every quest is done: an upgrade you can afford now, then the
--- level cap, then the remaining staff tiers. Pure so the HUD, waypoint and tests agree.
+-- next level milestone (new weapon or floating slot) up to the cap, then the remaining staff tiers. Pure so the HUD, waypoint and tests agree.
 -- Staff values are StaffTier indices (0-based, like the profile); add 1 when displaying.
 local Progression = if script then require(script.Parent.Progression) else require("./Progression")
 
@@ -20,7 +20,7 @@ function Goals.next(xp: number, coins: number, staffUpgrade: number): Goal
 		return { kind = "staff", target = staffUpgrade + 1, current = staffUpgrade, affordable = true, missing = 0 }
 	end
 	if level < Progression.MAX_LEVEL then
-		return { kind = "level", target = Progression.MAX_LEVEL, current = level }
+		return { kind = "level", target = Progression.nextMilestone(level), current = level }
 	end
 	if cost then
 		return { kind = "staff", target = staffUpgrade + 1, current = staffUpgrade, affordable = false, missing = cost - coins }

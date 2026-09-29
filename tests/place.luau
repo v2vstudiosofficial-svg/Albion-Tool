@@ -45,7 +45,7 @@ for _, name in { "Strings", "Balance", "QuestData", "WorldData", "Progression", 
 end
 local remotes = replicated:FindFirstChild("Remotes")
 for _, name in {
-	"RequestAttack",
+	"EquipWeapon",
 	"RequestWave",
 	"Interact",
 	"UpgradeStaff",

@@ -1,8 +1,11 @@
 -- All tuning values live here. Colors are {r, g, b} so the table stays plain data.
 return {
 	levels = {
-		-- Total XP needed to reach each level (index = level).
-		xpThresholds = { 0, 80, 200, 380, 620, 920, 1300, 1760, 2300, 2920 },
+		-- XP needed to go from level L to L + 1 is xpBase + xpScale * L ^ xpPower.
+		maxLevel = 100,
+		xpBase = 40,
+		xpScale = 30,
+		xpPower = 1.5,
 		baseHealth = 100,
 		healthPerLevel = 10,
 		damageBonusPerLevel = 0.06,
@@ -13,15 +16,14 @@ return {
 		respawnTime = 3,
 	},
 
+	-- Weapon power tiers bought from the Smith; they multiply every weapon's damage.
 	staff = {
-		cooldown = 0.55,
-		range = 24,
 		-- tiers[staffUpgrade + 1]
 		tiers = {
 			{ damage = 25, cost = 0, color = { 255, 236, 170 } },
 			{ damage = 34, cost = 40, color = { 150, 230, 255 } },
-			{ damage = 45, cost = 180, color = { 190, 160, 255 } },
-			{ damage = 60, cost = 420, color = { 255, 190, 120 } },
+			{ damage = 45, cost = 400, color = { 190, 160, 255 } },
+			{ damage = 60, cost = 1000, color = { 255, 190, 120 } },
 		},
 	},
 
@@ -55,6 +57,14 @@ return {
 			waveCooldownMultiplier = 0.65,
 			waveRadiusMultiplier = 1.25,
 		},
+	},
+
+	-- Regular enemies get tougher and more rewarding with their level (bosses keep their tuning).
+	enemyScaling = {
+		hpPerLevel = 0.2,
+		damagePerLevel = 0.08,
+		xpPower = 1.25,
+		coinsPerLevel = 0.2,
 	},
 
 	enemies = {

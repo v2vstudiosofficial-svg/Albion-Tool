@@ -25,4 +25,16 @@ function Attrs.set(name: string): { [string]: boolean }
 	return set
 end
 
+-- Parses an ordered comma-separated list (Companions).
+function Attrs.list(name: string): { string }
+	local list = {}
+	local value = player:GetAttribute(name)
+	if typeof(value) == "string" then
+		for item in string.gmatch(value, "[^,]+") do
+			table.insert(list, item)
+		end
+	end
+	return list
+end
+
 return Attrs

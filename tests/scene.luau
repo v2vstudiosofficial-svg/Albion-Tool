@@ -132,6 +132,8 @@ end
 
 local MapBuilder = loadModule("src/server/MapBuilder.luau")
 local EnemyModels = loadModule("src/server/EnemyModels.luau")
+local WeaponModels = loadModule("src/shared/WeaponModels.luau")
+local WeaponData = loadModule("src/shared/WeaponData.luau")
 local WorldData = loadModule("src/shared/WorldData.luau")
 local Balance = loadModule("src/shared/Balance.luau")
 
@@ -285,6 +287,37 @@ test("enemy models build for every enemy kind", function()
 		end
 		assert(welded >= 2, kind .. " has decorations")
 		model:Destroy()
+	end
+end)
+
+test("weapon models build for all eight weapons, welded in hand or anchored when floating", function()
+	for _, weaponId in WeaponData.order do
+		for _, anchored in { false, true } do
+			local base = roblox.CFrame.new(3, 4, 5)
+			local model = WeaponModels.build(weaponId, base, anchored, anchored)
+			local grip = model.PrimaryPart
+			assert(grip and grip.Name == "Grip", weaponId .. " grip")
+			eq(grip.CFrame, base, weaponId .. " grip at the base frame")
+			eq(model:GetAttribute("WeaponId"), weaponId)
+			local parts, glow = 0, false
+			for _, part in model:GetChildren() do
+				if part:IsA("BasePart") and part ~= grip then
+					parts += 1
+					glow = glow or part.Name == "Glow" or string.find(part.Name, "Blade") ~= nil
+					eq(part.CanCollide, false, weaponId .. " no collide")
+					eq(part.Anchored, anchored, weaponId .. " anchored flag")
+					local weld = part:FindFirstChildOfClass("WeldConstraint")
+					if anchored then
+						eq(weld, nil, weaponId .. " floating parts need no welds")
+					else
+						assert(weld and weld.Part0 == grip and weld.Part1 == part, weaponId .. " welded to grip")
+					end
+				end
+			end
+			assert(parts >= 2 and parts <= 12, weaponId .. " stays cheap: " .. parts .. " parts")
+			assert(glow, weaponId .. " has a glowing part")
+			model:Destroy()
+		end
 	end
 end)
 

@@ -1,7 +1,7 @@
 -- Run: lune run tests/sim
 -- Runs the real server code (src/server, src/shared and the vendored ProfileStore in its mock mode)
 -- inside Lune with fake players, a simulated clock, fake remotes and stubbed engine pieces
--- (no physics, raycasts always clear, no rendering). It exercises the quest chain, combat,
+-- (no physics, raycasts always clear, no rendering). It exercises the quest chain, automatic combat,
 -- co-op rewards, boss fight, invalid client payloads and save/rejoin, and fails on any error
 -- raised in any server thread. It is not a substitute for playing in Studio.
 local roblox = require("@lune/roblox")
@@ -58,6 +58,8 @@ H.services.HttpService = {
 
 local WorldData = H.loadModule("src/shared/WorldData.luau")
 local Balance = H.loadModule("src/shared/Balance.luau")
+local Progression = H.loadModule("src/shared/Progression.luau")
+local WeaponData = H.loadModule("src/shared/WeaponData.luau")
 
 local function vec(p: { number }, lift: number?): any
 	return Vector3.new(p[1], p[2] + (lift or 0), p[3])
@@ -156,24 +158,44 @@ local function talk(player, npc: string)
 	advance(0.1)
 end
 
--- Fights one enemy of a kind next to it until it is purified; keeps the player healed.
+-- Stands right next to one enemy of a kind (so it is the nearest target) until the automatic
+-- attacks purify it; keeps the player healed. Nearby enemies may be purified along the way.
 local function purifyOne(player, kind: string, maxSeconds: number?): boolean
 	local model = nearestEnemy(kind, root(player).Position)
 	assert(model, "no living " .. kind)
-	local id = model:GetAttribute("EnemyId")
 	local elapsed = 0
 	while isAlive(model) and elapsed < (maxSeconds or 30) do
-		teleport(player, positionOf(model.Body) + Vector3.new(0, 1, 9))
-		remotes.RequestAttack.OnServerEvent:Fire(player, id)
-		advance(0.6)
+		teleport(player, positionOf(model.Body) + Vector3.new(0, 1, 2))
+		advance(0.2)
 		heal(player)
-		elapsed += 0.6
+		elapsed += 0.2
 	end
 	return not isAlive(model)
 end
 
 local function attr(player, name: string)
 	return player:GetAttribute(name)
+end
+
+-- Totals of every RewardGranted the server sent to a player (optionally one reason only).
+local function rewardsTo(player, reason: string?): (number, number, number)
+	local xp, coins, count = 0, 0, 0
+	for _, entry in H.remoteLog do
+		if entry.remote == "RewardGranted" and entry.target == player and (reason == nil or entry.args[1] == reason) then
+			xp += entry.args[2]
+			coins += entry.args[3]
+			count += 1
+		end
+	end
+	return xp, coins, count
+end
+
+local function attacksBy(player, weaponId: string?, slot: number?): number
+	return logCount("Fx", function(e)
+		return e.args[1] == "attack" and e.args[2] == player
+			and (weaponId == nil or e.args[3] == weaponId)
+			and (slot == nil or e.args[4] == slot)
+	end)
 end
 
 -- Scenario --------------------------------------------------------------------------------------
@@ -194,7 +216,7 @@ end)
 local alice = newPlayer("Alice", 101)
 local bob = newPlayer("Bob", 102)
 
-test("players load profiles (ProfileStore mock) and get staffs", function()
+test("players load profiles (ProfileStore mock) and hold their weapon", function()
 	join(alice)
 	join(bob)
 	advance(2)
@@ -212,14 +234,21 @@ test("players load profiles (ProfileStore mock) and get staffs", function()
 	spawnCharacter(alice, vec(WorldData.spawn, 3))
 	spawnCharacter(bob, vec(WorldData.spawn, 3))
 	advance(0.5)
-	assert(alice.Character:FindFirstChild("LightStaff"), "staff attached")
+	local weapon = alice.Character:FindFirstChild("Weapon")
+	assert(weapon, "weapon in hand")
+	eq(weapon:GetAttribute("WeaponId"), "staff", "starter weapon")
+	eq(attr(alice, "Weapon"), "staff")
+	eq(attr(alice, "Companions"), "", "no floating weapons at level 1")
 	eq(humanoid(alice).MaxHealth, 100)
 	eq(humanoid(alice).BreakJointsOnDeath, false, "kid-friendly defeat")
 end)
 
 test("purifying before accepting the quest pays the enemy reward only", function()
 	assert(purifyOne(bob, "Gloomling"), "bob purified")
-	eq(attr(bob, "XP"), Balance.enemies.Gloomling.reward.xp)
+	local xp, _, count = rewardsTo(bob)
+	assert(count >= 1, "purify reward sent")
+	eq(attr(bob, "XP"), xp, "xp matches the rewards sent")
+	eq(rewardsTo(bob, "quest"), 0, "no quest reward")
 	eq(attr(bob, "QuestState"), "available", "quest not started")
 end)
 
@@ -231,15 +260,19 @@ test("first quest: accept at the Elder, purify three, reward once", function()
 		assert(purifyOne(alice, "Gloomling"), "purify " .. index)
 	end
 	advance(0.2)
-	local enemyReward = Balance.enemies.Gloomling.reward
-	eq(attr(alice, "XP"), enemyReward.xp * 3 + 50, "xp")
-	eq(attr(alice, "Coins"), enemyReward.coins * 3 + 20, "coins")
+	local xp, coins = rewardsTo(alice)
+	local questXp, questCoins, quests = rewardsTo(alice, "quest")
+	eq(quests, 1, "quest reward paid once")
+	eq(questXp, 50, "quest xp")
+	eq(questCoins, 20, "quest coins")
+	eq(attr(alice, "XP"), xp, "xp matches the rewards sent")
+	eq(attr(alice, "Coins"), coins, "coins match the rewards sent")
 	eq(attr(alice, "QuestId"), "lantern_flowers", "next quest")
 	eq(attr(alice, "QuestState"), "available")
-	eq(attr(alice, "Level"), 2, "level up")
-	eq(logCount("Fx", function(e)
+	assert(attr(alice, "Level") >= 2, "level up")
+	assert(logCount("Fx", function(e)
 		return e.args[1] == "levelUp" and e.args[2] == alice
-	end), 1, "level-up broadcast")
+	end) >= 1, "level-up broadcast")
 end)
 
 local function toVillage(player)
@@ -266,29 +299,34 @@ test("purified enemies respawn", function()
 	eq(#workspace.Enemies:GetChildren(), #WorldData.spawns, "respawned")
 end)
 
-test("hits nudge regular enemies away from the attacker", function()
+test("weapons attack automatically: nearest enemy in range, nothing out of range", function()
 	local target = nearestEnemy("Gloomling", vec(WorldData.areas.glade.center))
 	local body = positionOf(target.Body)
+	local hp = target:GetAttribute("Hp")
+	local before = attacksBy(alice, "staff", 0)
 	heal(alice)
-	teleport(alice, body + Vector3.new(0, 1, 10))
-	advance(0.7)
-	local rootPosition = positionOf(alice.Character.HumanoidRootPart)
-	local function flatDistance(a, b)
-		return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
-	end
-	local before = flatDistance(positionOf(target.Body), rootPosition)
-	remotes.RequestAttack.OnServerEvent:Fire(alice, target:GetAttribute("EnemyId"))
-	local after = flatDistance(positionOf(target.Body), rootPosition)
-	assert(after - before >= Balance.hitPush * 0.8, `pushed away: {before} -> {after}`)
+	teleport(alice, body + Vector3.new(0, 1, 3))
+	advance(0.3)
+	assert(attacksBy(alice, "staff", 0) > before, "attacked without any request")
+	assert(target:GetAttribute("Hp") < hp or not isAlive(target), "the nearest enemy took damage")
 	toVillage(alice)
-	advance(0.6)
+	advance(1)
+	local idle = attacksBy(alice)
+	advance(2)
+	eq(attacksBy(alice), idle, "no attacks with nothing in range")
+	-- Just outside the staff's reach of the glade's northernmost creature: no attack either.
+	local far = vec(WorldData.areas.glade.center, 3) + Vector3.new(0, 0, WorldData.areas.glade.radius + WeaponData.weapons.staff.range + 30)
+	teleport(alice, far)
+	advance(1)
+	eq(attacksBy(alice), idle, "out of range")
+	toVillage(alice)
 end)
 
 test("invalid client payloads are ignored safely", function()
 	local xp, coins = attr(alice, "XP"), attr(alice, "Coins")
-	for _, payload in { "x", 0 / 0, math.huge, -1, 1e308, 2.5, {}, true } do
-		remotes.RequestAttack.OnServerEvent:Fire(alice, payload)
-		advance(0.6)
+	for _, args in { { "x", "bow" }, { 0 / 0, "staff" }, { math.huge, "staff" }, { -1, "staff" }, { 1, "staff" }, { 2.5, "staff" }, { 0, "hammer" }, { 0, string.rep("a", 500) }, { {}, {} }, { 0, true } } do
+		remotes.EquipWeapon.OnServerEvent:Fire(alice, args[1], args[2])
+		advance(0.4)
 	end
 	for _, args in { { {}, nil }, { "flower", string.rep("a", 500) }, { "flower", "flower_1" }, { 42, 42 } } do
 		remotes.Interact.OnServerEvent:Fire(alice, args[1], args[2])
@@ -304,23 +342,12 @@ test("invalid client payloads are ignored safely", function()
 	eq(attr(alice, "Coins"), coins, "coins unchanged")
 	eq(attr(alice, "StaffTier"), 0, "no upgrade from afar")
 	eq(attr(alice, "Charm"), "", "cannot equip unowned charm")
+	eq(attr(alice, "Weapon"), "staff", "no locked or bogus weapons")
+	eq(attr(alice, "Companions"), "", "no floating slot opened")
 	eq(attr(alice, "DataState"), "ready")
 end)
 
-test("attacks from beyond staff range are rejected", function()
-	local target = nearestEnemy("Gloomling", vec(WorldData.areas.glade.center))
-	local body = positionOf(target.Body)
-	local hp = target:GetAttribute("Hp")
-	heal(alice)
-	teleport(alice, body + Vector3.new(0, 1, Balance.staff.range + 20))
-	remotes.RequestAttack.OnServerEvent:Fire(alice, target:GetAttribute("EnemyId"))
-	advance(0.6)
-	eq(target:GetAttribute("Hp"), hp, "no damage from afar")
-	toVillage(alice)
-	advance(0.6)
-end)
-
-test("co-op: both hitters get their own reward, exactly once", function()
+test("co-op: both attackers get their own reward, never more than once per purify", function()
 	local target = nil
 	for _, model in enemiesOf("Gloomling") do
 		if model:GetAttribute("Hp") == model:GetAttribute("MaxHp") then
@@ -329,27 +356,34 @@ test("co-op: both hitters get their own reward, exactly once", function()
 		end
 	end
 	assert(target, "an untouched Gloomling")
-	local id = target:GetAttribute("EnemyId")
-	local body = positionOf(target.Body)
-	local aliceXp, bobXp = attr(alice, "XP"), attr(bob, "XP")
-	heal(alice)
-	heal(bob)
-	teleport(alice, body + Vector3.new(0, 1, 8))
-	teleport(bob, body + Vector3.new(0, 1, -8))
-	remotes.RequestAttack.OnServerEvent:Fire(alice, id)
-	advance(0.6)
-	remotes.RequestAttack.OnServerEvent:Fire(bob, id)
-	advance(0.6)
-	if isAlive(target) then
-		remotes.RequestAttack.OnServerEvent:Fire(alice, id)
-		advance(0.6)
+	local _, _, aliceBefore = rewardsTo(alice, "purify")
+	local _, _, bobBefore = rewardsTo(bob, "purify")
+	local purifiesBefore = logCount("Fx", function(e)
+		return e.args[1] == "purify"
+	end)
+	local elapsed = 0
+	while isAlive(target) and elapsed < 10 do
+		local body = positionOf(target.Body)
+		teleport(alice, body + Vector3.new(0, 1, 2))
+		teleport(bob, body + Vector3.new(0, 1, -2))
+		advance(0.1)
+		heal(alice)
+		heal(bob)
+		elapsed += 0.1
 	end
-	heal(alice)
-	heal(bob)
 	eq(isAlive(target), false, "purified by the two players")
-	local reward = Balance.enemies.Gloomling.reward.xp
-	eq(attr(alice, "XP"), aliceXp + reward, "alice")
-	eq(attr(bob, "XP"), bobXp + reward, "bob")
+	toVillage(alice)
+	toVillage(bob)
+	advance(0.2)
+	local purified = logCount("Fx", function(e)
+		return e.args[1] == "purify"
+	end) - purifiesBefore
+	local _, _, aliceAfter = rewardsTo(alice, "purify")
+	local _, _, bobAfter = rewardsTo(bob, "purify")
+	assert(aliceAfter - aliceBefore >= 1 and bobAfter - bobBefore >= 1, "both rewarded")
+	assert(aliceAfter - aliceBefore <= purified and bobAfter - bobBefore <= purified, "at most one reward per purify")
+	eq(attr(alice, "XP"), (rewardsTo(alice)), "alice xp matches rewards")
+	eq(attr(bob, "XP"), (rewardsTo(bob)), "bob xp matches rewards")
 end)
 
 test("quest 2: personal flowers, duplicates and far requests ignored, charm + flag", function()
@@ -451,14 +485,12 @@ test("quest 6: boss fight with telegraphed attacks, rewards, festival", function
 	eq(attr(alice, "QuestState"), "active")
 	local boss = enemiesOf("Warden")[1]
 	assert(boss, "boss alive")
-	local id = boss:GetAttribute("EnemyId")
 	local arena = vec(WorldData.areas.arena.center, 3)
 	teleport(alice, arena + Vector3.new(0, 0, 16))
 	local elapsed = 0
 	while isAlive(boss) and elapsed < 240 do
 		local bossPosition = positionOf(boss.Body)
 		teleport(alice, Vector3.new(bossPosition.X, 3, bossPosition.Z + 12))
-		remotes.RequestAttack.OnServerEvent:Fire(alice, id)
 		remotes.RequestWave.OnServerEvent:Fire(alice)
 		advance(0.6)
 		heal(alice)
@@ -556,9 +588,84 @@ test("other enemy behaviors run (shooter, charger) and hurt players", function()
 	end) > 0, "spores fired")
 end)
 
+local function nearAnyEnemy(player, kind: string, area: string)
+	local model = nil
+	while not model do
+		model = nearestEnemy(kind, vec(WorldData.areas[area].center))
+		if not model then
+			advance(2) -- wait for respawns
+		end
+	end
+	teleport(player, positionOf(model.Body) + Vector3.new(0, 1, 2))
+end
+
+test("weapon choice: unlocked weapons equip, the hand model swaps, attacks use it", function()
+	eq(attr(alice, "Weapon"), "staff")
+	assert(attr(alice, "Level") >= WeaponData.weapons.bow.unlockLevel, "bow unlocked by now")
+	remotes.EquipWeapon.OnServerEvent:Fire(alice, 0, "bow")
+	advance(0.5)
+	eq(attr(alice, "Weapon"), "bow")
+	eq(alice.Character.Weapon:GetAttribute("WeaponId"), "bow", "hand model swapped")
+	local models = 0
+	for _, child in alice.Character:GetChildren() do
+		if child.Name == "Weapon" then
+			models += 1
+		end
+	end
+	eq(models, 1, "old model removed")
+	nearAnyEnemy(alice, "Gloomling", "glade")
+	advance(1)
+	heal(alice)
+	assert(attacksBy(alice, "bow", 0) > 0, "bow attacks")
+	toVillage(alice)
+end)
+
+test("every 25 levels a floating weapon joins the fight from behind the player", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	PlayerProfiles.get(alice).xp = Progression.thresholds[25]
+	PlayerProfiles.sync(alice)
+	eq(attr(alice, "Level"), 25)
+	eq(attr(alice, "Companions"), "spear", "auto pick: strongest unlocked weapon not in use")
+	remotes.EquipWeapon.OnServerEvent:Fire(alice, 1, "daggers")
+	advance(0.5)
+	eq(attr(alice, "Companions"), "daggers", "picked for the slot")
+	remotes.EquipWeapon.OnServerEvent:Fire(alice, 2, "sword")
+	advance(0.5)
+	eq(attr(alice, "Companions"), "daggers", "second slot still closed")
+	-- Sturdy level 5-6 creatures, so the main weapon cannot clear the area before the slot acts.
+	nearAnyEnemy(alice, "Rockling", "hollow")
+	local before = attacksBy(alice, "daggers", 1)
+	advance(1.5)
+	heal(alice)
+	assert(attacksBy(alice, "daggers", 1) > before, "floating slot attacks")
+	for _, entry in H.remoteLog do
+		if entry.remote == "Fx" and entry.args[1] == "attack" and entry.args[2] == alice and entry.args[4] == 1 then
+			local origin = entry.args[5]
+			local hover = WeaponData.companionOffsets[1]
+			eq(math.floor(origin.Y - positionOf(root(alice)).Y + 0.5), math.floor(hover[2] + 0.5), "attacks from the hover height")
+			break
+		end
+	end
+	toVillage(alice)
+end)
+
+test("Studio-only LvDebugLevel attribute moves loaded players to a level", function()
+	-- Lune does not fire attribute signals by itself; the harness signal stands in for Roblox's.
+	local changed = H.signalFor(workspace, "attr:LvDebugLevel")
+	workspace:SetAttribute("LvDebugLevel", 50)
+	changed:Fire()
+	advance(0.2)
+	eq(attr(alice, "Level"), 50)
+	eq(#string.split(attr(alice, "Companions"), ","), 2, "two floating slots at 50")
+	workspace:SetAttribute("LvDebugLevel", "nonsense")
+	changed:Fire()
+	advance(0.2)
+	eq(attr(alice, "Level"), 50, "ignored")
+end)
+
 test("leaving and rejoining restores the saved profile", function()
 	local snapshot = {}
-	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState" } do
+	for _, key in { "XP", "Coins", "StaffTier", "Charms", "Charm", "Flags", "QuestState", "Weapon", "Companions" } do
 		snapshot[key] = attr(alice, key)
 	end
 	leave(alice)

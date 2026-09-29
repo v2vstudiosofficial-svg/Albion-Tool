@@ -23,17 +23,27 @@ WorldData.areas = {
 	arena = { center = { 0, 0, -285 }, radius = 34 },
 }
 
+-- Enemy packs. `level` scales health, damage and rewards (Progression.enemyStats).
 WorldData.spawns = {
-	{ kind = "Gloomling", area = "glade", position = { -10, 0, -104 } },
-	{ kind = "Gloomling", area = "glade", position = { 11, 0, -112 } },
-	{ kind = "Gloomling", area = "glade", position = { 0, 0, -124 } },
-	{ kind = "Sporeling", area = "grove", position = { -52, 0, -152 } },
-	{ kind = "Sporeling", area = "grove", position = { -38, 0, -166 } },
-	{ kind = "Sporeling", area = "grove", position = { -54, 0, -176 } },
-	{ kind = "Rockling", area = "hollow", position = { 38, 0, -176 } },
-	{ kind = "Rockling", area = "hollow", position = { 54, 0, -194 } },
-	{ kind = "Gloomling", area = "hollow", position = { 30, 0, -200 } },
-	{ kind = "Warden", area = "arena", position = { 0, 0, -290 } },
+	{ kind = "Gloomling", area = "glade", level = 1, position = { -10, 0, -104 } },
+	{ kind = "Gloomling", area = "glade", level = 1, position = { 11, 0, -112 } },
+	{ kind = "Gloomling", area = "glade", level = 1, position = { 0, 0, -124 } },
+	{ kind = "Gloomling", area = "glade", level = 2, position = { -6, 0, -116 } },
+	{ kind = "Gloomling", area = "glade", level = 2, position = { 6, 0, -100 } },
+	{ kind = "Gloomling", area = "glade", level = 2, position = { 14, 0, -124 } },
+	{ kind = "Sporeling", area = "grove", level = 3, position = { -52, 0, -152 } },
+	{ kind = "Sporeling", area = "grove", level = 3, position = { -38, 0, -166 } },
+	{ kind = "Sporeling", area = "grove", level = 4, position = { -54, 0, -176 } },
+	{ kind = "Gloomling", area = "grove", level = 3, position = { -44, 0, -158 } },
+	{ kind = "Gloomling", area = "grove", level = 3, position = { -36, 0, -154 } },
+	{ kind = "Gloomling", area = "grove", level = 4, position = { -48, 0, -170 } },
+	{ kind = "Rockling", area = "hollow", level = 5, position = { 38, 0, -176 } },
+	{ kind = "Rockling", area = "hollow", level = 6, position = { 54, 0, -194 } },
+	{ kind = "Gloomling", area = "hollow", level = 5, position = { 30, 0, -200 } },
+	{ kind = "Gloomling", area = "hollow", level = 5, position = { 46, 0, -182 } },
+	{ kind = "Gloomling", area = "hollow", level = 6, position = { 40, 0, -196 } },
+	{ kind = "Sporeling", area = "hollow", level = 6, position = { 56, 0, -178 } },
+	{ kind = "Warden", area = "arena", level = 8, position = { 0, 0, -290 } },
 }
 
 WorldData.flowers = {

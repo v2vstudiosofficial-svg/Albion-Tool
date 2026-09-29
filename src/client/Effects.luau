@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Balance = require(Shared:WaitForChild("Balance"))
 local Strings = require(Shared:WaitForChild("Strings"))
+local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 
@@ -19,6 +20,8 @@ local SPORE_COLOR = Color3.fromRGB(255, 130, 200)
 local SHADOW_COLOR = Color3.fromRGB(150, 80, 230)
 local WARN_COLOR = Color3.fromRGB(255, 120, 90)
 local GOLD = Color3.fromRGB(255, 220, 120)
+-- Other players' weapon effects farther than this from the local player are skipped.
+local ATTACK_FX_DISTANCE = 160
 
 local Effects = {}
 
@@ -186,6 +189,135 @@ function Effects.wave(attacker: Player?, center: Vector3, radius: number, tier: 
 	if attacker == player then
 		Audio.play("wave")
 		Effects.shake(0.25, 0.25)
+	end
+end
+
+-- Automatic weapon attacks -------------------------------------------------------------------
+
+local function weaponColor(weaponId: string): Color3
+	local weapon = WeaponData.weapons[weaponId]
+	return if weapon then UiKit.rgb(weapon.color) else GOLD
+end
+
+local function flatUnit(from: Vector3, to: Vector3, fallback: Vector3): Vector3
+	local offset = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	return if offset.Magnitude > 0.05 then offset.Unit else fallback
+end
+
+-- A small glowing streak flying from `from` to `to`.
+local function streak(from: Vector3, to: Vector3, color: Color3, thickness: number, length: number, speed: number)
+	local distance = (to - from).Magnitude
+	if distance < 0.1 then
+		return
+	end
+	local direction = (to - from).Unit
+	local travel = math.clamp(distance / speed, 0.05, 0.35)
+	local part = newPart({
+		Size = Vector3.new(thickness, thickness, length),
+		CFrame = CFrame.lookAt(from, to),
+		Color = color,
+		Material = Enum.Material.Neon,
+	})
+	UiKit.tween(part, travel, { CFrame = CFrame.lookAt(to - direction * length * 0.5, to + direction) }, Enum.EasingStyle.Linear)
+	task.delay(travel, function()
+		Effects.burst(to, color, 6)
+		fadeOut(part, 0.08)
+	end)
+end
+
+local function groundRing(center: Vector3, radius: number, color: Color3, seconds: number)
+	local ring = newPart({
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.3, 2, 2),
+		CFrame = ringCFrame(center),
+		Color = color,
+		Material = Enum.Material.Neon,
+		Transparency = 0.3,
+	})
+	UiKit.tween(ring, seconds * 0.6, { Size = Vector3.new(0.3, radius * 2, radius * 2) })
+	fadeOut(ring, seconds)
+end
+
+-- Short neon blades placed along an arc in front of the attacker, lit one after another.
+local function sweep(origin: Vector3, direction: Vector3, radius: number, arcDegrees: number, color: Color3)
+	local steps = 7
+	for index = 0, steps - 1 do
+		local angle = math.rad(-arcDegrees / 2 + arcDegrees * index / (steps - 1))
+		local dir = (CFrame.Angles(0, angle, 0) * CFrame.lookAt(Vector3.zero, direction)).LookVector
+		task.delay(index * 0.018, function()
+			local blade = newPart({
+				Size = Vector3.new(0.35, 0.35, radius * 0.55),
+				CFrame = CFrame.lookAt(origin + dir * radius * 0.6, origin + dir * radius * 2),
+				Color = color,
+				Material = Enum.Material.Neon,
+				Transparency = 0.2,
+			})
+			fadeOut(blade, 0.2)
+		end)
+	end
+end
+
+function Effects.attack(attacker: Player?, weaponId: string, slot: number, origin: Vector3, aim: Vector3, tier: number)
+	local weapon = WeaponData.weapons[weaponId]
+	if not weapon then
+		return
+	end
+	if attacker ~= player then
+		local own = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if own and (own.Position - origin).Magnitude > ATTACK_FX_DISTANCE then
+			return
+		end
+	end
+	local color = weaponColor(weaponId)
+	local character = attacker and attacker.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local facing = if root then root.CFrame.LookVector else Vector3.new(0, 0, -1)
+	local direction = flatUnit(origin, aim, facing)
+	local style = weapon.style
+	if style == "bolt" then
+		Effects.bolt(nil, origin, aim, tier)
+	elseif style == "arrow" then
+		streak(origin, aim, color, 0.18, 2.2, 140)
+	elseif style == "fan" then
+		for index = 1, weapon.count do
+			local angle = math.rad((index - (weapon.count + 1) / 2) * weapon.spread)
+			local dir = (CFrame.Angles(0, angle, 0) * CFrame.lookAt(Vector3.zero, direction)).LookVector
+			local reach = if index == (weapon.count + 1) / 2 then (aim - origin).Magnitude else weapon.range
+			streak(origin, origin + dir * reach + Vector3.new(0, aim.Y - origin.Y, 0), color, 0.22, 1.1, 110)
+		end
+	elseif style == "pierce" then
+		streak(origin, origin + direction * weapon.range + Vector3.new(0, aim.Y - origin.Y, 0), color, 0.3, 3, 170)
+	elseif style == "arc" then
+		sweep(origin, direction, weapon.range, weapon.arc, color)
+	elseif style == "thrust" then
+		local line = newPart({
+			Size = Vector3.new(0.5, 0.5, 1),
+			CFrame = CFrame.lookAt(origin + direction * 0.5, origin + direction * 2),
+			Color = color,
+			Material = Enum.Material.Neon,
+			Transparency = 0.15,
+		})
+		UiKit.tween(line, 0.1, {
+			Size = Vector3.new(0.5, 0.5, weapon.range),
+			CFrame = CFrame.lookAt(origin + direction * weapon.range * 0.5, origin + direction * weapon.range),
+		})
+		fadeOut(line, 0.25)
+	elseif style == "spin" then
+		groundRing(origin - Vector3.new(0, 3.5, 0), weapon.range, color, 0.35)
+		sweep(origin, direction, weapon.range, 360, color)
+	elseif style == "slam" then
+		local ground = aim - Vector3.new(0, 2, 0)
+		groundRing(ground, weapon.radius, color, 0.45)
+		Effects.burst(ground, color, 18, 12)
+		if attacker == player and slot == 0 then
+			Effects.shake(0.3, 0.2)
+		end
+	end
+	if slot == 0 then
+		swingArm(character)
+		if attacker == player then
+			Audio.play("attack")
+		end
 	end
 end
 
@@ -365,8 +497,8 @@ end
 
 local function onUpgrade(who: Player, tier: number)
 	local character = who.Character
-	local staff = character and character:FindFirstChild("LightStaff")
-	local orb = staff and staff:FindFirstChild("Orb") :: BasePart?
+	local weapon = character and character:FindFirstChild("Weapon")
+	local orb = weapon and weapon:FindFirstChild("Glow") :: BasePart?
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local position = (orb and orb.Position) or (root and root.Position)
 	if position then
@@ -384,14 +516,14 @@ local function attachEnemyUi(model: Instance)
 		return
 	end
 	local gui = UiKit.create("BillboardGui", {
-		Size = UDim2.fromOffset(110, 34),
+		Size = UDim2.fromOffset(140, 34),
 		StudsOffset = Vector3.new(0, stats.size * 0.5 + 1.6, 0),
 		MaxDistance = 90,
 		Adornee = body,
 	}, billboards)
 	UiKit.label({
 		Size = UDim2.new(1, 0, 0, 18),
-		Text = Strings.get(stats.nameKey),
+		Text = Strings.get("enemy_label", model:GetAttribute("Level") or 1, Strings.get(stats.nameKey)),
 		TextSize = 16,
 		TextStrokeTransparency = 0.4,
 	}, gui)
@@ -443,11 +575,7 @@ local function onQuestComplete()
 end
 
 local handlers = {
-	bolt = function(attacker, from, to, tier)
-		if attacker ~= player then
-			Effects.bolt(attacker, from, to, tier)
-		end
-	end,
+	attack = Effects.attack,
 	wave = function(attacker, center, radius, tier)
 		if attacker ~= player then
 			Effects.wave(attacker, center, radius, tier)

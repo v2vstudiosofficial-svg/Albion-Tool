@@ -23,28 +23,32 @@ rojo serve
 - Yayında maksimum oyuncu: Game Settings → Places → Max Players = 4.
 
 ## Elle test listesi (Studio)
-1. **Play**: Output'ta `Server started` ve `Client started`, kırmızı hata yok; "Kaydın yükleniyor"
-   kısa süre görünüp kaybolur.
-2. Görev 1: Bilge Nur'da **!** işareti → E/dokun → elmas işaret açıklığa götürür → Gölgecik'i
-   arındır (sol tık/F/IŞIK) → "Dost oldu" + "Görev tamamlandı" afişi.
-3. Görev 2: 5 Fener Çiçeği (yalnızca bu oyuncuya görünür) → köyde çiçek tarhları/bayraklar.
-4. Görev 3: 3 altın ışık sütunu → keşif bildirimi.
-5. Görev 4: Usta Demir → Asa Tezgâhı → Güçlendir (yetersiz sikkede uyarı) → asa küresi renk
-   değiştirir, köy fenerleri yanar, Kabuk Tılsımı gelir.
-6. Seviye 3'te DALGA/Q açılır. Görev 5: harabe kapısında dalga → sarmaşıklar temizlenir.
-7. Görev 6: arenada Gölge Bekçisi: kırmızı halkalardan çık, küre halkasındaki boşluktan geç;
-   %50'de renk değişir ve hızlanır. Sonunda köyde şenlik (büyük fener, ateş böcekleri).
-8. Çanta: tılsım tak/çıkar (Rüzgâr → hız, Kabuk → az hasar, Parıltı → dalga).
-9. Yenil → köyde yeniden doğ; XP/sikke/eşya kaybı yok.
-10. **Test → Clients and Servers → 2-4 Players**: aynı düşmana vuran herkes kendi ödülünü alır;
-    boss canı oyuncu sayısıyla artar; bir oyuncunun çiçek/sarmaşık/köy dekoru diğerini etkilemez;
-    sonradan katılan oyuncu kendi görevinden başlar.
-11. Kayıt (API erişimi açık, yayınlanmış yerde): çık-gir → ilerleme korunur.
-12. Ayarlar → Performans göstergesi: FPS/Ping. Ölçümü gerçek cihazda yap; cihaz modelini,
-    grafik ayarını ve oyuncu sayısını not et (emülatör gerçek telefon ölçümü sayılmaz).
-13. Dil: Roblox dili Türkçe ise Türkçe, diğer dillerde İngilizce görünür. Studio'da
-    File → Studio Settings → Studio → Language ya da Test sekmesindeki Locale ile İngilizceyi dene;
-    uzun İngilizce metinlerin butonlara ve panellere sığdığını kontrol et.
+Oyun içi tüm metinler İngilizce.
+1. **Play**: Output'ta `Server started` ve `Client started`, kırmızı hata yok; "Loading your save..."
+   kısa süre görünüp kaybolur. Kamera yukarıdan çapraz bakar ve karakteri takip eder; fare tekerleği
+   veya iki parmakla yakınlaşma çalışır. Karakterin altında beyaz menzil halkası görünür.
+2. Görev 1: Elder Nora'da **!** → E/dokun → elmas işaret açıklığa götürür → Gloomling'lere yaklaş:
+   saldırı tuşu yok, asa en yakın yaratığa **kendiliğinden** ateş eder → "Friend made!" + "Quest complete!".
+3. Yaratıkların üstünde "Lv.N Ad" ve can çubuğu; ormanın derinlerinde seviye 3–6 sürüler.
+4. Görev 2: 5 Lantern Flower (yalnızca bu oyuncuya görünür) → köyde çiçek tarhları/bayraklar.
+5. Görev 3: 3 altın ışık sütunu → keşif bildirimi.
+6. Görev 4: Smith Bram → Forge → Upgrade (yetersiz sikkede uyarı) → köy fenerleri yanar, Shell Charm gelir.
+7. Seviye 3'te WAVE/Q açılır. Görev 5: harabe kapısında dalga → sarmaşıklar temizlenir.
+8. Görev 6: arenada Shadow Warden: kırmızı halkalardan çık, küre halkasındaki boşluktan geç.
+9. **Weapons** menüsü: kilitli silahlar "Lv N" gösterir ve seçilmez; Sv4'te Sunleaf Bow açılınca
+   bildirim gelir, seçince eldeki model ve menzil halkası değişir, saldırı efekti oka döner.
+   Yüksek seviyeleri denemek için (yalnızca Studio): Play sırasında Server görünümüne geç, Explorer'da
+   Workspace'i seç, Properties → Attributes → "+" ile `LvDebugLevel` (number) ekle ve 25/60/100 yaz;
+   tüm oyuncular o seviyeye geçer (Studio kayıt deposuna yazılır, canlı veriye dokunmaz).
+10. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
+    Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
+11. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).
+12. Yenil → köyde yeniden doğ; XP/sikke/eşya kaybı yok.
+13. **Test → Clients and Servers → 2-4 Players**: aynı düşmana vuran herkes kendi ödülünü alır;
+    diğer oyuncuların yüzen silahları ve saldırı efektleri görünür; sonradan katılan kendi görevinden başlar.
+14. Kayıt (API erişimi açık, yayınlanmış yerde): çık-gir → ilerleme, silah seçimi korunur.
+15. Settings → Performance display: FPS/Ping. Özellikle 4 yüzen silahlı oyuncularla gerçek cihazda ölç;
+    cihaz modelini, grafik ayarını ve oyuncu sayısını not et (emülatör gerçek telefon ölçümü sayılmaz).
 
 ## Otomatik kontroller (Roblox gerektirmez; Lune 0.10 + Rojo 7.x)
 `lune run tests/all` hepsini çalıştırır:

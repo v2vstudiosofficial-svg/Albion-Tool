@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage.Shared
 local Balance = require(Shared.Balance)
+local Progression = require(Shared.Progression)
 local WorldData = require(Shared.WorldData)
 local EnemyLogic = require(script.Parent.EnemyLogic)
 local EnemyModels = require(script.Parent.EnemyModels)
@@ -23,6 +24,10 @@ export type Enemy = {
 	id: number,
 	kind: string,
 	stats: any,
+	level: number,
+	-- Level-scaled values: damage multiplier for its attacks and the purify reward.
+	damageMultiplier: number,
+	reward: any,
 	model: Model,
 	body: BasePart,
 	spawnIndex: number,
@@ -108,7 +113,7 @@ function ctx.contact(enemy: Enemy, now: number, damage: number?)
 			local last = enemy.lastContact[target.player]
 			if not last or now - last >= stats.contactCooldown then
 				enemy.lastContact[target.player] = now
-				ctx.hurt(target, damage or stats.contactDamage)
+				ctx.hurt(target, (damage or stats.contactDamage) * enemy.damageMultiplier)
 			end
 		end
 	end
@@ -182,7 +187,7 @@ function behaviors.shooter(enemy: Enemy, dt: number, now: number)
 					origin + direction.Unit * stats.size * 0.6,
 					direction.Unit * stats.projectileSpeed,
 					stats.projectileRadius,
-					stats.projectileDamage,
+					stats.projectileDamage * enemy.damageMultiplier,
 					stats.projectileLifetime,
 					"spore"
 				)
@@ -229,7 +234,7 @@ function behaviors.charger(enemy: Enemy, dt: number, now: number)
 		for _, target in ctx.targets do
 			if not memory.dashHits[target.player] and (target.root.Position - enemy.position).Magnitude <= stats.contactRange + 0.8 then
 				memory.dashHits[target.player] = true
-				ctx.hurt(target, stats.dashDamage)
+				ctx.hurt(target, stats.dashDamage * enemy.damageMultiplier)
 			end
 		end
 		if beyond or now >= enemy.stateUntil then
@@ -301,11 +306,14 @@ local function spawnAt(spawnIndex: number)
 	local spawn = WorldData.spawns[spawnIndex]
 	local stats = Balance.enemies[spawn.kind]
 	local area = WorldData.areas[spawn.area]
+	local level = spawn.level or 1
+	local scaled = Progression.enemyStats(stats, level)
 	nextId += 1
 	local home = WorldData.vector(spawn.position) + Vector3.new(0, stats.hoverHeight, 0)
 	local model, body = EnemyModels.build(spawn.kind, stats, CFrame.new(home))
 	model:SetAttribute("EnemyId", nextId)
 	model:SetAttribute("EnemyType", spawn.kind)
+	model:SetAttribute("Level", level)
 	model:SetAttribute("Boss", stats.isBoss == true)
 	model:SetAttribute("Alive", true)
 
@@ -313,6 +321,9 @@ local function spawnAt(spawnIndex: number)
 		id = nextId,
 		kind = spawn.kind,
 		stats = stats,
+		level = level,
+		damageMultiplier = scaled.damageMultiplier,
+		reward = scaled.reward,
 		model = model,
 		body = body,
 		spawnIndex = spawnIndex,
@@ -321,7 +332,7 @@ local function spawnAt(spawnIndex: number)
 		home = home,
 		position = home,
 		facing = Vector3.new(0, 0, 1),
-		logic = EnemyLogic.new(stats.maxHp),
+		logic = EnemyLogic.new(scaled.maxHp),
 		lastContact = {},
 		state = "idle",
 		stateUntil = 0,
@@ -343,12 +354,23 @@ local function purify(enemy: Enemy)
 	enemy.model:Destroy()
 	task.delay(enemy.stats.respawnDelay, spawnAt, enemy.spawnIndex)
 	for _, listener in purifiedListeners do
-		task.spawn(listener, enemy.kind, enemy.stats.reward, participants)
+		task.spawn(listener, enemy.kind, enemy.reward, participants)
 	end
 end
 
 function EnemyService.get(id: number): Enemy?
 	return enemies[id]
+end
+
+-- Living enemies as flat points for weapon targeting (see WeaponLogic).
+function EnemyService.foes(): { { id: number, x: number, z: number, size: number } }
+	local list = {}
+	for id, enemy in enemies do
+		if enemy.logic.alive then
+			table.insert(list, { id = id, x = enemy.position.X, z = enemy.position.Z, size = enemy.stats.size })
+		end
+	end
+	return list
 end
 
 function EnemyService.getFolder(): Folder

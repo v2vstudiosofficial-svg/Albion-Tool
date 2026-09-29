@@ -20,7 +20,7 @@ local withJumpButton = mode == "touch"
 
 -- Client-side fake services -----------------------------------------------------------------
 
-local Players = { list = {} }
+local Players = { list = {}, PlayerRemoving = H.Signal.new() }
 local hero = H.newPlayer("Hero", 1, Players)
 local friend = H.newPlayer("Friend", 2, Players)
 Players.LocalPlayer = hero
@@ -115,6 +115,8 @@ H.services.UserInputService = {
 	GetMouseLocation = function()
 		return Vector2.new(500, 280)
 	end,
+	InputChanged = H.Signal.new(),
+	TouchPinch = H.Signal.new(),
 }
 H.services.RunService = {
 	Heartbeat = H.heartbeat,
@@ -304,6 +306,7 @@ test("client boots with every module", function()
 	hero:SetAttribute("DataState", "loading")
 	H.task.spawn(H.run, "src/client/init.client.luau")
 	advance(1)
+	if #H.threadErrors > 0 then error(H.threadErrors[1]) end
 	for _, name in { "Hud", "Controls", "Menus" } do
 		assert(playerGui:FindFirstChild(name), name .. " gui")
 	end
@@ -381,39 +384,57 @@ test("server events render: rewards, notices, dialog, effects", function()
 	eq(#workspace.ClientFx:GetChildren(), 0, "effects cleaned up")
 end)
 
-test("attack picks a target with aim assist and asks the server", function()
-	local gloom = enemies[1]
-	teleport(H.read(gloom.Body, "Position") + Vector3.new(0, 1, 10))
-	advance(0.7)
-	local before = sent("RequestAttack")
-	local input = { UserInputType = if touchMode then Enum.UserInputType.Touch else Enum.UserInputType.MouseButton1 }
-	actions.LvLightAttack("LvLightAttack", Enum.UserInputState.Begin, input)
-	eq(sent("RequestAttack"), before + 1, "attack sent")
-	eq(sent("RequestAttack", function(args)
-		return args[1] == gloom:GetAttribute("EnemyId")
-	end) >= 1, true, "targeted the nearby enemy")
-	actions.LvLightAttack("LvLightAttack", Enum.UserInputState.Begin, input)
-	eq(sent("RequestAttack"), before + 1, "local cooldown")
-	teleport(vec(WorldData.spawn, 3))
-	advance(0.7)
-	actions.LvLightAttack("LvLightAttack", Enum.UserInputState.Begin, input)
-	eq(sent("RequestAttack"), before + 1, "no target in range, nothing sent")
+test("automatic attacks from the server render for every weapon style", function()
+	local WeaponData = H.loadModule("src/shared/WeaponData.luau")
+	local root = hero.Character.HumanoidRootPart
+	local origin = H.read(root, "Position") + Vector3.new(0, 1.5, 0)
+	for _, weaponId in WeaponData.order do
+		for _, slot in { 0, 1 } do
+			advance(1) -- let earlier effects finish so the count only sees this attack
+			local before = #workspace.ClientFx:GetChildren()
+			remotes.Fx.OnClientEvent:Fire("attack", hero, weaponId, slot, origin, origin + Vector3.new(4, 0, -8), 0)
+			advance(0.05)
+			assert(#workspace.ClientFx:GetChildren() > before, `{weaponId} slot {slot} drew an effect`)
+		end
+	end
+	remotes.Fx.OnClientEvent:Fire("attack", hero, "not-a-weapon", 0, origin, origin, 0)
+	advance(1)
+	eq(#H.threadErrors, 0, "thread errors")
+	eq(sent("EquipWeapon"), 0, "attacks never ask anything from the client")
 end)
 
-test("clicking a UI button never doubles as an attack", function()
-	local gloom = enemies[1]
-	teleport(H.read(gloom.Body, "Position") + Vector3.new(0, 1, 10))
-	advance(0.7)
-	local before = sent("RequestAttack")
-	H.guiAtPosition = { findButton(Strings.get("menu_bag")) }
-	actions.LvLightAttack("LvLightAttack", Enum.UserInputState.Begin, {
-		UserInputType = Enum.UserInputType.MouseButton1,
-		Position = Vector3.new(900, 30, 0),
-	})
-	H.guiAtPosition = {}
-	eq(sent("RequestAttack"), before, "no attack from a UI click")
-	teleport(vec(WorldData.spawn, 3))
-	advance(0.7)
+test("camera follows from above and the range ring matches the main weapon", function()
+	local WeaponData = H.loadModule("src/shared/WeaponData.luau")
+	local root = hero.Character.HumanoidRootPart
+	advance(0.5)
+	eq(camera.CameraType, Enum.CameraType.Scriptable, "scripted camera")
+	local eye = camera.CFrame.Position
+	local rootPosition = H.read(root, "Position")
+	assert(eye.Y > rootPosition.Y + 20, "camera sits high above the player")
+	assert(eye.Z > rootPosition.Z, "and behind")
+	local ring = workspace.ClientRing.RangeRing
+	eq(ring.Visible, true, "ring shown")
+	eq(ring.Radius, WeaponData.weapons.staff.range, "staff range")
+	setAttributes({ Weapon = "sword" })
+	advance(0.1)
+	eq(ring.Radius, WeaponData.weapons.sword.range, "ring follows the equipped weapon")
+	setAttributes({ Weapon = "staff" })
+end)
+
+test("floating weapons hover behind their player", function()
+	setAttributes({ Companions = "sword,bow" })
+	advance(0.1)
+	local models = workspace.Companions:GetChildren()
+	eq(#models, 2, "one model per slot")
+	local root = H.read(hero.Character.HumanoidRootPart, "Position")
+	for _, model in models do
+		local position = model.PrimaryPart.CFrame.Position
+		assert((position - root).Magnitude < 8, "near the player")
+		assert(position.Y > root.Y, "hovering")
+	end
+	setAttributes({ Companions = "" })
+	advance(0.1)
+	eq(#workspace.Companions:GetChildren(), 0, "removed when the slots are empty")
 end)
 
 test("a cancelled boss attack clears its warning circles", function()
@@ -512,6 +533,34 @@ test("upgrade nudge and Smith marker appear when coins suffice", function()
 	assert(smithMarker, "Smith ! marker")
 end)
 
+test("weapons menu: main weapon, floating slots, locked ones do nothing", function()
+	local WeaponData = H.loadModule("src/shared/WeaponData.luau")
+	setAttributes({ Level = 3, Weapon = "staff", Companions = "" })
+	click(findButton(Strings.get("menu_weapons")))
+	assert(shownText(Strings.get("bag_main_hint")), "weapons menu open")
+	click(findButton(Strings.get("weapon_locked", WeaponData.weapons.bow.unlockLevel)))
+	eq(sent("EquipWeapon"), 0, "locked weapon does nothing")
+	click(findButton(Strings.get("weapon_locked", 25)))
+	assert(shownText(Strings.get("bag_main_hint")), "closed slot does not open")
+	setAttributes({ Level = 25, Companions = "spear" })
+	click(findButton(Strings.get(WeaponData.weapons.bow.nameKey)))
+	eq(sent("EquipWeapon", function(args)
+		return args[1] == 0 and args[2] == "bow"
+	end), 1, "main weapon chosen")
+	click(findButton(Strings.get("bag_slot", 1)))
+	assert(shownText(Strings.get("bag_slot_hint")), "editing the floating slot")
+	click(findButton(Strings.get(WeaponData.weapons.sword.nameKey)))
+	eq(sent("EquipWeapon", function(args)
+		return args[1] == 1 and args[2] == "sword"
+	end), 1, "floating slot chosen")
+	click(findButton(Strings.get("bag_auto")))
+	eq(sent("EquipWeapon", function(args)
+		return args[1] == 1 and args[2] == ""
+	end), 1, "back to auto")
+	click(findButton(Strings.get("menu_weapons")))
+	setAttributes({ Level = 3, Companions = "" })
+end)
+
 test("bag: equip an owned charm, locked ones do nothing", function()
 	setAttributes({ Charms = "swift", Charm = "" })
 	click(findButton(Strings.get("menu_bag")))
@@ -595,7 +644,8 @@ test("after the story the panel and waypoint show the next personal goal", funct
 	setAttributes({ QuestId = nil, QuestState = "done", XP = 1000, Coins = 0, StaffTier = 1, DataState = "ready" })
 	advance(0.5)
 	local Progression = H.loadModule("src/shared/Progression.luau")
-	assert(shownText(Strings.get("goal_level", Progression.MAX_LEVEL, Progression.levelForXp(1000))), "level goal shown")
+	local level = Progression.levelForXp(1000)
+	assert(shownText(Strings.get("goal_level", Progression.nextMilestone(level), level)), "level goal shown")
 	local function waypointAt(): any
 		for _, child in playerGui:GetChildren() do
 			if child:IsA("BillboardGui") and child.Enabled and child.Adornee and child.Adornee.Name == "WaypointAnchor" then
@@ -616,7 +666,7 @@ test("after the story the panel and waypoint show the next personal goal", funct
 	assert(shownText(Strings.get("goal_staff_ready", 3)), "affordable staff goal shown")
 	assert(near(waypointAt(), WorldData.npcs.Smith.position), "affordable upgrade guides to Smith")
 
-	setAttributes({ XP = 10 ^ 6, Coins = 0 })
+	setAttributes({ XP = Progression.thresholds[Progression.MAX_LEVEL], Coins = 0 })
 	advance(0.5)
 	assert(shownText(Strings.get("goal_staff_coins", 3, Balance.staff.tiers[3].cost)), "coins still needed")
 	local farm = waypointAt()
@@ -648,14 +698,14 @@ if withJumpButton then
 	test("touch: big ability buttons sit beside the jump button without overlapping", function()
 		local abilities = playerGui:FindFirstChild("TouchAbilities")
 		assert(abilities, "touch ability gui")
-		eq(casButtons.LvLightAttack, nil, "no CAS touch buttons when custom ones exist")
+		eq(casButtons.LvLightWave, nil, "no CAS touch button when the custom one exists")
 		local buttons = {}
 		for _, child in abilities:GetChildren() do
 			if child:IsA("TextButton") then
 				table.insert(buttons, child)
 			end
 		end
-		eq(#buttons, 2, "two buttons")
+		eq(#buttons, 1, "one ability button (attacks are automatic)")
 		local function rect(position, size)
 			return { position.X, position.Y, position.X + size.X, position.Y + size.Y }
 		end
@@ -673,7 +723,6 @@ if withJumpButton then
 			assert(button:FindFirstChildWhichIsA("Frame"), "decorated face")
 			table.insert(rects, r)
 		end
-		assert(not overlaps(rects[1], rects[2]), "buttons overlap each other")
 
 		-- Roblox rebuilds the jump button when the screen size changes; the layout must follow.
 		local frame = playerGui.TouchGui.TouchControlFrame
@@ -691,19 +740,16 @@ if withJumpButton then
 			assert(button.Size.X.Offset >= 90 * 0.9, "resized with the new jump button")
 		end
 
-		local gloom = enemiesFolder:FindFirstChildWhichIsA("Model")
-		teleport(H.read(gloom.Body, "Position") + Vector3.new(0, 1, 10))
-		advance(0.7)
-		local before = sent("RequestAttack")
-		for _, button in buttons do
-			button.MouseButton1Down:Fire()
-		end
+		setAttributes({ Level = 5 })
+		advance(12)
+		local before = sent("RequestWave")
+		buttons[1].MouseButton1Down:Fire()
 		advance(0.1)
-		assert(sent("RequestAttack") > before, "pressing a touch button attacks")
+		assert(sent("RequestWave") > before, "pressing the touch button casts the wave")
 	end)
 elseif touchMode then
 	test("touch without a jump button: falls back to decorated CAS buttons", function()
-		for _, name in { "LvLightAttack", "LvLightWave" } do
+		for _, name in { "LvLightWave" } do
 			local button = casButtons[name]
 			assert(button, name .. " touch button")
 			eq(button.ImageTransparency, 1, "default art hidden")
