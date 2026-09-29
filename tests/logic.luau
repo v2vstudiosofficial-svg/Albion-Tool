@@ -1712,6 +1712,50 @@ test("titles: earned by progress, chosen only when earned, saved choice is clean
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).equippedTitle, "", "missing value")
 end)
 
+test("mini map: north is up, the near view follows the player, the world view fits every zone", function()
+	local MapLogic = require("../src/shared/MapLogic")
+	local WorldData = require("../src/shared/WorldData")
+	local size = 132
+	local near = MapLogic.view("near", 40, -20, size)
+	local px, py = MapLogic.toMap(near, size, 40, -20)
+	eq(px, size / 2, "the player is in the middle")
+	eq(py, size / 2)
+	local _, northY = MapLogic.toMap(near, size, 40, -50)
+	assert(northY < py, "smaller Z is up")
+	local eastX = MapLogic.toMap(near, size, 70, -20)
+	assert(eastX > px, "larger X is right")
+	local edgeX = MapLogic.toMap(near, size, 40 + MapLogic.nearRadius, -20)
+	assert(math.abs(edgeX - size) < 1e-6, "the near radius reaches the edge")
+	local world = MapLogic.view("world", 999, 999, size)
+	eq(world.centerX, (MapLogic.bounds.minX + MapLogic.bounds.maxX) / 2, "the world view ignores the player")
+	for name, area in WorldData.areas do
+		local ax, ay = MapLogic.toMap(world, size, area.center[1], area.center[3])
+		assert(MapLogic.inside(size, ax, ay, 0), name .. " is on the world map")
+	end
+	for name, npc in WorldData.npcs do
+		local nx, ny = MapLogic.toMap(world, size, npc.position[1], npc.position[3])
+		assert(MapLogic.inside(size, nx, ny, 0), name .. " is on the world map")
+	end
+	-- Clamping keeps the direction and lands on the edge; inside points are untouched.
+	local cx, cy, moved = MapLogic.clamp(size, 50, 60, 7)
+	eq(cx, 50)
+	eq(cy, 60)
+	eq(moved, false)
+	local fx, fy, pulled = MapLogic.clamp(size, size * 3, size / 2, 7)
+	eq(pulled, true)
+	assert(math.abs(fx - (size - 7)) < 1e-6, "the right edge")
+	assert(math.abs(fy - size / 2) < 1e-6, "same height, so straight to the right edge")
+	local dx, dy, diagonal = MapLogic.clamp(size, -size, -size, 7)
+	eq(diagonal, true)
+	assert(math.abs(dx - 7) < 1e-6 and math.abs(dy - 7) < 1e-6, "the corner")
+	eq(MapLogic.heading(0, -1), 0, "looking north")
+	eq(MapLogic.heading(1, 0), 90, "looking east")
+	eq(MapLogic.heading(0, 1), 180, "looking south")
+	eq(MapLogic.heading(-1, 0), 270, "looking west")
+	local SettingsData = require("../src/shared/SettingsData")
+	assert(SettingsData.settings.minimap and SettingsData.settings.minimap.default == true, "the mini map setting is on by default")
+end)
+
 test("counter quests: count from the day they start; records use the best value; paid once", function()
 	local function ready(): any
 		local p = Profile.new()

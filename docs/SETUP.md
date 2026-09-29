@@ -131,6 +131,10 @@ Oyun içi tüm metinler İngilizce.
    1 rebirth). Test: `LvDebugLevel` ile Sv100'e çık, Kael'le konuş, arındır, Great Lantern'de rebirth yap.
 10r. M21: **Unvanlar** (Bag → Titles): 11 unvan oynayarak kazanılır (Light Keeper hemen; Glow Walker Sv25 ... Lantern Master Sv100).
    Yeni unvan bildirimi gelir, seçmek oyuncuya kalır; seçilen unvan Tab (Players) panelinde adın altında görünür. Seçmeden "Hide" ile gizlenir.
+10s. M22: **Mini harita** (sağ üst, düğmelerin altında): sen ortada ▲, kuzey yukarı; yaratık bölgeleri seviye rengiyle, köy (sarı) ve
+   Shadow Tower (mor) noktaları, diğer oyuncular (beyaz), rehber hedefi (altın nokta, uzaksa kenara yapışır). Dokununca tüm vadi görünür,
+   tekrar dokununca yakın görünüm. Settings → Interface → Mini map ile kapanır; sahne oynarken ve yüklenirken gizlenir.
+   Telefonda sağ üst düğmelerle ve joystick/atlama tuşlarıyla çakışıp çakışmadığına bak.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

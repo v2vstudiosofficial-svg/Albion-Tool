@@ -17,6 +17,13 @@ local HIDE_DISTANCE = 9
 
 local Waypoint = {}
 
+-- Where the guide arrow points right now (nil while it is hidden); the mini map marks it too.
+local shownGoal: Vector3? = nil
+
+function Waypoint.goal(): Vector3?
+	return shownGoal
+end
+
 local function nearestUnfound(ids: { string }, lookup: (string) -> { number }?, from: Vector3): Vector3?
 	local found = Attrs.set("QuestFound")
 	local best, bestDistance = nil, math.huge
@@ -155,9 +162,11 @@ function Waypoint.start()
 				local distance = Vector3.new(goal.X - root.Position.X, 0, goal.Z - root.Position.Z).Magnitude
 				anchor.Position = goal
 				gui.Enabled = distance > math.max(arriveDistance, 4)
+				shownGoal = if gui.Enabled then goal else nil
 				distanceLabel.Text = string.format("%dm", math.floor(distance + 0.5))
 			else
 				gui.Enabled = false
+				shownGoal = nil
 			end
 		end
 	end)

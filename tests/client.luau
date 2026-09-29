@@ -1285,6 +1285,54 @@ test("settings apply: look, effects, damage numbers, creature bars, camera scene
 	eq(#H.threadErrors, 0, "thread errors")
 end)
 
+test("mini map: near and world views, other players, guide goal, follows the setting", function()
+	local MapLogic = H.loadModule("src/shared/MapLogic.luau")
+	local map = playerGui.Minimap:FindFirstChild("Map", true)
+	local function frames(name: string): { any }
+		local list = {}
+		for _, child in map:GetChildren() do
+			if child.Name == name and child:IsA("Frame") and child.Visible then
+				table.insert(list, child)
+			end
+		end
+		return list
+	end
+	setAttributes({ QuestId = "first_purify", QuestState = "available", Level = 1 })
+	teleport(vec(WorldData.spawn, 3))
+	advance(0.5)
+	assert(isShown(map), "the map shows once the save is ready")
+	eq(#frames("OtherPlayer"), 1, "the other player is a dot")
+	local you = map.You
+	assert(math.abs(H.read(you, "Position").X.Offset - 66) < 1 and math.abs(H.read(you, "Position").Y.Offset - 66) < 1, "near view centers on the player")
+	-- The guide goal (Elder Nora) is north of the spawn: a gold dot above the arrow.
+	local goal = frames("Goal")[1]
+	assert(goal, "the guide goal is on the map")
+	assert(H.read(goal, "Position").Y.Offset < H.read(you, "Position").Y.Offset, "north is up")
+	-- Walking east moves the map, not the arrow.
+	teleport(vec(WorldData.spawn, 3) + Vector3.new(30, 0, 0))
+	advance(0.5)
+	assert(math.abs(H.read(you, "Position").X.Offset - 66) < 1, "the arrow stays centered in the near view")
+	assert(H.read(frames("Goal")[1], "Position").X.Offset < 66, "the goal moved west of the arrow")
+	-- Tap: the whole valley, with the arrow where the player really is.
+	click(map)
+	advance(0.5)
+	local view = MapLogic.view("world", 30, 43, 132)
+	local x, y = MapLogic.toMap(view, 132, H.read(hero.Character.HumanoidRootPart, "Position").X, H.read(hero.Character.HumanoidRootPart, "Position").Z)
+	assert(math.abs(H.read(you, "Position").X.Offset - x) < 1 and math.abs(H.read(you, "Position").Y.Offset - y) < 1, "world view places the arrow on the valley map")
+	click(map)
+	advance(0.5)
+	assert(math.abs(H.read(you, "Position").X.Offset - 66) < 1, "tapping again returns to the near view")
+	-- Turned off in Settings, and hidden while a scene plays or the save is loading.
+	setAttributes({ Pref_minimap = false })
+	assert(not isShown(map), "the setting hides it")
+	setAttributes({ Pref_minimap = true })
+	assert(isShown(map), "and shows it again")
+	setAttributes({ DataState = "loading" })
+	assert(not isShown(map), "hidden while loading")
+	setAttributes({ DataState = "ready" })
+	teleport(vec(WorldData.spawn, 3))
+end)
+
 test("players board: everyone on the server, highest level first, opened by button or Tab", function()
 	local heroLevel = hero:GetAttribute("Level")
 	hero:SetAttribute("Level", 5)
