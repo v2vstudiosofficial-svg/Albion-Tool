@@ -18,16 +18,14 @@
   noktası; 3 seviyeli efsane boss + Legends koleksiyonu (ilk zafer: Mistik sandık); 2. bölüm görevleri.
 - M7: sayı kısaltma (K/M/B); elit yaratıklar (%6, taçlı, 4x can, 3x ödül, sandık şansı);
   Gölge Yarığı dalga olayları (3 dalga, 90 sn, Silver Chest); Bubbler/Hexcap çoklu atış, Shade ışınlanma.
-- Denge: `lune run tests/balance` Sv1–100 modeli; silahlar nadirliğe göre kademeli; düşman canı
-  üstel; seviye başına savaş sayısı formülle; kese seviyeyle büyür; başlangıç canı 150.
+- Denge: `lune run tests/balance` Sv1–100 modeli (silah kademeleri, üstel düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
 - logic 44, balance, api, scene 12, sim 37, client 29/30/30/1, place; hepsi geçti. M7: elit ödül ve
   sandık, yarık başarı/başarısızlık, yelpaze atış ve ışınlanma simde; portal ve afiş istemcide.
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 8 saat; efsane savaşları 50/59/79 sn. Hikâye botu: 3,9 bot-dk, Sv6'da biter.
-- Roblox Studio'da HİÇ ÇALIŞTIRILMADI: kamera hissi, silah modellerinin eldeki duruşu,
-  efektlerin görünümü, fizik, gerçek DataStore, ağ ve performans ölçülmedi.
+- Roblox Studio'da HİÇ ÇALIŞTIRILMADI: görünüm, fizik, gerçek DataStore, ağ, performans ölçülmedi.
 
 ## Bilinen riskler
 - Silah modelleri, eldeki açılar ve sandık konumları tahmini; Studio'da ayar gerekebilir.
