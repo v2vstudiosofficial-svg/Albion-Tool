@@ -18,6 +18,7 @@ local StoreData = require(Shared:WaitForChild("StoreData"))
 local CosmeticData = require(Shared:WaitForChild("CosmeticData"))
 local PassData = require(Shared:WaitForChild("PassData"))
 local BountyData = require(Shared:WaitForChild("BountyData"))
+local PetData = require(Shared:WaitForChild("PetData"))
 local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
@@ -32,6 +33,7 @@ local buyCosmetic = Remotes:WaitForChild("BuyCosmetic") :: RemoteEvent
 local equipCosmetic = Remotes:WaitForChild("EquipCosmetic") :: RemoteEvent
 local claimPass = Remotes:WaitForChild("ClaimPass") :: RemoteEvent
 local claimBounty = Remotes:WaitForChild("ClaimBounty") :: RemoteEvent
+local equipPet = Remotes:WaitForChild("EquipPet") :: RemoteEvent
 local retryLoad = Remotes:WaitForChild("RetryLoad") :: RemoteEvent
 local player = Players.LocalPlayer
 local colors = UiKit.colors
@@ -99,11 +101,22 @@ function Menus.start()
 	}, topRight)
 
 	-- Bag -----------------------------------------------------------------------------------
-	local bag, bagBody = modal("bag_title", 380)
-	local staffLine = UiKit.label({ Size = UDim2.new(1, 0, 0, 28), TextSize = 20 }, bagBody)
+	local bag, bagBody = modal("bag_title", 440)
+	local bagTab = "charms"
+	local refreshBag: () -> ()
+	local bagTabRow = UiKit.create("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, bagBody)
+	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, bagTabRow)
+	local bagTabButtons = {}
+	for order, tab in { "charms", "pets" } do
+		bagTabButtons[tab] = UiKit.button({ Size = UDim2.fromOffset(130, 40), TextSize = 18, LayoutOrder = order, Text = Strings.get(if tab == "charms" then "bag_tab_charms" else "bag_tab_pets") }, bagTabRow, function()
+			bagTab = tab
+			refreshBag()
+		end)
+	end
+	local staffLine = UiKit.label({ Position = UDim2.fromOffset(0, 44), Size = UDim2.new(1, 0, 0, 28), TextSize = 20 }, bagBody)
 	local charmList = UiKit.create("Frame", {
-		Position = UDim2.fromOffset(0, 36),
-		Size = UDim2.new(1, 0, 1, -36),
+		Position = UDim2.fromOffset(0, 80),
+		Size = UDim2.new(1, 0, 1, -80),
 		BackgroundTransparency = 1,
 	}, bagBody)
 	UiKit.create("UIListLayout", { Padding = UDim.new(0, 8) }, charmList)
@@ -158,7 +171,87 @@ function Menus.start()
 		charmRows[charmId] = { row = row, gem = gem, name = name, desc = desc, button = button }
 	end
 
-	local function refreshBag()
+	-- Pets: earned by playing (never bought); the chosen one follows the player.
+	local petList = UiKit.create("ScrollingFrame", {
+		Position = UDim2.fromOffset(0, 44),
+		Size = UDim2.new(1, 0, 1, -44),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		CanvasSize = UDim2.fromOffset(0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Visible = false,
+	}, bagBody)
+	UiKit.create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, petList)
+	local PET_UNLOCK_KEYS = {
+		level = "pet_unlock_level",
+		purifies = "pet_unlock_purifies",
+		elites = "pet_unlock_elites",
+		rifts = "pet_unlock_rifts",
+		chests = "pet_unlock_chests",
+		tower = "pet_unlock_tower",
+	}
+	local petRows = {}
+	for order, petId in PetData.order do
+		local pet = PetData.pets[petId]
+		local row = UiKit.create("Frame", { LayoutOrder = order, Size = UDim2.new(1, -10, 0, 62), BackgroundColor3 = colors.panelLight, BorderSizePixel = 0 }, petList)
+		UiKit.corner(row, 12)
+		local swatch = UiKit.create("Frame", { Position = UDim2.fromOffset(10, 15), Size = UDim2.fromOffset(32, 32), BackgroundColor3 = UiKit.rgb(pet.color), BorderSizePixel = 0 }, row)
+		UiKit.corner(swatch, 16)
+		local name = UiKit.label({ Position = UDim2.fromOffset(52, 4), Size = UDim2.new(1, -170, 0, 26), Text = Strings.get(pet.nameKey), TextSize = 19, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		local info = UiKit.label({ Position = UDim2.fromOffset(52, 30), Size = UDim2.new(1, -170, 0, 28), TextSize = 13, TextWrapped = true, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Left }, row)
+		local button = UiKit.button({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(104, 44), TextSize = 16 }, row, function()
+			local progress = Attrs.pairs("PetProgress")[petId] or 0
+			if progress >= pet.unlock.goal then
+				equipPet:FireServer(if Attrs.get("Pet", "") == petId then "" else petId)
+				Audio.play("ui")
+			end
+		end)
+		petRows[petId] = { swatch = swatch, name = name, info = info, button = button }
+	end
+	local function refreshPets()
+		local progress = Attrs.pairs("PetProgress")
+		local active = Attrs.get("Pet", "")
+		for petId, view in petRows do
+			local pet = PetData.pets[petId]
+			local unlock = pet.unlock
+			local value = progress[petId] or 0
+			local earned = value >= unlock.goal
+			view.swatch.BackgroundTransparency = if earned then 0 else 0.7
+			view.name.TextTransparency = if earned then 0 else 0.5
+			if unlock.kind == "legend" then
+				view.info.Text = Strings.get("pet_unlock_legend", Strings.get(Balance.enemies[unlock.id].nameKey))
+			else
+				view.info.Text = Strings.get(PET_UNLOCK_KEYS[unlock.kind], unlock.goal)
+			end
+			if not earned then
+				view.info.Text ..= "  (" .. Strings.get("pet_progress", Format.short(value), Format.short(unlock.goal)) .. ")"
+				view.button.Text = Strings.get("bag_locked_pet")
+				view.button.BackgroundColor3 = colors.panel
+				view.button.TextColor3 = colors.muted
+			elseif active == petId then
+				view.button.Text = Strings.get("pet_send_home")
+				view.button.BackgroundColor3 = colors.good
+				view.button.TextColor3 = colors.panel
+			else
+				view.button.Text = Strings.get("bag_equip")
+				view.button.BackgroundColor3 = colors.accent
+				view.button.TextColor3 = colors.panel
+			end
+		end
+	end
+
+	refreshBag = function()
+		for tab, button in bagTabButtons do
+			button.BackgroundColor3 = if tab == bagTab then colors.accent else colors.panelLight
+			button.TextColor3 = if tab == bagTab then colors.panel else colors.text
+		end
+		staffLine.Visible = bagTab == "charms"
+		charmList.Visible = bagTab == "charms"
+		petList.Visible = bagTab == "pets"
+		if bagTab == "pets" then
+			refreshPets()
+		end
 		local tier = Attrs.get("StaffTier", 0)
 		staffLine.Text = Strings.get("bag_staff", tier, Progression.staffDamage(tier, Attrs.get("Level", 1)))
 		local owned = Attrs.set("Charms")
@@ -1284,7 +1377,7 @@ function Menus.start()
 			end
 		end
 	end)
-	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Stars", "Chests", "Legends" } do
+	for _, name in { "StaffTier", "Upgrades", "Coins", "Level", "Charm", "Charms", "Weapon", "Companions", "Weapons", "SlotLevels", "Stars", "Pet", "PetProgress", "Chests", "Legends" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			refreshBadge()
 			if openModal == legends then

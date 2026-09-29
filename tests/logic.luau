@@ -358,9 +358,9 @@ test("full chain is completable with a short grind at most, paying each reward o
 	for _, questId in chapterOne do
 		eq(QuestLogic.isCompleted(p, questId), true, questId)
 	end
-	eq(QuestLogic.nextAvailable(p, QuestData), "bog_mother", "chapter 2 comes next")
-	local canStart, reason = QuestLogic.canStart(p, QuestData, "bog_mother", level(p))
-	eq(canStart, false, "the legends wait for a stronger player")
+	eq(QuestLogic.nextAvailable(p, QuestData), "marsh_scouts", "chapter 2 comes next")
+	local canStart, reason = QuestLogic.canStart(p, QuestData, "marsh_scouts", level(p))
+	eq(canStart, false, "the east lands wait for a stronger player")
 	eq(reason, "level")
 	eq(p.ownedCharms.swift and p.ownedCharms.guard and p.ownedCharms.glow, true, "all charms")
 	eq(p.restorationFlags.gardens and p.restorationFlags.lanterns and p.restorationFlags.festival, true, "all flags")
@@ -470,6 +470,9 @@ test("quest data references existing enemies, world points, charms and strings",
 			end
 		elseif objective.kind == "upgrade" then
 			assert(WorldData.npcs[objective.npc], "missing npc")
+		elseif objective.kind == "counter" then
+			assert(objective.counter == "towerBest" or table.find(require("../src/server/AchievementLogic").COUNTERS, objective.counter), "unknown counter " .. objective.counter)
+			assert(objective.count >= 1 and (not objective.area or WorldData.areas[objective.area]), "counter goal and area")
 		else
 			error("unknown objective kind " .. tostring(objective.kind))
 		end
@@ -480,6 +483,10 @@ test("quest data references existing enemies, world points, charms and strings",
 			assert(Strings.has("notice_restore_" .. quest.reward.flag), "missing restore notice for " .. quest.reward.flag)
 		end
 		assert(index == 1 or not quest.minLevel or quest.minLevel <= Progression.MAX_LEVEL, "reachable level gate")
+		assert(WorldData.npcs[quest.giver or "Elder"], "quest giver " .. questId)
+		-- Level gates never go down along the chain, so no quest waits behind an easier one.
+		local previous = QuestData.quests[QuestData.order[index - 1] or questId]
+		assert((quest.minLevel or 0) >= (previous.minLevel or 0), "level gate order at " .. questId)
 	end
 	for kind, stats in Balance.enemies do
 		assert(Strings.has(stats.nameKey), "missing name string for " .. kind)
@@ -1591,6 +1598,110 @@ test("shadow tower: floor levels, scaling past level 100, counts, kinds, chests,
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, towerBest = 12.7 }).towerBest, 0, "fractions are not floors")
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, towerBest = 99999 }).towerBest, 10000, "absurd values are capped")
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).towerBest, 0, "missing value")
+end)
+
+test("pets: earned by progress, equipped only when earned, saved choice is cleaned", function()
+	local PetLogic = require("../src/server/PetLogic")
+	local PetData = require("../src/shared/PetData")
+	local kinds = { level = true, purifies = true, elites = true, rifts = true, chests = true, legend = true, tower = true }
+	for _, id in PetData.order do
+		local pet = PetData.pets[id]
+		assert(pet and Strings.has(pet.nameKey), id .. " name")
+		assert(kinds[pet.unlock.kind] and pet.unlock.goal >= 1, id .. " unlock")
+		if pet.unlock.kind == "legend" then
+			assert(Balance.enemies[pet.unlock.id] and Balance.enemies[pet.unlock.id].scales, id .. " needs a real Legendary Shadow")
+		end
+		for _, part in pet.color do
+			assert(part >= 0 and part <= 255)
+		end
+	end
+	local p = Profile.new()
+	eq(#PetLogic.earned(p), 0, "a new player has no pets")
+	eq(PetLogic.equip(p, "glowmoth"), false, "cannot follow before it is earned")
+	eq(PetLogic.equip(p, "nope"), false)
+	p.xp = Progression.thresholds[PetData.pets.glowmoth.unlock.goal] - 1
+	eq(PetLogic.unlocked(p, "glowmoth"), false, "one level short")
+	p.xp = Progression.thresholds[PetData.pets.glowmoth.unlock.goal]
+	eq(PetLogic.unlocked(p, "glowmoth"), true)
+	eq(PetLogic.equip(p, "glowmoth"), true)
+	eq(PetLogic.active(p), "glowmoth")
+	p.counters.purifies = 499
+	eq(PetLogic.progress(p, "sproutling"), 499)
+	p.counters.purifies = 99999
+	eq(PetLogic.progress(p, "sproutling"), PetData.pets.sproutling.unlock.goal, "progress is capped at the goal")
+	p.counters.chests = PetData.pets.pebble.unlock.goal
+	p.counters.rifts = PetData.pets.ember_fox.unlock.goal
+	p.legends.FrostTitan = true
+	p.towerBest = PetData.pets.shade_cat.unlock.goal
+	eq(#PetLogic.earned(p), #PetData.order, "every kind of unlock works")
+	eq(PetLogic.equip(p, ""), true, "sending the pet home")
+	eq(PetLogic.active(p), "")
+	-- A saved choice that is not earned (tampered data) never follows.
+	local tampered = Profile.new()
+	tampered.equippedPet = "shade_cat"
+	eq(PetLogic.active(tampered), "")
+	eq(PetLogic.encode(Profile.new()), "glowmoth:1,sproutling:0,pebble:0,ember_fox:0,frost_pup:0,shade_cat:0", "progress pairs for the menu")
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, equippedPet = "nope" }).equippedPet, "")
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, equippedPet = 5 }).equippedPet, "")
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, equippedPet = "ember_fox" }).equippedPet, "ember_fox")
+	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).equippedPet, "", "missing value")
+end)
+
+test("counter quests: count from the day they start; records use the best value; paid once", function()
+	local function ready(): any
+		local p = Profile.new()
+		for _, questId in QuestData.order do
+			if questId == "rift_watch" then
+				break
+			end
+			p.questProgress[questId] = { state = "completed", count = 1 }
+		end
+		return p
+	end
+	-- rifts already cleared before the quest do not count.
+	local p = ready()
+	p.counters.rifts = 4
+	eq(QuestLogic.start(p, QuestData, "rift_watch", 12), true)
+	eq(p.questProgress.rift_watch.base, 4, "the counter value at the start is remembered")
+	eq(#QuestLogic.syncCounters(p, QuestData), 0, "nothing new yet")
+	eq(p.questProgress.rift_watch.count, 0)
+	p.counters.rifts = 5
+	local done = QuestLogic.syncCounters(p, QuestData)
+	eq(done[1], "rift_watch", "one new rift completes it")
+	eq(p.questProgress.rift_watch.state, "completed")
+	eq(#QuestLogic.syncCounters(p, QuestData), 0, "a completed quest pays only once")
+	-- progress never goes backwards and is capped at the goal
+	local q = ready()
+	q.questProgress.rift_watch = { state = "completed", count = 1 }
+	q.questProgress.bog_mother = { state = "completed", count = 1 }
+	q.counters.elites = 10
+	QuestLogic.start(q, QuestData, "elite_hunt", 30)
+	q.counters.elites = 12
+	QuestLogic.syncCounters(q, QuestData)
+	eq(q.questProgress.elite_hunt.count, 2)
+	q.counters.elites = 11
+	QuestLogic.syncCounters(q, QuestData)
+	eq(q.questProgress.elite_hunt.count, 2, "progress never goes down")
+	q.counters.elites = 500
+	QuestLogic.syncCounters(q, QuestData)
+	eq(q.questProgress.elite_hunt.state, "completed")
+	eq(q.questProgress.elite_hunt.count, QuestData.quests.elite_hunt.objective.count, "capped at the goal")
+	-- the tower quest uses the best floor as it stands (a record)
+	local t = ready()
+	for _, id in { "rift_watch", "bog_mother", "elite_hunt", "frost_titan" } do
+		t.questProgress[id] = { state = "completed", count = 1 }
+	end
+	t.towerBest = 30
+	eq(QuestLogic.start(t, QuestData, "tower_climb", 50), true)
+	eq(t.questProgress.tower_climb.base, nil, "records have no base")
+	eq(QuestLogic.syncCounters(t, QuestData)[1], "tower_climb", "an earlier best floor already counts")
+	-- events never touch counter quests, and the saved base is cleaned
+	local e = ready()
+	QuestLogic.start(e, QuestData, "rift_watch", 12)
+	eq(#QuestLogic.record(e, QuestData, { kind = "purify", target = "Mudling" }), 0)
+	local cleaned = Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, questProgress = { rift_watch = { state = "active", count = 0, base = -3 }, elite_hunt = { state = "active", count = 0, base = 7 } } })
+	eq(cleaned.questProgress.rift_watch.base, nil, "bad base dropped")
+	eq(cleaned.questProgress.elite_hunt.base, 7, "good base kept")
 end)
 
 test("game content is English only (no Turkish letters in source)", function()

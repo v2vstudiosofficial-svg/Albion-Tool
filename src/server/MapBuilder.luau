@@ -505,6 +505,7 @@ local function buildVillage(map: Instance)
 	end
 	buildNpc(village, "Elder", Color3.fromRGB(95, 115, 205), Color3.fromRGB(95, 115, 205), "npc_talk_action")
 	buildNpc(village, "Smith", Color3.fromRGB(190, 115, 60), Color3.fromRGB(80, 70, 80), "npc_shop_action")
+	buildNpc(village, "Wren", Color3.fromRGB(85, 150, 100), Color3.fromRGB(120, 85, 55), "npc_talk_action")
 	buildForge(village)
 	buildBoard(village)
 	buildTowerGate(village)
@@ -772,6 +773,11 @@ local function eastAvoid(): { { number } }
 	end
 	for _, spot in WorldData.chests do
 		table.insert(list, { spot.position[1], spot.position[3], 5 })
+	end
+	for _, npc in WorldData.npcs do
+		if npc.position[1] > VALLEY_EDGE then
+			table.insert(list, { npc.position[1], npc.position[3], 7 })
+		end
 	end
 	for z = 70, -330, -10 do
 		table.insert(list, { EAST_PATH_X, z, 7 })

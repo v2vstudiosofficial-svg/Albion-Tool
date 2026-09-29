@@ -1,5 +1,5 @@
--- Quest flow: starting quests at the Elder, turning validated world events into progress and
--- paying each completion exactly once.
+-- Quest flow: starting quests at their giver (the Elder or Ranger Wren), turning validated world
+-- events and counters into progress and paying each completion exactly once.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -74,31 +74,65 @@ local function activeObjective(profile, kind: string)
 	return nil, nil
 end
 
-local function onTalkElder(player: Player, elderBody: BasePart)
+-- What each quest giver says (Strings keys): a quest is running, nothing is left, the player is
+-- too low a level, or the next quest belongs to the other giver.
+local TALK = {
+	Elder = { active = "elder_quest_active", done = "elder_all_done", level = "elder_need_level", other = "elder_go_wren" },
+	Wren = { active = "wren_quest_active", done = "wren_all_done", level = "wren_need_level", other = "wren_go_elder" },
+}
+
+local function onTalk(player: Player, npc: string, body: BasePart)
 	local profile = PlayerProfiles.get(player)
-	if not profile or not isNear(player, elderBody.Position, Balance.npcTalkDistance) then
+	if not profile or not isNear(player, body.Position, Balance.npcTalkDistance) then
 		return
 	end
+	local lines = TALK[npc]
 	if QuestLogic.tracked(profile, QuestData) then
-		npcSay:FireClient(player, "Elder", "elder_quest_active")
+		npcSay:FireClient(player, npc, lines.active)
 		return
 	end
 	local nextId = QuestLogic.nextAvailable(profile, QuestData)
 	if not nextId then
-		npcSay:FireClient(player, "Elder", "elder_all_done")
+		npcSay:FireClient(player, npc, lines.done)
+		return
+	end
+	local def = QuestData.quests[nextId]
+	if (def.giver or "Elder") ~= npc then
+		npcSay:FireClient(player, npc, lines.other)
 		return
 	end
 	local level = Progression.levelForXp(profile.xp)
 	local ok, reason = QuestLogic.start(profile, QuestData, nextId, level)
 	if ok then
-		npcSay:FireClient(player, "Elder", QuestData.quests[nextId].offerKey)
+		npcSay:FireClient(player, npc, def.offerKey)
 		-- Progress that already happened (e.g. an early staff upgrade) counts right away.
-		if not record(player, { kind = "upgrade", value = profile.staffUpgrade }) then
+		local changed = record(player, { kind = "upgrade", value = profile.staffUpgrade })
+		if not QuestService.syncCounters(player) and not changed then
 			PlayerProfiles.sync(player)
 		end
 	elseif reason == "level" then
-		npcSay:FireClient(player, "Elder", "elder_need_level", QuestData.quests[nextId].minLevel)
+		npcSay:FireClient(player, npc, lines.level, def.minLevel)
 	end
+end
+
+-- Counter quests (rifts, elites, the best tower floor) follow the profile, so they are checked
+-- whenever it changes. Returns true when something changed.
+function QuestService.syncCounters(player: Player): boolean
+	local profile = PlayerProfiles.get(player)
+	if not profile then
+		return false
+	end
+	local before = QuestLogic.tracked(profile, QuestData)
+	local beforeCount = before and profile.questProgress[before].count
+	local completed = QuestLogic.syncCounters(profile, QuestData)
+	for _, questId in completed do
+		complete(player, profile, questId)
+	end
+	local changed = #completed > 0 or (before ~= nil and profile.questProgress[before].count ~= beforeCount)
+	if changed then
+		PlayerProfiles.sync(player)
+	end
+	return changed
 end
 
 local function onInteract(player: Player, kind: unknown, id: unknown)
@@ -185,11 +219,14 @@ local function checkDiscoveries()
 end
 
 function QuestService.start(map: Folder)
-	local elderBody = map.Village.Elder.Body :: BasePart
-	local prompt = elderBody.TalkPrompt :: ProximityPrompt
-	prompt.Triggered:Connect(function(player)
-		onTalkElder(player, elderBody)
-	end)
+	for npc in TALK do
+		local body = map.Village[npc].Body :: BasePart
+		local prompt = body.TalkPrompt :: ProximityPrompt
+		prompt.Triggered:Connect(function(player)
+			onTalk(player, npc, body)
+		end)
+	end
+	PlayerProfiles.onChanged(QuestService.syncCounters)
 
 	-- A brand-new player gets a short greeting so the first step is obvious.
 	PlayerProfiles.onReady(function(player)

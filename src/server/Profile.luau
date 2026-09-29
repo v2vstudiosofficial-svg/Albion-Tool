@@ -10,10 +10,13 @@ local CosmeticData = if Shared then require(Shared.CosmeticData) else require(".
 local PassData = if Shared then require(Shared.PassData) else require("../shared/PassData")
 local StoreData = if Shared then require(Shared.StoreData) else require("../shared/StoreData")
 local BountyData = if Shared then require(Shared.BountyData) else require("../shared/BountyData")
+local PetData = if Shared then require(Shared.PetData) else require("../shared/PetData")
 
 export type QuestProgress = {
 	state: "active" | "completed",
 	count: number,
+	-- Counter quests: the counter's value when the quest started.
+	base: number?,
 	found: { [string]: boolean }?,
 }
 
@@ -53,6 +56,8 @@ export type Profile = {
 	bounties: { { kind: string, goal: number, base: number } },
 	-- Highest Shadow Tower floor cleared.
 	towerBest: number,
+	-- The pet following the player ("" = none); pets themselves are derived from progress (PetLogic).
+	equippedPet: string,
 	achievements: { [string]: number },
 	-- Costumes owned and worn (slot -> costume id).
 	ownedCosmetics: { [string]: boolean },
@@ -101,6 +106,7 @@ function Profile.new(): Profile
 		counters = {},
 		bounties = {},
 		towerBest = 0,
+		equippedPet = "",
 		achievements = {},
 		ownedCosmetics = {},
 		equippedCosmetics = {},
@@ -253,6 +259,7 @@ function Profile.sanitize(data: any): Profile
 		end
 	end
 	data.bounties = bounties
+	data.equippedPet = if type(data.equippedPet) == "string" and PetData.pets[data.equippedPet] then data.equippedPet else ""
 	data.towerBest = if isValidAmount(data.towerBest) then math.min(math.floor(data.towerBest), 10000) else 0
 	local achievements = {}
 	if type(data.achievements) == "table" then
@@ -359,6 +366,9 @@ function Profile.sanitize(data: any): Profile
 			data.questProgress[questId] = nil
 		elseif progress.found ~= nil and type(progress.found) ~= "table" then
 			progress.found = nil
+		end
+		if valid and progress.base ~= nil and not isValidAmount(progress.base) then
+			progress.base = nil
 		end
 	end
 

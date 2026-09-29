@@ -3,6 +3,14 @@
 --         | { kind = "upgrade", value = staffUpgrade }
 local QuestLogic = {}
 
+-- Current value of the profile counter a "counter" objective measures.
+local function counterValue(profile, objective): number
+	if objective.counter == "towerBest" then
+		return profile.towerBest
+	end
+	return profile.counters[objective.counter] or 0
+end
+
 function QuestLogic.goal(def): number
 	local objective = def.objective
 	if objective.ids then
@@ -41,8 +49,34 @@ function QuestLogic.start(profile, questData, questId: string, level: number): (
 	if not ok then
 		return false, reason
 	end
-	profile.questProgress[questId] = { state = "active", count = 0 }
+	local progress = { state = "active", count = 0 } :: any
+	local objective = questData.quests[questId].objective
+	if objective.kind == "counter" and not objective.absolute then
+		-- Only what the player does from now on counts.
+		progress.base = counterValue(profile, objective)
+	end
+	profile.questProgress[questId] = progress
 	return true
+end
+
+-- Updates every active counter quest from the profile; returns ids of quests it completed. Counter
+-- quests are not driven by events, so callers run this whenever the profile may have changed.
+function QuestLogic.syncCounters(profile, questData): { string }
+	local completed = {}
+	for _, questId in questData.order do
+		local progress = profile.questProgress[questId]
+		local def = questData.quests[questId]
+		if progress and progress.state == "active" and def.objective.kind == "counter" then
+			local goal = QuestLogic.goal(def)
+			local value = counterValue(profile, def.objective) - (if def.objective.absolute then 0 else (progress.base or 0))
+			progress.count = math.clamp(value, progress.count, goal)
+			if progress.count >= goal then
+				progress.state = "completed"
+				table.insert(completed, questId)
+			end
+		end
+	end
+	return completed
 end
 
 local function matches(objective, event): boolean

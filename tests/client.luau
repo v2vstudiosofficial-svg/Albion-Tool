@@ -353,7 +353,7 @@ test("data ready: HUD, quest panel, Elder marker, waypoint", function()
 	})
 	advance(0.5)
 	assert(not shownText(Strings.get("data_loading")), "loading hidden")
-	assert(shownText(Strings.get("quest_talk_to_elder")), "quest hint")
+	assert(shownText(Strings.get("quest_talk_to", Strings.get("npc_elder_name"))), "quest hint")
 	assert(shownText(Strings.get("hud_level", 1)), "level badge")
 	local elderMarker = false
 	for _, child in playerGui:GetChildren() do
@@ -363,6 +363,38 @@ test("data ready: HUD, quest panel, Elder marker, waypoint", function()
 	end
 	assert(elderMarker, "Elder ! marker enabled")
 	assert(findText("20m") or findText("15m") or findText("14m") or findText("13m"), "waypoint distance shown")
+end)
+
+test("quests from Ranger Wren: hint, marker and waypoint follow the giver", function()
+	local function markerOn(npcName: string): boolean
+		for _, child in playerGui:GetChildren() do
+			if child:IsA("BillboardGui") and child.Enabled and child.Adornee == workspace.LanternValleyMap.Village[npcName].Body then
+				return true
+			end
+		end
+		return false
+	end
+	setAttributes({ QuestId = "marsh_scouts", QuestState = "available", Level = 10 })
+	advance(0.5)
+	assert(shownText(Strings.get("quest_talk_to", Strings.get("npc_wren_name"))), "hint names Ranger Wren")
+	assert(markerOn("Wren"), "! over Wren")
+	assert(not markerOn("Elder"), "no ! over the Elder")
+	local wren = WorldData.vector(WorldData.npcs.Wren.position)
+	local found = false
+	for _, child in playerGui:GetChildren() do
+		if child:IsA("BillboardGui") and child.Enabled and child.Adornee and child.Adornee.Name == "WaypointAnchor" then
+			found = (H.read(child.Adornee, "Position") - wren).Magnitude < 1
+		end
+	end
+	assert(found, "the waypoint guides to Wren")
+	-- An active counter quest shows its progress like any other.
+	setAttributes({ QuestId = "rift_watch", QuestState = "active", QuestCount = 0, QuestGoal = 1 })
+	advance(0.3)
+	assert(shownText(Strings.get("quest_rift_watch_objective", 0, 1)), "counter quest objective")
+	assert(not markerOn("Wren"), "no ! while the quest runs")
+	setAttributes({ QuestId = "first_purify", QuestState = "available", Level = 1 })
+	advance(0.5)
+	assert(markerOn("Elder"), "the Elder's ! is back")
 end)
 
 test("server events render: rewards, notices, dialog, effects", function()
@@ -980,6 +1012,63 @@ test("shadow tower: floor banner and HUD label while inside", function()
 	setAttributes({ TowerFloor = 0 })
 	assert(not shownText(Strings.get("tower_hud", 3, 8)), "label hides after leaving")
 	advance(3)
+end)
+
+test("pets: bag tab shows progress, equips earned pets only; the pet follows its owner", function()
+	local PetData = H.loadModule("src/shared/PetData.luau")
+	local Balance = H.loadModule("src/shared/Balance.luau")
+	setAttributes({ Pet = "", PetProgress = "glowmoth:10,sproutling:120,pebble:0,ember_fox:10,frost_pup:0,shade_cat:0" })
+	click(findButton(Strings.get("menu_bag")))
+	assert(not shownText(Strings.get(PetData.pets.glowmoth.nameKey)), "the bag opens on charms")
+	click(findButton(Strings.get("bag_tab_pets")))
+	assert(shownText(Strings.get(PetData.pets.glowmoth.nameKey)), "pet list")
+	assert(shownText(Strings.get("pet_unlock_purifies", 500) .. "  (" .. Strings.get("pet_progress", 120, 500) .. ")"), "progress towards the next pet")
+	assert(shownText(Strings.get("pet_unlock_legend", Strings.get(Balance.enemies.FrostTitan.nameKey)) .. "  (" .. Strings.get("pet_progress", 0, 1) .. ")"), "legend unlock text")
+	click(findButton(Strings.get("bag_locked_pet")))
+	eq(sent("EquipPet"), 0, "an unearned pet sends nothing")
+	local equipButtons = 0
+	for _, descendant in playerGui:GetDescendants() do
+		if descendant:IsA("TextButton") and descendant.Text == Strings.get("bag_equip") and isShown(descendant) then
+			equipButtons += 1
+		end
+	end
+	eq(equipButtons, 2, "two pets are earned")
+	click(findText(Strings.get(PetData.pets.glowmoth.nameKey)).Parent:FindFirstChildOfClass("TextButton"))
+	eq(sent("EquipPet", function(args)
+		return args[1] == "glowmoth"
+	end), 1, "equip the first earned pet")
+	setAttributes({ Pet = "glowmoth" })
+	assert(shownText(Strings.get("pet_send_home")), "shows send home")
+	click(findButton(Strings.get("pet_send_home")))
+	eq(sent("EquipPet", function(args)
+		return args[1] == ""
+	end), 1, "send home")
+	-- The pet is drawn behind its owner and follows.
+	local function pets(): { any }
+		return workspace.Pets:GetChildren()
+	end
+	setAttributes({ Pet = "" })
+	advance(0.3)
+	eq(#pets(), 0, "no pet without a choice")
+	setAttributes({ Pet = "ember_fox" })
+	advance(0.3)
+	eq(#pets(), 1, "the chosen pet appears")
+	local root = H.read(hero.Character.HumanoidRootPart, "Position")
+	local position = pets()[1].PrimaryPart.CFrame.Position
+	assert((position - root).Magnitude < 9, "near its owner")
+	teleport(root + Vector3.new(80, 0, 0))
+	advance(0.3)
+	local moved = pets()[1].PrimaryPart.CFrame.Position
+	assert((moved - H.read(hero.Character.HumanoidRootPart, "Position")).Magnitude < 9, "snaps along when the owner is teleported far away")
+	setAttributes({ Pet = "glowmoth" })
+	advance(0.3)
+	eq(#pets(), 1, "switching pets replaces the model")
+	eq(pets()[1]:GetAttribute("PetId"), "glowmoth")
+	setAttributes({ Pet = "nope" })
+	advance(0.3)
+	eq(#pets(), 0, "unknown pets are not drawn")
+	setAttributes({ Pet = "", PetProgress = "" })
+	click(findButton(Strings.get("menu_bag")))
 end)
 
 test("settings toggle sound and the performance overlay", function()

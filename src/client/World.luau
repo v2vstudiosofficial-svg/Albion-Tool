@@ -339,9 +339,15 @@ local nudgedTier: number? = nil
 local NUDGE_LEVELS = 3
 
 local function refreshMarkers()
-	local elder = markers.Elder
-	if elder then
-		elder.Enabled = player:GetAttribute("QuestState") == "available"
+	-- The "!" shows over whoever gives the next quest.
+	local available = player:GetAttribute("QuestState") == "available"
+	local nextQuest = QuestData.quests[player:GetAttribute("QuestId") or ""]
+	local giver = (nextQuest and nextQuest.giver) or "Elder"
+	for _, npcName in { "Elder", "Wren" } do
+		local marker = markers[npcName]
+		if marker then
+			marker.Enabled = available and giver == npcName
+		end
 	end
 	local affordable = canAffordUpgrade() and isCompleted("first_purify")
 	local smith = markers.Smith
@@ -629,6 +635,7 @@ function World.start()
 
 	task.spawn(function()
 		markers.Elder = buildMarker("Elder")
+		markers.Wren = buildMarker("Wren")
 		markers.Smith = buildMarker("Smith")
 		refreshMarkers()
 	end)

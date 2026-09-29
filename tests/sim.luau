@@ -538,7 +538,7 @@ test("quest 6: boss fight with telegraphed attacks, rewards, festival", function
 			return e.args[1] == kind
 		end) > 0, "boss used " .. kind)
 	end
-	eq(attr(alice, "QuestId"), "bog_mother", "chapter 2 is next")
+	eq(attr(alice, "QuestId"), "marsh_scouts", "chapter 2 is next")
 	eq(attr(alice, "QuestState"), "level", "and waits for a stronger player")
 	eq(attr(alice, "Flags"), "festival,gardens,lanterns")
 	eq(attr(alice, "Legends"), "Warden", "first Legendary Shadow")
@@ -547,6 +547,75 @@ test("quest 6: boss fight with telegraphed attacks, rewards, festival", function
 	eq(logCount("Notice", function(e)
 		return e.target == alice and e.args[1] == "notice_legend"
 	end), 1, "told once")
+end)
+
+test("Ranger Wren: her quests come in the chain, counters follow the profile, paid once", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local QuestData = H.loadModule("src/shared/QuestData.luau")
+	local profile = PlayerProfiles.get(alice)
+	local savedXp = profile.xp
+	local function said(npc: string, key: string): number
+		return logCount("NpcSay", function(e)
+			return e.target == alice and e.args[1] == npc and e.args[2] == key
+		end)
+	end
+	local function setLevel(level: number)
+		profile.xp = Progression.thresholds[level]
+		PlayerProfiles.sync(alice)
+	end
+	local wren = workspace.LanternValleyMap.Village.Wren.Body
+	assert(wren.TalkPrompt, "Wren has a prompt")
+	-- Too low: she asks for a stronger player and nothing starts.
+	setLevel(QuestData.quests.marsh_scouts.minLevel - 1)
+	talk(alice, "Wren")
+	eq(said("Wren", "wren_need_level"), 1, "level gate")
+	eq(attr(alice, "QuestState"), "level")
+	-- The Elder sends players to Wren when the next quest is hers.
+	setLevel(QuestData.quests.marsh_scouts.minLevel)
+	eq(attr(alice, "QuestState"), "available")
+	talk(alice, "Elder")
+	eq(said("Elder", "elder_go_wren"), 1, "the Elder points to Wren")
+	-- Far from Wren nothing happens.
+	toVillage(alice)
+	wren.TalkPrompt.Triggered:Fire(alice)
+	advance(0.2)
+	eq(attr(alice, "QuestState"), "available", "the prompt needs the player near her")
+	talk(alice, "Wren")
+	eq(said("Wren", QuestData.quests.marsh_scouts.offerKey), 1, "she offers the errand")
+	eq(attr(alice, "QuestId"), "marsh_scouts")
+	eq(attr(alice, "QuestState"), "active")
+	talk(alice, "Elder")
+	eq(said("Elder", "elder_quest_active"), 1, "the Elder knows a quest is running")
+	-- Purify the Mudlings; the reward comes once and the next errand is ready.
+	local coins = attr(alice, "Coins")
+	local guard = 0
+	while attr(alice, "QuestId") == "marsh_scouts" and guard < 20 do
+		purifyOne(alice, "Mudling", 40)
+		guard += 1
+	end
+	eq(attr(alice, "QuestId"), "rift_watch", "marsh scouts done")
+	assert(attr(alice, "Coins") >= coins + QuestData.quests.marsh_scouts.reward.coins, "coins paid")
+	setLevel(QuestData.quests.rift_watch.minLevel)
+	talk(alice, "Wren")
+	eq(attr(alice, "QuestId"), "rift_watch")
+	eq(attr(alice, "QuestState"), "active")
+	eq(attr(alice, "QuestCount"), 0, "earlier rifts do not count")
+	-- A cleared rift (counter) completes it without any event.
+	local paidBefore = attr(alice, "Coins")
+	profile.counters.rifts = (profile.counters.rifts or 0) + 1
+	PlayerProfiles.sync(alice)
+	advance(0.2)
+	eq(attr(alice, "QuestId"), "bog_mother", "rift watch done")
+	local paid = attr(alice, "Coins") - paidBefore
+	eq(paid, QuestData.quests.rift_watch.reward.coins, "reward paid exactly once")
+	PlayerProfiles.sync(alice)
+	eq(attr(alice, "Coins") - paidBefore, paid, "a later sync pays nothing more")
+	-- The next quest is the Elder's: Wren sends the player back.
+	talk(alice, "Wren")
+	eq(said("Wren", "wren_go_elder"), 1, "Wren points back to the Elder")
+	profile.xp = savedXp
+	PlayerProfiles.sync(alice)
+	toVillage(alice)
 end)
 
 test("a defeated character is not revived by a level-up", function()
@@ -1379,7 +1448,8 @@ test("shadow tower: level gate, floors, rewards once, leaving, defeat and join r
 	eq(#towerEnemies(), 0, "creatures wait for the start delay")
 	advance(tower.startDelay + 1.5)
 	local expected = TowerLogic.count(1, 1)
-	eq(#towerEnemies(), expected, "floor 1 creatures")
+	-- The floor announces how many creatures it sent; a few may already have fallen to auto attacks.
+	assert(#towerEnemies() > 0 and #towerEnemies() <= expected, "floor 1 creatures: " .. #towerEnemies())
 	local floorLevel = TowerLogic.floorLevel(level, 1)
 	for _, model in towerEnemies() do
 		eq(model:GetAttribute("Level"), floorLevel, "creature level follows the floor")
@@ -1409,7 +1479,10 @@ test("shadow tower: level gate, floors, rewards once, leaving, defeat and join r
 	end), 1, "new best announced")
 	advance(tower.floorDelay + 1.5)
 	eq(attr(alice, "TowerFloor"), 2, "next floor")
-	eq(#towerEnemies(), TowerLogic.count(2, 1), "floor 2 creatures")
+	assert(#towerEnemies() > 0 and #towerEnemies() <= TowerLogic.count(2, 1), "floor 2 creatures: " .. #towerEnemies())
+	assert(logCount("Fx", function(e)
+		return e.target == alice and e.args[1] == "towerFloor" and e.args[2] == 2 and e.args[3] == TowerLogic.count(2, 1)
+	end) == 1, "floor 2 announced with its creature count")
 
 	-- A second player who is far below the run's level cannot join; leaving closes the run.
 	setLevel(bob, 1)
@@ -1454,6 +1527,55 @@ test("shadow tower: level gate, floors, rewards once, leaving, defeat and join r
 	PlayerProfiles.sync(alice)
 	toVillage(alice)
 	toVillage(bob)
+end)
+
+test("pets: earned by progress, announced once, chosen by the player, bad requests ignored", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local PetData = H.loadModule("src/shared/PetData.luau")
+	local profile = PlayerProfiles.get(alice)
+	local savedXp, savedPet = profile.xp, profile.equippedPet
+	local goal = PetData.pets.glowmoth.unlock.goal
+	profile.equippedPet = ""
+	profile.xp = Progression.thresholds[goal - 1]
+	PlayerProfiles.sync(alice)
+	eq(attr(alice, "Pet"), "", "no pet before one is earned")
+	local function announced(): number
+		return logCount("Notice", function(e)
+			return e.target == alice and e.args[1] == "notice_pet_new"
+		end)
+	end
+	local before = announced()
+	profile.xp = Progression.thresholds[goal]
+	PlayerProfiles.sync(alice)
+	advance(0.2)
+	eq(announced(), before + 1, "told about the new friend")
+	eq(attr(alice, "Pet"), "glowmoth", "the first pet starts following")
+	PlayerProfiles.sync(alice)
+	eq(announced(), before + 1, "announced only once")
+	assert(string.find(attr(alice, "PetProgress"), "glowmoth:" .. goal, 1, true), "progress replicated")
+	-- The player picks; unearned or unknown pets are refused.
+	remotes.EquipPet.OnServerEvent:Fire(alice, "")
+	advance(0.4)
+	eq(attr(alice, "Pet"), "", "sent home")
+	remotes.EquipPet.OnServerEvent:Fire(alice, "shade_cat")
+	advance(0.4)
+	eq(attr(alice, "Pet"), "", "not earned yet")
+	remotes.EquipPet.OnServerEvent:Fire(alice, "glowmoth")
+	remotes.EquipPet.OnServerEvent:Fire(alice, "")
+	advance(0.4)
+	eq(attr(alice, "Pet"), "glowmoth", "a second request inside the cooldown is ignored")
+	for _, bad in { 5, {}, string.rep("x", 99), "nope" } do
+		advance(0.4)
+		remotes.EquipPet.OnServerEvent:Fire(alice, bad)
+	end
+	advance(0.4)
+	eq(attr(alice, "Pet"), "glowmoth", "bad requests change nothing")
+	-- Losing the level condition never happens in play, but a tampered choice must not show.
+	profile.equippedPet = "shade_cat"
+	PlayerProfiles.sync(alice)
+	eq(attr(alice, "Pet"), "", "an unearned saved pet is not shown")
+	profile.xp, profile.equippedPet = savedXp, savedPet
+	PlayerProfiles.sync(alice)
 end)
 
 test("robux store: receipts granted once and only after saving; unknown ones wait", function()

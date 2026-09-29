@@ -229,6 +229,7 @@ local remoteNames = {
 	"OpenBoard",
 	"ClaimBounty",
 	"PlayEmote",
+	"EquipPet",
 	"Fx",
 }
 local remotes = {}

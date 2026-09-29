@@ -70,6 +70,9 @@
         "PlayEmote": {
           "$className": "RemoteEvent"
         },
+        "EquipPet": {
+          "$className": "RemoteEvent"
+        },
         "Fx": {
           "$className": "RemoteEvent"
         }

@@ -1,5 +1,8 @@
--- Main quest chain. Each quest unlocks after the previous one is completed and is started at the Elder.
+-- Main quest chain. Each quest unlocks after the previous one is completed and is started at its
+-- `giver` (an NPC in WorldData.npcs; the Elder unless stated).
 -- objective.kind: "purify" (enemyType, count) | "collect"/"explore"/"vine" (ids) | "upgrade" (count = staff tier)
+--   | "counter" (a profile counter: counted from the day the quest starts, or `absolute` for a record
+--     like the best Shadow Tower floor).
 return {
 	order = {
 		"first_purify",
@@ -8,9 +11,13 @@ return {
 		"first_upgrade",
 		"ruin_vines",
 		"warden",
-		-- Chapter 2: the Legendary Shadows of the east lands.
+		-- Chapter 2: the Legendary Shadows of the east lands, with Ranger Wren's errands between them.
+		"marsh_scouts",
+		"rift_watch",
 		"bog_mother",
+		"elite_hunt",
 		"frost_titan",
+		"tower_climb",
 		"shadow_king",
 	},
 	quests = {
@@ -64,6 +71,26 @@ return {
 			objective = { kind = "purify", enemyType = "Warden", count = 1, area = "arena" },
 			reward = { xp = 300, coins = 120, flag = "festival" },
 		},
+		marsh_scouts = {
+			id = "marsh_scouts",
+			giver = "Wren",
+			titleKey = "quest_marsh_scouts_title",
+			offerKey = "wren_offer_marsh_scouts",
+			objectiveKey = "quest_marsh_scouts_objective",
+			minLevel = 8,
+			objective = { kind = "purify", enemyType = "Mudling", count = 12, area = "marsh" },
+			reward = { xp = 500, coins = 100 },
+		},
+		rift_watch = {
+			id = "rift_watch",
+			giver = "Wren",
+			titleKey = "quest_rift_watch_title",
+			offerKey = "wren_offer_rift_watch",
+			objectiveKey = "quest_rift_watch_objective",
+			minLevel = 12,
+			objective = { kind = "counter", counter = "rifts", count = 1, area = "marsh" },
+			reward = { xp = 1000, coins = 200 },
+		},
 		bog_mother = {
 			id = "bog_mother",
 			titleKey = "quest_bog_mother_title",
@@ -73,6 +100,16 @@ return {
 			objective = { kind = "purify", enemyType = "BogMother", count = 1, area = "bog" },
 			reward = { xp = 3000, coins = 500 },
 		},
+		elite_hunt = {
+			id = "elite_hunt",
+			giver = "Wren",
+			titleKey = "quest_elite_hunt_title",
+			offerKey = "wren_offer_elite_hunt",
+			objectiveKey = "quest_elite_hunt_objective",
+			minLevel = 26,
+			objective = { kind = "counter", counter = "elites", count = 3, area = "peaks" },
+			reward = { xp = 1500, coins = 300 },
+		},
 		frost_titan = {
 			id = "frost_titan",
 			titleKey = "quest_frost_titan_title",
@@ -81,6 +118,16 @@ return {
 			minLevel = 46,
 			objective = { kind = "purify", enemyType = "FrostTitan", count = 1, area = "summit" },
 			reward = { xp = 9000, coins = 2000 },
+		},
+		tower_climb = {
+			id = "tower_climb",
+			giver = "Wren",
+			titleKey = "quest_tower_climb_title",
+			offerKey = "wren_offer_tower_climb",
+			objectiveKey = "quest_tower_climb_objective",
+			minLevel = 50,
+			objective = { kind = "counter", counter = "towerBest", count = 12, absolute = true },
+			reward = { xp = 6000, coins = 1200 },
 		},
 		shadow_king = {
 			id = "shadow_king",

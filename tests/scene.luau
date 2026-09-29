@@ -391,6 +391,26 @@ test("bounty board, tower gate and tower arena exist and can be used", function(
 	assert(math.sqrt(offset[1] ^ 2 + offset[3] ^ 2) < area.radius - 4, "the exit pad is inside the arena")
 end)
 
+test("pet models build for every pet, anchored and round-bodied", function()
+	local PetData = loadModule("src/shared/PetData.luau")
+	local PetModels = loadModule("src/shared/PetModels.luau")
+	for _, id in PetData.order do
+		local model = PetModels.build(id, roblox.CFrame.new(0, 5, 0))
+		eq(model:GetAttribute("PetId"), id)
+		eq(model.PrimaryPart and model.PrimaryPart.Name, "Body", id .. " primary part")
+		local eyes = 0
+		for _, part in model:GetChildren() do
+			eq(part.Anchored, true, id .. " " .. part.Name .. " anchored")
+			eq(part.CanCollide, false, id .. " " .. part.Name .. " does not block players")
+			if string.sub(part.Name, 1, 3) == "Eye" then
+				eyes += 1
+			end
+		end
+		eq(eyes, 2, id .. " has two eyes")
+		assert(#model:GetChildren() >= 5, id .. " has a distinctive shape")
+	end
+end)
+
 test("costume models build for all twelve costumes, welded to their anchor", function()
 	local CosmeticModels = loadModule("src/shared/CosmeticModels.luau")
 	local CosmeticData = loadModule("src/shared/CosmeticData.luau")

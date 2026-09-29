@@ -63,7 +63,9 @@ local function currentGoal(from: Vector3): (Vector3?, number)
 		return WorldData.vector(WorldData.plaza), HIDE_DISTANCE
 	end
 	if state == "available" then
-		return WorldData.vector(WorldData.npcs.Elder.position), HIDE_DISTANCE
+		-- The next quest may belong to another giver (e.g. Ranger Wren).
+		local nextQuest = QuestData.quests[player:GetAttribute("QuestId") or ""]
+		return WorldData.vector(WorldData.npcs[(nextQuest and nextQuest.giver) or "Elder"].position), HIDE_DISTANCE
 	elseif state == "level" then
 		-- Guide to the nearest creature zone so players know where to grow stronger.
 		return nearestCreatureZone(from)

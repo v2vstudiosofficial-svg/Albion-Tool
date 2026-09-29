@@ -287,7 +287,7 @@ function Hud.start()
 			text = Strings.get(def.objectiveKey, player:GetAttribute("QuestCount") or 0, player:GetAttribute("QuestGoal") or 0)
 		elseif state == "available" and def then
 			title = Strings.get(def.titleKey)
-			text = Strings.get("quest_talk_to_elder")
+			text = Strings.get("quest_talk_to", Strings.get(WorldData.npcs[def.giver or "Elder"].nameKey))
 		elseif state == "level" then
 			title = if def then Strings.get(def.titleKey) else ""
 			text = Strings.get("quest_need_level", player:GetAttribute("QuestNeedLevel") or 0)
