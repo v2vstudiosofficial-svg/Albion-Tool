@@ -7,10 +7,10 @@
 - M6a: oyun İngilizce; takip kamerası, otomatik saldırı; 8 silah; Sv100; yüzen ek silahlar;
   Studio'da `LvDebugLevel` / `LvDebugAllWeapons`.
 - M6b: kişisel süreli sandıklar (4 tür, 2–20 dk, yuva 1→5); ödül: sikke, silah, yuva seviyesi (%5/sv).
-- M6c: kristal/kese/Büyük Fener, Forge (5 yükseltme), kritik vuruş, yetenek kartları, `Shared/Stats`.
+- M6c: kristal/kese, Forge, kritik vuruş, yetenek kartları, `Shared/Stats`.
 - M6d: doğu toprakları (Sv8–100), 3 efsane boss + Legends, 2. bölüm görevleri.
 - M7: sayı kısaltma; elit yaratıklar; Gölge Yarıkları; özel saldırılar.
-- M8: hata düzeltmeleri, Macera Günlüğü (9 başarım), takım bonusu.
+- M8: hata düzeltmeleri, Macera Günlüğü, takım bonusu.
 - M9: Robux mağazası (paketler, 2x XP, Premium Pas; ücretli rastgele ödül yok, kimlik yoksa "Soon");
   50 kademeli Işık Pası; görünüş kostümleri.
 - M10: silah yıldızları (kopya silah → yıldız, en çok 5, +%6/yıldız); İlan Panosu (3 ilan, süresiz);
@@ -31,7 +31,7 @@
 
 ## Bilinen riskler
 - Silah/kostüm modelleri, açılar ve sandık konumları tahmini; denge bir model (gerçek veriyle ayarlanmalı).
-- Ses kimlikleri çoğunlukla boş; animasyonlar prosedürel (Studio'da ince ayar gerekir).
+- Ses kimlikleri çoğunlukla boş; animasyonlar prosedürel.
 - Mağaza ürün kimlikleri 0 (`StoreData`); sinematik kamera/PlayerModule kilidi Studio'da denenmedi.
 
 ## Bekleyen elle testler (kullanıcı isteğiyle ertelendi)

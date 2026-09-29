@@ -3,7 +3,6 @@
 local Shared = if script then game:GetService("ReplicatedStorage").Shared else nil
 local Balance = if Shared then require(Shared.Balance) else require("../shared/Balance")
 local Progression = if Shared then require(Shared.Progression) else require("../shared/Progression")
-local CosmeticData = if Shared then require(Shared.CosmeticData) else require("../shared/CosmeticData")
 local CosmeticLogic = if script then require(script.Parent.CosmeticLogic) else require("./CosmeticLogic")
 
 local RebirthLogic = {}
