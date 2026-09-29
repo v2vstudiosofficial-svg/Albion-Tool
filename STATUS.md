@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M22 (mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M23 (oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil arayüz.
@@ -22,11 +22,11 @@
   (Auto–Ultra, gölge, parlama, sis, FOV, ses, arayüz boyutu); M16: Players paneli, ses rehberi; M17: kule boss katları;
   M18: 3 yeni yetenek; M19: fuzz testleri;
   M20: Kael epilogu (2 görev, köyde buluşma);
-  M21: 11 kazanılan unvan (Bag → Titles); M22: mini harita (yakın/tüm vadi, hedef noktası, Ayarlar'dan kapatılır).
+  M21: 11 kazanılan unvan (Bag → Titles); M22: mini harita; M23: oyuncu etiketleri (ad, seviye, unvan; Ayarlar'dan kapanır).
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 69, balance, api, scene 15, sim 57, client 48/49/49/1, place; hepsi geçti (sinematik akış,
+- logic 69, balance, api, scene 15, sim 57, client 49/50/50/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.
@@ -35,6 +35,6 @@
 ## Bilinen riskler
 - Silah/kostüm modelleri, açılar, sandık konumları tahmini; denge bir model. Ses kimlikleri boş; animasyonlar prosedürel.
 - Mağaza ürün kimlikleri 0 (`StoreData`); sinematik kamera/PlayerModule kilidi Studio'da denenmedi.
-## Bekleyen elle testler (ertelendi): `docs/SETUP.md` → "Elle test listesi" (1–16, 6b/6c, 10b–10s) oynanmadı.
+## Bekleyen elle testler (ertelendi): `docs/SETUP.md` → "Elle test listesi" (1–16, 6b/6c, 10b–10t) oynanmadı.
 
 ## Sonraki adım: Studio testleri → Output hatalarını düzelt.

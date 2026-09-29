@@ -135,6 +135,8 @@ Oyun içi tüm metinler İngilizce.
    Shadow Tower (mor) noktaları, diğer oyuncular (beyaz), rehber hedefi (altın nokta, uzaksa kenara yapışır). Dokununca tüm vadi görünür,
    tekrar dokununca yakın görünüm. Settings → Interface → Mini map ile kapanır; sahne oynarken ve yüklenirken gizlenir.
    Telefonda sağ üst düğmelerle ve joystick/atlama tuşlarıyla çakışıp çakışmadığına bak.
+10t. M23: **Oyuncu etiketleri**: diğer oyuncuların başında unvan (altın), ad ve "Lv N  Rebirth M" görünür; Roblox'un kendi ad etiketi
+   gizlenir. Kendi karakterinde etiket yok. Settings → Interface → Player tags ile kapanınca varsayılan etiket geri gelir. İki kişiyle dene.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

@@ -13,7 +13,7 @@ SettingsData.order = {
 	"quality", "detail", "shadows", "effects", "bloom", "atmosphere", "fov",
 	"sound", "master", "sfx",
 	"shake", "cinematics", "damageNumbers", "rangeRing",
-	"uiScale", "minimap", "enemyBars", "perf",
+	"uiScale", "minimap", "playerTags", "enemyBars", "perf",
 }
 
 SettingsData.settings = {
@@ -33,6 +33,7 @@ SettingsData.settings = {
 	rangeRing = { category = "gameplay", kind = "bool", default = true, nameKey = "set_range_ring" },
 	uiScale = { category = "interface", kind = "choice", options = { "small", "normal", "large" }, default = "normal", nameKey = "set_ui_scale" },
 	minimap = { category = "interface", kind = "bool", default = true, nameKey = "set_minimap" },
+	playerTags = { category = "interface", kind = "bool", default = true, nameKey = "set_player_tags" },
 	enemyBars = { category = "interface", kind = "bool", default = true, nameKey = "set_enemy_bars" },
 	perf = { category = "interface", kind = "bool", default = false, nameKey = "set_perf" },
 }
