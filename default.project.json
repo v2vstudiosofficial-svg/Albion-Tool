@@ -76,6 +76,9 @@
         "EquipTitle": {
           "$className": "RemoteEvent"
         },
+        "ClaimDailyGift": {
+          "$className": "RemoteEvent"
+        },
         "OpenRebirth": {
           "$className": "RemoteEvent"
         },

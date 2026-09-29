@@ -1,0 +1,54 @@
+-- The daily gift button: appears left of the mini map while today's gift is waiting (the server
+-- replicates DailyReady). Taking it is validated on the server; nothing is lost by skipping a day.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Strings = require(Shared:WaitForChild("Strings"))
+local Audio = require(script.Parent.Audio)
+local Cinematic = require(script.Parent.Cinematic)
+local Hud = require(script.Parent.Hud)
+local UiKit = require(script.Parent.UiKit)
+
+local player = Players.LocalPlayer
+local claimDaily = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ClaimDailyGift") :: RemoteEvent
+
+local DailyGift = {}
+
+function DailyGift.start()
+	local gui = UiKit.create("ScreenGui", { Name = "DailyGift", ResetOnSpawn = false, DisplayOrder = 3 }, player:WaitForChild("PlayerGui"))
+	local region = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -152, 0, 236), Vector2.new(96, 56))
+	local button = UiKit.button({
+		Size = UDim2.fromScale(1, 1),
+		Text = Strings.get("daily_gift_button"),
+		TextSize = 17,
+		TextWrapped = true,
+		BackgroundColor3 = UiKit.colors.coin,
+	}, region, function()
+		claimDaily:FireServer()
+		Audio.play("ui")
+	end)
+	button.Name = "DailyGiftButton"
+	local announced = false
+	local function refresh()
+		local ready = player:GetAttribute("DataState") == "ready" and player:GetAttribute("DailyReady") == true
+		region.Visible = ready and not Cinematic.playing()
+		if ready and not announced then
+			announced = true
+			Hud.toast(Strings.get("notice_daily_ready"), UiKit.colors.coin)
+		elseif not ready and player:GetAttribute("DailyReady") == false then
+			announced = false
+		end
+	end
+	for _, name in { "DataState", "DailyReady" } do
+		player:GetAttributeChangedSignal(name):Connect(refresh)
+	end
+	task.spawn(function()
+		while true do
+			refresh()
+			task.wait(0.5)
+		end
+	end)
+end
+
+return DailyGift

@@ -2168,6 +2168,9 @@ test("fuzz: garbage sent to every server remote never errors and never changes a
 		return table.concat({ profile.xp, profile.coins, profile.staffUpgrade, profile.rebirths, profile.towerBest, profile.crystals, table.concat(weapons, "+"), #profile.chests, profile.pass.xp }, "|")
 	end
 	toVillage(alice)
+	-- A request without arguments is a real daily-gift claim; make sure there is nothing to claim.
+	local savedDailyDay = profile.dailyDay
+	profile.dailyDay = H.loadModule("src/server/DailyLogic.luau").dayOf(H.EPOCH + math.floor(H.now())) + 1
 	local before = snapshot()
 	local errorsBefore = #H.threadErrors
 	-- A small deterministic generator, so a failure can be reproduced.
@@ -2236,9 +2239,43 @@ test("fuzz: garbage sent to every server remote never errors and never changes a
 	advance(1)
 	eq(#H.threadErrors, errorsBefore, "no server thread errors after " .. fired .. " garbage requests")
 	eq(snapshot(), before, "nothing about the player's progress changed")
+	profile.dailyDay = savedDailyDay
 	heal(alice)
 	toVillage(alice)
 	toVillage(bob)
+end)
+
+test("daily gift: once per UTC day, paid on the server, the ready flag follows the day", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local DailyLogic = H.loadModule("src/server/DailyLogic.luau")
+	local profile = PlayerProfiles.get(alice)
+	local today = DailyLogic.dayOf(H.EPOCH + math.floor(H.now())) -- the simulated wall clock
+	local savedDay, savedCoins = profile.dailyDay, profile.coins
+	profile.dailyDay = 0
+	PlayerProfiles.sync(alice)
+	eq(attr(alice, "DailyReady"), true, "a gift is waiting")
+	local reward = DailyLogic.reward(Progression.levelForXp(profile.xp))
+	assert(reward > 0, "the gift is worth something")
+	local coins = attr(alice, "Coins")
+	remotes.ClaimDailyGift.OnServerEvent:Fire(alice)
+	advance(0.2)
+	eq(attr(alice, "Coins"), coins + reward, "paid exactly the reward")
+	eq(attr(alice, "DailyReady"), false, "not ready again today")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_daily_gift"
+	end) >= 1, true, "told about the gift")
+	advance(1.2)
+	remotes.ClaimDailyGift.OnServerEvent:Fire(alice)
+	remotes.ClaimDailyGift.OnServerEvent:Fire(alice, "x", {}, 5)
+	advance(1.2)
+	eq(attr(alice, "Coins"), coins + reward, "a second claim today pays nothing")
+	-- A player who stays online past midnight gets the next gift without rejoining.
+	profile.dailyDay = today - 1
+	advance(61)
+	eq(attr(alice, "DailyReady"), true, "the flag follows the calendar")
+	profile.dailyDay, profile.coins = savedDay, savedCoins
+	PlayerProfiles.sync(alice)
+	toVillage(alice)
 end)
 
 test("leaving and rejoining restores the saved profile", function()

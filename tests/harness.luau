@@ -233,6 +233,7 @@ local remoteNames = {
 	"PlayEmote",
 	"EquipPet",
 	"EquipTitle",
+	"ClaimDailyGift",
 	"OpenRebirth",
 	"Cinematic",
 	"SetSetting",

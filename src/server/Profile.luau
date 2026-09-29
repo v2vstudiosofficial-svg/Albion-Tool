@@ -76,6 +76,8 @@ export type Profile = {
 	purchaseIds: { string },
 	oneTime: { [string]: boolean },
 	boostUntil: number,
+	-- The UTC day (days since 1970) the daily gift was last taken; 0 = never.
+	dailyDay: number,
 	ownedCharms: { [string]: boolean },
 	equippedCharm: string?,
 	questProgress: { [string]: QuestProgress },
@@ -125,6 +127,7 @@ function Profile.new(): Profile
 		purchaseIds = {},
 		oneTime = {},
 		boostUntil = 0,
+		dailyDay = 0,
 		ownedCharms = {},
 		equippedCharm = nil,
 		questProgress = {},
@@ -356,6 +359,7 @@ function Profile.sanitize(data: any): Profile
 	if not isValidAmount(data.boostUntil) then
 		data.boostUntil = 0
 	end
+	data.dailyDay = if isValidAmount(data.dailyDay) then data.dailyDay else 0
 	-- Always one entry per floating slot ("" = automatic), whatever was saved.
 	local companions = {}
 	local savedPicks = if type(data.companions) == "table" then data.companions else {}

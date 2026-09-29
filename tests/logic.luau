@@ -1756,6 +1756,35 @@ test("mini map: north is up, the near view follows the player, the world view fi
 	assert(SettingsData.settings.minimap and SettingsData.settings.minimap.default == true, "the mini map setting is on by default")
 end)
 
+test("daily gift: one per UTC day, skipping days gives nothing extra, reward follows income", function()
+	local DailyLogic = require("../src/server/DailyLogic")
+	local day = 86400
+	local p = Profile.new()
+	eq(p.dailyDay, 0)
+	eq(DailyLogic.ready(p, 5 * day), true, "a new player has a gift")
+	eq(DailyLogic.claim(p, 5 * day + 100, 1) ~= nil, true)
+	eq(p.dailyDay, 5)
+	eq(DailyLogic.ready(p, 5 * day + day - 1), false, "not again on the same day")
+	eq(DailyLogic.claim(p, 5 * day + 5000, 1), nil, "a second claim pays nothing")
+	eq(DailyLogic.ready(p, 6 * day), true, "ready again the next day")
+	local coins = p.coins
+	eq(DailyLogic.claim(p, 9 * day, 10), DailyLogic.reward(10), "days skipped are not paid back")
+	eq(p.coins, coins + DailyLogic.reward(10))
+	eq(DailyLogic.reward(50), Progression.incomeCoins(50, Balance.daily.coinMinutes), "worth a few minutes of income")
+	assert(DailyLogic.reward(60) > DailyLogic.reward(10), "grows with the level")
+	assert(Balance.daily.coinMinutes >= 1 and Balance.daily.coinMinutes <= 15, "a small gift, not a shortcut")
+	p.dailyDay = 99999999
+	eq(DailyLogic.ready(p, 5 * day), false, "a future day (tampered save) does not pay")
+	local function saved(value: any): number
+		return Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, dailyDay = value }).dailyDay
+	end
+	eq(saved("x"), 0)
+	eq(saved(-3), 0)
+	eq(saved(20000.7), 0, "fractions are not days")
+	eq(saved(20000), 20000)
+	eq(saved(nil), 0)
+end)
+
 test("counter quests: count from the day they start; records use the best value; paid once", function()
 	local function ready(): any
 		local p = Profile.new()
