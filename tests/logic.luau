@@ -360,8 +360,11 @@ test("full chain is completable with a short grind at most, paying each reward o
 	end
 	eq(QuestLogic.nextAvailable(p, QuestData), "marsh_scouts", "chapter 2 comes next")
 	local canStart, reason = QuestLogic.canStart(p, QuestData, "marsh_scouts", level(p))
-	eq(canStart, false, "the east lands wait for a stronger player")
-	eq(reason, "level")
+	eq(canStart, level(p) >= QuestData.quests.marsh_scouts.minLevel, "chapter 2 opens at its level")
+	if not canStart then
+		eq(reason, "level")
+	end
+	assert(level(p) >= 6, "the story alone moves a new player past level 5: " .. level(p))
 	eq(p.ownedCharms.swift and p.ownedCharms.guard and p.ownedCharms.glow, true, "all charms")
 	eq(p.restorationFlags.gardens and p.restorationFlags.lanterns and p.restorationFlags.festival, true, "all flags")
 
@@ -1792,6 +1795,62 @@ test("rebirth: only at level 100, resets the climb, keeps collections, gives bon
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, rebirths = -1 }).rebirths, 0)
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0, rebirths = 3 }).rebirths, 3)
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).rebirths, 0, "missing value")
+end)
+
+test("story: every scene is well formed, every quest has its scene, blessing and story XP", function()
+	local StoryData = require("../src/shared/StoryData")
+	local spoken = 0
+	for sceneId, scene in StoryData.scenes do
+		assert(scene.mode == "full" or scene.mode == "soft", sceneId .. " mode")
+		assert(scene.focus == "player" or scene.focus == "lantern" or WorldData.npcs[scene.focus], sceneId .. " focus")
+		assert(#scene.lines >= 1 and #scene.lines <= 6, sceneId .. " length")
+		for index, line in scene.lines do
+			assert(StoryData.speakers[line.speaker], sceneId .. " speaker " .. tostring(line.speaker))
+			assert(Strings.has(line.key), "missing story text " .. line.key)
+			local text = Strings.get(line.key)
+			assert(#text <= 230, sceneId .. " line " .. index .. " is too long for the caption: " .. #text)
+			assert(#text >= 8, sceneId .. " line " .. index .. " is empty")
+			spoken += 1
+		end
+	end
+	assert(spoken >= 50, "a real story, not a stub: " .. spoken .. " lines")
+	for name, speaker in StoryData.speakers do
+		assert(speaker.nameKey == nil or Strings.has(speaker.nameKey), name .. " name")
+		assert(name == "Narrator" or name == "Hero" or WorldData.npcs[name], name .. " is a real NPC")
+	end
+	assert(StoryData.scenes.prologue, "the story starts somewhere")
+	local lastSpeaker = nil
+	for _, questId in QuestData.order do
+		local scene = StoryData.scenes[questId]
+		assert(scene, "quest " .. questId .. " has an offer scene")
+		eq(scene.mode, "full", questId .. " is told in person")
+		-- The giver is the one who speaks first about the quest.
+		eq(scene.lines[1].speaker, QuestData.quests[questId].giver or "Elder", questId .. " starts with its giver")
+		local ending = StoryData.scenes[questId .. "_end"]
+		assert(ending, "quest " .. questId .. " has an ending scene")
+		lastSpeaker = ending.lines[#ending.lines].speaker
+	end
+	assert(lastSpeaker, "the story has an ending")
+	for sceneId in StoryData.scenes do
+		local base = string.match(sceneId, "^(.+)_end$") or sceneId
+		assert(sceneId == "prologue" or QuestData.quests[base], sceneId .. " belongs to a quest")
+	end
+	-- Following the story pays: level-gated quests give several levels' worth, and every finished
+	-- quest adds a permanent blessing.
+	for _, questId in QuestData.order do
+		local quest = QuestData.quests[questId]
+		if quest.reward.levels then
+			local first = quest.minLevel or 1
+			eq(quest.reward.xp, Progression.thresholds[first + quest.reward.levels] - Progression.thresholds[first], questId .. " pays levels' worth")
+			assert(quest.reward.xp > 0)
+		end
+	end
+	local plain = Stats.of({ xp = 0, staffUpgrade = 0 })
+	local blessed = Stats.of({ xp = 0, staffUpgrade = 0, storyDone = 5 })
+	assert(math.abs(blessed.xpMultiplier - plain.xpMultiplier - 5 * Balance.story.xpPerQuest) < 1e-9, "five quests, five blessings")
+	local viaProfile = Stats.of({ xp = 0, staffUpgrade = 0, questProgress = { a = { state = "completed" }, b = { state = "active" }, c = { state = "completed" } } })
+	assert(math.abs(viaProfile.xpMultiplier - plain.xpMultiplier - 2 * Balance.story.xpPerQuest) < 1e-9, "only completed quests count")
+	assert(Balance.story.xpPerQuest * #QuestData.order <= 0.2, "the blessing stays modest")
 end)
 
 test("game content is English only (no Turkish letters in source)", function()

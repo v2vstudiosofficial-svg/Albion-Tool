@@ -76,6 +76,9 @@
         "OpenRebirth": {
           "$className": "RemoteEvent"
         },
+        "Cinematic": {
+          "$className": "RemoteEvent"
+        },
         "ConfirmRebirth": {
           "$className": "RemoteEvent"
         },

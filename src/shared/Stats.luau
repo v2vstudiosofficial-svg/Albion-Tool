@@ -11,6 +11,9 @@ export type Input = {
 	skills: { [string]: number }?,
 	equippedCharm: string?,
 	rebirths: number?,
+	-- Main quests completed: either the number itself (client) or the profile's quest progress (server).
+	storyDone: number?,
+	questProgress: { [string]: { state: string } }?,
 }
 
 export type PlayerStats = {
@@ -30,6 +33,20 @@ export type PlayerStats = {
 }
 
 local Stats = {}
+
+-- Main quests completed (the story blessing counts each one).
+function Stats.storyDone(input: Input): number
+	if input.storyDone then
+		return input.storyDone
+	end
+	local count = 0
+	for _, progress in input.questProgress or {} do
+		if progress.state == "completed" then
+			count += 1
+		end
+	end
+	return count
+end
 
 local function rank(input: Input, skillId: string): number
 	local skills = input.skills or {}
@@ -61,7 +78,7 @@ function Stats.of(input: Input): PlayerStats
 		regen = upgrade(input, "regen") * ups.regen.perLevel,
 		walkSpeed = Progression.walkSpeed(input.equippedCharm) * (1 + bonus(input, "feet")),
 		crystalMultiplier = 1 + bonus(input, "magnet"),
-		xpMultiplier = 1 + bonus(input, "wisdom") + Balance.rebirth.xpPerRebirth * math.clamp(input.rebirths or 0, 0, Balance.rebirth.maxBonusRebirths),
+		xpMultiplier = 1 + bonus(input, "wisdom") + Balance.rebirth.xpPerRebirth * math.clamp(input.rebirths or 0, 0, Balance.rebirth.maxBonusRebirths) + Balance.story.xpPerQuest * Stats.storyDone(input),
 		pouchCapacity = math.floor(
 			(Balance.pouch.baseCapacity + upgrade(input, "pouch") * ups.pouch.perLevel) * (1 + Balance.pouch.perLevel * (level - 1)) + 0.5
 		),

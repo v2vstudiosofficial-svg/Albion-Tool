@@ -127,6 +127,7 @@ H.services.UserInputService = {
 		return Vector2.new(500, 280)
 	end,
 	InputChanged = H.Signal.new(),
+	InputBegan = H.Signal.new(),
 	TouchPinch = H.Signal.new(),
 }
 H.services.RunService = {
@@ -883,6 +884,121 @@ test("emotes: the panel sends the chosen emote, bubbles show over heads and fade
 	head:Destroy()
 end)
 
+test("story scenes: typewriter caption, tap to continue, Skip, soft captions, queue", function()
+	local StoryData = H.loadModule("src/shared/StoryData.luau")
+	local function gui(): any
+		return playerGui:FindFirstChild("Cinematic")
+	end
+	local function tapCaption()
+		for _, descendant in gui():GetDescendants() do
+			if descendant:IsA("TextButton") and descendant.Text == "" then
+				click(descendant)
+				return
+			end
+		end
+		error("caption button missing")
+	end
+	local function barsVisible(): boolean
+		return gui().BarTop.Visible and gui().BarBottom.Visible
+	end
+	assert(not shownText(Strings.get("cinematic_skip")), "no Skip button between scenes")
+	-- A full scene: letterbox, speaker name, the caption types itself, taps go on.
+	local scene = StoryData.scenes.first_purify
+	remotes.Cinematic.OnClientEvent:Fire("first_purify")
+	advance(0.25)
+	assert(shownText(Strings.get("npc_elder_name")), "speaker name shown")
+	assert(shownText(Strings.get("cinematic_skip")), "Skip in the corner")
+	assert(barsVisible(), "letterbox bars")
+	local first = Strings.get(scene.lines[1].key)
+	assert(not shownText(first), "the caption is still being typed")
+	advance(0.6)
+	assert(not shownText(first) or #first < 40, "typing takes time")
+	advance(6)
+	assert(shownText(first), "the whole line appears")
+	assert(shownText(Strings.get("cinematic_continue")), "tap hint")
+	tapCaption()
+	advance(0.1)
+	assert(not shownText(first) and playerGui.Cinematic ~= nil, "next line started")
+	tapCaption() -- finishes typing the second line
+	advance(0.1)
+	assert(shownText(Strings.get(scene.lines[2].key)), "a tap finishes the line")
+	tapCaption()
+	advance(0.3)
+	assert(shownText(Strings.get("story_hero_name")), "the hero speaks the last line")
+	advance(6)
+	assert(shownText(Strings.get("cinematic_end")), "last line asks to finish")
+	tapCaption()
+	advance(1)
+	assert(not shownText(Strings.get("cinematic_skip")), "scene over: Skip gone")
+	assert(not barsVisible(), "bars away")
+	-- Skip ends a scene at once.
+	remotes.Cinematic.OnClientEvent:Fire("shadow_king")
+	advance(0.5)
+	assert(shownText(Strings.get("cinematic_skip")))
+	click(findButton(Strings.get("cinematic_skip")))
+	advance(1)
+	assert(not shownText(Strings.get("cinematic_skip")), "skipped")
+	assert(not barsVisible(), "bars away after skipping")
+	-- Soft scenes: a caption only, no bars, and it fades by itself.
+	remotes.Cinematic.OnClientEvent:Fire("first_purify_end")
+	advance(0.3)
+	assert(not barsVisible(), "no bars in a soft scene")
+	assert(shownText(Strings.get("npc_elder_name")), "soft scene caption")
+	advance(12)
+	assert(not shownText(Strings.get("cinematic_skip")), "a soft scene ends on its own")
+	-- Scenes that arrive while one is playing wait their turn; unknown scenes are ignored.
+	remotes.Cinematic.OnClientEvent:Fire("first_purify_end")
+	remotes.Cinematic.OnClientEvent:Fire("lantern_flowers_end")
+	remotes.Cinematic.OnClientEvent:Fire("no_such_scene")
+	remotes.Cinematic.OnClientEvent:Fire(5)
+	advance(0.3)
+	assert(shownText(Strings.get("cinematic_skip")), "the first queued scene is playing")
+	advance(20)
+	assert(not shownText(Strings.get("cinematic_skip")), "queue finished")
+	eq(#H.threadErrors, 0, "thread errors")
+end)
+
+test("hit squash: a creature is marked squashing for a moment, then springs back to its size", function()
+	local victim = enemies[1]
+	local body = victim.Body
+	local size = body.Size
+	-- (The test clock's tweens finish instantly, so the squash is seen through its marker.)
+	eq(body:GetAttribute("LvSquash"), nil)
+	remotes.Fx.OnClientEvent:Fire("hit", victim, H.read(body, "Position"), 12, false)
+	advance(0.02)
+	eq(body:GetAttribute("LvSquash"), true, "squashing")
+	-- A second hit during the squash does not stack it.
+	remotes.Fx.OnClientEvent:Fire("hit", victim, H.read(body, "Position"), 12, false)
+	advance(0.5)
+	eq(body:GetAttribute("LvSquash"), nil, "spring finished")
+	assert((body.Size - size).Magnitude < 0.001, "back to its size")
+end)
+
+test("story scenes: the talking NPC nods and the camera shot follows the speaker", function()
+	local village = workspace.LanternValleyMap.Village
+	local head = village.Elder.Head
+	local body = village.Elder.Body
+	local function headHeight(): number
+		return H.read(head, "Position").Y - H.read(body, "Position").Y
+	end
+	advance(0.5)
+	local resting = headHeight()
+	remotes.Cinematic.OnClientEvent:Fire("first_purify")
+	local highest = resting
+	for _ = 1, 30 do
+		advance(0.05)
+		highest = math.max(highest, headHeight())
+	end
+	assert(highest > resting + 0.05, "the Elder's head bobs while she talks")
+	local camera = workspace.CurrentCamera
+	local elder = WorldData.vector(WorldData.npcs.Elder.position)
+	assert((H.read(camera, "CFrame").Position - elder).Magnitude < 25, "the camera moved in on the Elder: " .. (H.read(camera, "CFrame").Position - elder).Magnitude)
+	click(findButton(Strings.get("cinematic_skip")))
+	advance(1)
+	local after = headHeight()
+	assert(math.abs(after - resting) < 0.2, "the head settles when the scene ends")
+end)
+
 test("bag: equip an owned charm, locked ones do nothing", function()
 	setAttributes({ Charms = "swift", Charm = "" })
 	click(findButton(Strings.get("menu_bag")))
@@ -1074,6 +1190,7 @@ end)
 test("rebirth: the panel says what resets, confirms only at level 100, badge and costume tile", function()
 	local Balance = H.loadModule("src/shared/Balance.luau")
 	local Format = H.loadModule("src/shared/Format.luau")
+	teleport(vec(WorldData.plaza, 3)) -- the panel closes when the player walks away from the lantern
 	setAttributes({ Level = 100, Rebirths = 0 })
 	remotes.OpenRebirth.OnClientEvent:Fire()
 	advance(0.2)

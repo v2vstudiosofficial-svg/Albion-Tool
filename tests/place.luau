@@ -66,6 +66,7 @@ for _, name in {
 	"PlayEmote",
 	"EquipPet",
 	"OpenRebirth",
+	"Cinematic",
 	"ConfirmRebirth",
 	"Fx",
 } do

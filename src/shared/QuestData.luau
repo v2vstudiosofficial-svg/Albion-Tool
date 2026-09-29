@@ -1,9 +1,11 @@
+local Progression = if script then require(script.Parent.Progression) else require("./Progression")
+
 -- Main quest chain. Each quest unlocks after the previous one is completed and is started at its
 -- `giver` (an NPC in WorldData.npcs; the Elder unless stated).
 -- objective.kind: "purify" (enemyType, count) | "collect"/"explore"/"vine" (ids) | "upgrade" (count = staff tier)
 --   | "counter" (a profile counter: counted from the day the quest starts, or `absolute` for a record
 --     like the best Shadow Tower floor).
-return {
+local QuestData = {
 	order = {
 		"first_purify",
 		"lantern_flowers",
@@ -60,7 +62,7 @@ return {
 			objectiveKey = "quest_ruin_vines_objective",
 			minLevel = 3,
 			objective = { kind = "vine", ids = { "vine_1", "vine_2", "vine_3" } },
-			reward = { xp = 150, coins = 50, charm = "glow" },
+			reward = { xp = 0, levels = 2, coins = 50, charm = "glow" },
 		},
 		warden = {
 			id = "warden",
@@ -69,7 +71,7 @@ return {
 			objectiveKey = "quest_warden_objective",
 			minLevel = 5,
 			objective = { kind = "purify", enemyType = "Warden", count = 1, area = "arena" },
-			reward = { xp = 300, coins = 120, flag = "festival" },
+			reward = { xp = 0, levels = 2, coins = 120, flag = "festival" },
 		},
 		marsh_scouts = {
 			id = "marsh_scouts",
@@ -79,7 +81,7 @@ return {
 			objectiveKey = "quest_marsh_scouts_objective",
 			minLevel = 8,
 			objective = { kind = "purify", enemyType = "Mudling", count = 12, area = "marsh" },
-			reward = { xp = 500, coins = 100 },
+			reward = { xp = 0, levels = 2, coins = 100 },
 		},
 		rift_watch = {
 			id = "rift_watch",
@@ -89,7 +91,7 @@ return {
 			objectiveKey = "quest_rift_watch_objective",
 			minLevel = 12,
 			objective = { kind = "counter", counter = "rifts", count = 1, area = "marsh" },
-			reward = { xp = 1000, coins = 200 },
+			reward = { xp = 0, levels = 2, coins = 200 },
 		},
 		bog_mother = {
 			id = "bog_mother",
@@ -98,7 +100,7 @@ return {
 			objectiveKey = "quest_bog_mother_objective",
 			minLevel = 22,
 			objective = { kind = "purify", enemyType = "BogMother", count = 1, area = "bog" },
-			reward = { xp = 3000, coins = 500 },
+			reward = { xp = 0, levels = 3, coins = 500 },
 		},
 		elite_hunt = {
 			id = "elite_hunt",
@@ -108,7 +110,7 @@ return {
 			objectiveKey = "quest_elite_hunt_objective",
 			minLevel = 26,
 			objective = { kind = "counter", counter = "elites", count = 3, area = "peaks" },
-			reward = { xp = 1500, coins = 300 },
+			reward = { xp = 0, levels = 2, coins = 300 },
 		},
 		frost_titan = {
 			id = "frost_titan",
@@ -117,7 +119,7 @@ return {
 			objectiveKey = "quest_frost_titan_objective",
 			minLevel = 46,
 			objective = { kind = "purify", enemyType = "FrostTitan", count = 1, area = "summit" },
-			reward = { xp = 9000, coins = 2000 },
+			reward = { xp = 0, levels = 3, coins = 2000 },
 		},
 		tower_climb = {
 			id = "tower_climb",
@@ -127,7 +129,7 @@ return {
 			objectiveKey = "quest_tower_climb_objective",
 			minLevel = 50,
 			objective = { kind = "counter", counter = "towerBest", count = 12, absolute = true },
-			reward = { xp = 6000, coins = 1200 },
+			reward = { xp = 0, levels = 2, coins = 1200 },
 		},
 		shadow_king = {
 			id = "shadow_king",
@@ -136,7 +138,20 @@ return {
 			objectiveKey = "quest_shadow_king_objective",
 			minLevel = 92,
 			objective = { kind = "purify", enemyType = "ShadowKing", count = 1, area = "throne" },
-			reward = { xp = 30000, coins = 8000 },
+			reward = { xp = 0, levels = 3, coins = 8000 },
 		},
 	},
 }
+
+-- Level-gated quests pay `levels` levels' worth of XP at the level they open, so following the
+-- story always moves a player forward by a few levels (`reward.xp` is filled in here).
+for _, quest in QuestData.quests do
+	local levels = quest.reward.levels
+	if levels then
+		local first = quest.minLevel or 1
+		local last = math.min(Progression.MAX_LEVEL, first + levels)
+		quest.reward.xp = Progression.thresholds[last] - Progression.thresholds[first]
+	end
+end
+
+return QuestData

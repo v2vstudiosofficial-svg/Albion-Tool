@@ -146,6 +146,7 @@ for _, eventName in {
 	"Activated",
 	"MouseButton1Down",
 	"MouseButton1Up",
+	"MouseEnter",
 	"MouseLeave",
 	"Destroying",
 	"ChildAdded",
@@ -231,6 +232,7 @@ local remoteNames = {
 	"PlayEmote",
 	"EquipPet",
 	"OpenRebirth",
+	"Cinematic",
 	"ConfirmRebirth",
 	"Fx",
 }

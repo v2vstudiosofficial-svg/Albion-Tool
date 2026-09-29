@@ -271,10 +271,22 @@ function Hud.start()
 	}, dialog)
 
 	-- Behaviour -----------------------------------------------------------------------------
+	local shownLevel: number? = nil
+	local shownCoins: number? = nil
 	local function refreshStats()
 		local xp = player:GetAttribute("XP") or 0
 		local level, into, span = Progression.levelProgress(xp)
 		levelLabel.Text = Strings.get("hud_level", level)
+		-- The badge pops on a level-up and the coin count on a gain (not when the game first loads).
+		if shownLevel and level > shownLevel then
+			UiKit.pop(badge)
+		end
+		shownLevel = level
+		local coinCount = player:GetAttribute("Coins") or 0
+		if shownCoins and coinCount > shownCoins then
+			UiKit.pop(coinsLabel)
+		end
+		shownCoins = coinCount
 		if span then
 			xpLabel.Text = Strings.get("hud_xp", Format.short(into), Format.short(span))
 			UiKit.tween(xpFill, 0.3, { Size = UDim2.fromScale(math.clamp(into / span, 0, 1), 1) })

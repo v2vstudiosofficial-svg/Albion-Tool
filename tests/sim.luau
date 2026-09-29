@@ -253,9 +253,9 @@ test("players load profiles (ProfileStore mock) and hold their weapon", function
 		eq(attr(player, "QuestId"), "first_purify")
 	end
 	for _, player in { alice, bob } do
-		eq(logCount("NpcSay", function(e)
-			return e.target == player and e.args[2] == "elder_welcome"
-		end), 1, player.Name .. " welcomed once")
+		eq(logCount("Cinematic", function(e)
+			return e.target == player and e.args[1] == "prologue"
+		end), 1, player.Name .. " sees the prologue once")
 	end
 	spawnCharacter(alice, vec(WorldData.spawn, 3))
 	spawnCharacter(bob, vec(WorldData.spawn, 3))
@@ -538,6 +538,14 @@ test("quest 6: boss fight with telegraphed attacks, rewards, festival", function
 			return e.args[1] == kind
 		end) > 0, "boss used " .. kind)
 	end
+	-- The chapter finale is a full scene that starts a moment after the boss falls (not in the fight).
+	local function finale(): number
+		return logCount("Cinematic", function(e)
+			return e.target == alice and e.args[1] == "warden_end"
+		end)
+	end
+	advance(3)
+	eq(finale(), 1, "the chapter finale plays once")
 	eq(attr(alice, "QuestId"), "marsh_scouts", "chapter 2 is next")
 	eq(attr(alice, "QuestState"), "level", "and waits for a stronger player")
 	eq(attr(alice, "Flags"), "festival,gardens,lanterns")
@@ -581,11 +589,19 @@ test("Ranger Wren: her quests come in the chain, counters follow the profile, pa
 	advance(0.2)
 	eq(attr(alice, "QuestState"), "available", "the prompt needs the player near her")
 	talk(alice, "Wren")
-	eq(said("Wren", QuestData.quests.marsh_scouts.offerKey), 1, "she offers the errand")
+	local function played(sceneId: string): number
+		return logCount("Cinematic", function(e)
+			return e.target == alice and e.args[1] == sceneId
+		end)
+	end
+	eq(played("marsh_scouts"), 1, "her first meeting plays as a scene")
+	eq(played("rift_watch"), 0)
 	eq(attr(alice, "QuestId"), "marsh_scouts")
 	eq(attr(alice, "QuestState"), "active")
 	talk(alice, "Elder")
 	eq(said("Elder", "elder_quest_active"), 1, "the Elder knows a quest is running")
+	talk(alice, "Wren")
+	eq(played("marsh_scouts"), 2, "talking to the giver again repeats the story")
 	-- Purify the Mudlings; the reward comes once and the next errand is ready.
 	local coins = attr(alice, "Coins")
 	local guard = 0
@@ -594,6 +610,10 @@ test("Ranger Wren: her quests come in the chain, counters follow the profile, pa
 		guard += 1
 	end
 	eq(attr(alice, "QuestId"), "rift_watch", "marsh scouts done")
+	eq(played("marsh_scouts_end"), 1, "the ending of the errand is shown")
+	eq(logCount("Notice", function(e)
+		return e.target == alice and e.args[1] == "notice_story_blessing"
+	end) >= 1, true, "a story blessing was announced")
 	assert(attr(alice, "Coins") >= coins + QuestData.quests.marsh_scouts.reward.coins, "coins paid")
 	setLevel(QuestData.quests.rift_watch.minLevel)
 	talk(alice, "Wren")
@@ -613,6 +633,8 @@ test("Ranger Wren: her quests come in the chain, counters follow the profile, pa
 	-- The next quest is the Elder's: Wren sends the player back.
 	talk(alice, "Wren")
 	eq(said("Wren", "wren_go_elder"), 1, "Wren points back to the Elder")
+	talk(alice, "Smith")
+	eq(said("Smith", "smith_greet_east"), 1, "the Smith talks about the freed Warden")
 	profile.xp = savedXp
 	PlayerProfiles.sync(alice)
 	toVillage(alice)
@@ -1146,6 +1168,12 @@ test("shadow rift: running out of time fades the rest away without rewards", fun
 	local notices = logCount("Notice", function(e)
 		return e.args[1] == "notice_rift_done"
 	end)
+	local function failedGrove(): number
+		return logCount("Fx", function(e)
+			return e.args[1] == "riftClosed" and e.args[2] == "grove" and e.args[4] == false
+		end)
+	end
+	local failedBefore = failedGrove()
 	eq(RiftService.open("grove"), true)
 	local ids = {}
 	for _, model in workspace.Enemies:GetChildren() do
@@ -1160,9 +1188,7 @@ test("shadow rift: running out of time fades the rest away without rewards", fun
 	for _, id in ids do
 		eq(EnemyService.get(id), nil, "faded away")
 	end
-	eq(logCount("Fx", function(e)
-		return e.args[1] == "riftClosed" and e.args[2] == "grove" and e.args[4] == false
-	end), 1, "failed")
+	eq(failedGrove(), failedBefore + 1, "failed")
 	eq(logCount("Notice", function(e)
 		return e.args[1] == "notice_rift_done"
 	end), notices, "no rewards")

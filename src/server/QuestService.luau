@@ -2,10 +2,13 @@
 -- events and counters into progress and paying each completion exactly once.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage.Shared
 local Balance = require(Shared.Balance)
 local QuestData = require(Shared.QuestData)
+local StoryData = require(Shared.StoryData)
+local Stats = require(Shared.Stats)
 local WorldData = require(Shared.WorldData)
 local Progression = require(Shared.Progression)
 local Profile = require(script.Parent.Profile)
@@ -19,6 +22,7 @@ local npcSay = Remotes.NpcSay :: RemoteEvent
 local notice = Remotes.Notice :: RemoteEvent
 local interact = Remotes.Interact :: RemoteEvent
 local fx = Remotes.Fx :: RemoteEvent
+local cinematic = Remotes.Cinematic :: RemoteEvent
 
 local DISCOVERY_INTERVAL = 0.5
 local INTERACT_COOLDOWN = 0.25
@@ -32,6 +36,26 @@ local function isNear(player: Player, position: Vector3, distance: number): bool
 	return target ~= nil and (target.root.Position - position).Magnitude <= distance
 end
 
+-- Plays a story scene on the player's screen (if the story has one); returns whether it did.
+local function playScene(player: Player, sceneId: string, delay: number?): boolean
+	if not StoryData.scenes[sceneId] then
+		return false
+	end
+	if delay and delay > 0 then
+		task.delay(delay, function()
+			if player.Parent == Players then
+				cinematic:FireClient(player, sceneId)
+			end
+		end)
+	else
+		cinematic:FireClient(player, sceneId)
+	end
+	return true
+end
+
+-- Full scenes after a quest (boss victories) wait a moment so the fight is really over.
+local END_SCENE_DELAY = 2.5
+
 local function complete(player: Player, profile, questId: string)
 	local def = QuestData.quests[questId]
 	local reward = def.reward
@@ -44,6 +68,12 @@ local function complete(player: Player, profile, questId: string)
 	PassService.award(player, "quest")
 	PlayerProfiles.grant(player, reward, "quest")
 	fx:FireClient(player, "questComplete", questId)
+	-- Every finished main quest is a permanent XP blessing (Stats.storyDone).
+	local blessing = math.floor(Stats.storyDone(profile) * Balance.story.xpPerQuest * 100 + 0.5)
+	notice:FireClient(player, "notice_story_blessing", blessing)
+	local endId = questId .. "_end"
+	local endScene = StoryData.scenes[endId]
+	playScene(player, endId, if endScene and endScene.mode == "full" then END_SCENE_DELAY else nil)
 end
 
 -- Records an event for one player and pays out any quests it completes.
@@ -87,8 +117,12 @@ local function onTalk(player: Player, npc: string, body: BasePart)
 		return
 	end
 	local lines = TALK[npc]
-	if QuestLogic.tracked(profile, QuestData) then
-		npcSay:FireClient(player, npc, lines.active)
+	local tracked = QuestLogic.tracked(profile, QuestData)
+	if tracked then
+		-- The quest giver tells the story of the running quest again; others just encourage.
+		if (QuestData.quests[tracked].giver or "Elder") ~= npc or not playScene(player, tracked) then
+			npcSay:FireClient(player, npc, lines.active)
+		end
 		return
 	end
 	local nextId = QuestLogic.nextAvailable(profile, QuestData)
@@ -104,7 +138,9 @@ local function onTalk(player: Player, npc: string, body: BasePart)
 	local level = Progression.levelForXp(profile.xp)
 	local ok, reason = QuestLogic.start(profile, QuestData, nextId, level)
 	if ok then
-		npcSay:FireClient(player, npc, def.offerKey)
+		if not playScene(player, nextId) then
+			npcSay:FireClient(player, npc, def.offerKey)
+		end
 		-- Progress that already happened (e.g. an early staff upgrade) counts right away.
 		local changed = record(player, { kind = "upgrade", value = profile.staffUpgrade })
 		if not QuestService.syncCounters(player) and not changed then
@@ -232,9 +268,24 @@ function QuestService.start(map: Folder)
 	PlayerProfiles.onReady(function(player)
 		local profile = PlayerProfiles.get(player)
 		if profile and profile.xp == 0 and next(profile.questProgress) == nil then
-			npcSay:FireClient(player, "Elder", "elder_welcome")
+			if not playScene(player, "prologue") then
+				npcSay:FireClient(player, "Elder", "elder_welcome")
+			end
 		end
 	end)
+
+	-- Studio-only helper: set the Workspace attribute LvDebugScene to a story scene id (e.g.
+	-- "warden_end") to play it for everyone, for checking the writing and the camera.
+	if RunService:IsStudio() then
+		workspace:GetAttributeChangedSignal("LvDebugScene"):Connect(function()
+			local sceneId = workspace:GetAttribute("LvDebugScene")
+			if typeof(sceneId) == "string" then
+				for _, player in Players:GetPlayers() do
+					playScene(player, sceneId)
+				end
+			end
+		end)
+	end
 
 	interact.OnServerEvent:Connect(onInteract)
 	Players.PlayerRemoving:Connect(function(player)

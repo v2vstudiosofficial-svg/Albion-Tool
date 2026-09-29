@@ -373,6 +373,11 @@ Balance.tower = {
 	recordMinutes = 2,
 }
 
+-- Story blessing: every main quest completed adds `xpPerQuest` XP from creatures for good, so
+-- players who follow the story level up faster (and the quests themselves pay levels' worth of XP,
+-- see QuestData).
+Balance.story = { xpPerQuest = 0.01 }
+
 -- Rebirth: at level 100 a player may start the climb again. Level, XP, weapon power, forge
 -- upgrades, skills and the crystal pouch reset (coins become `startCoins`); weapons, stars, slot
 -- levels, chests, charms, costumes, pets, quests, the log, the pass and the tower record stay.

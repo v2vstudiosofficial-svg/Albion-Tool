@@ -27,6 +27,27 @@ local CameraRig = {}
 CameraRig.distance = DEFAULT_DISTANCE
 local focus: Vector3? = nil
 
+-- A story shot: while set, the camera glides to `from` looking at `focus` (Cinematic). When it
+-- ends, the camera eases back to the follow view instead of jumping.
+export type Shot = { from: Vector3, focus: Vector3, fov: number }
+local shot: Shot? = nil
+local settle = 0 -- 1 right after a shot ends, fading to 0 as the follow view takes over
+local leftCFrame: CFrame? = nil
+local leftFov = FIELD_OF_VIEW
+local punchDegrees = 0 -- a brief zoom-in (level-ups, big moments) that fades on its own
+
+function CameraRig.setShot(newShot: Shot?)
+	local camera = workspace.CurrentCamera
+	if shot and not newShot and camera then
+		leftCFrame, leftFov, settle = camera.CFrame, camera.FieldOfView, 1
+	end
+	shot = newShot
+end
+
+function CameraRig.punch(degrees: number)
+	punchDegrees = math.max(punchDegrees, degrees)
+end
+
 function CameraRig.cframeFor(target: Vector3, distance: number): CFrame
 	return CFrame.lookAt(target + VIEW_DIRECTION * distance, target)
 end
@@ -51,15 +72,32 @@ local function updateCamera(dt: number)
 		camera.CameraType = Enum.CameraType.Scriptable
 		camera.FieldOfView = FIELD_OF_VIEW
 	end
+	if shot then
+		local glide = math.clamp(dt * 3.5, 0, 1)
+		camera.CFrame = camera.CFrame:Lerp(CFrame.lookAt(shot.from, shot.focus), glide)
+		camera.FieldOfView += (shot.fov - camera.FieldOfView) * glide
+		return
+	end
 	local _, root = character()
 	if root then
 		local goal = root.Position
 		focus = if focus and (focus - goal).Magnitude < 60 then focus:Lerp(goal, math.clamp(dt * FOLLOW_SPEED, 0, 1)) else goal
 	end
+	punchDegrees *= math.exp(-dt * 6)
+	local fov = FIELD_OF_VIEW - punchDegrees
 	if focus then
-		camera.CFrame = CameraRig.cframeFor(focus, CameraRig.distance)
+		local follow = CameraRig.cframeFor(focus, CameraRig.distance)
+		if settle > 0 and leftCFrame then
+			settle = math.max(0, settle - dt * 2.5)
+			local eased = 1 - settle * settle
+			camera.CFrame = leftCFrame:Lerp(follow, eased)
+			fov = leftFov + (fov - leftFov) * eased
+		else
+			camera.CFrame = follow
+		end
 		camera.Focus = CFrame.new(focus)
 	end
+	camera.FieldOfView = fov
 end
 
 -- A flat ring on the ground showing how far the main weapon reaches.

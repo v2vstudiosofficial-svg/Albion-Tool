@@ -13,6 +13,7 @@ local Progression = require(Shared:WaitForChild("Progression"))
 local Format = require(Shared:WaitForChild("Format"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
+local CameraRig = require(script.Parent.CameraRig)
 
 local fxRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Fx") :: RemoteEvent
 local player = Players.LocalPlayer
@@ -328,6 +329,17 @@ local CRYSTAL_COLOR = Color3.fromRGB(150, 210, 255)
 local function onHit(model: Model?, position: Vector3, amount: number, crit: boolean?)
 	if model then
 		flash(model, Color3.new(1, 1, 1), 0.15, 0.2)
+		-- The creature squashes flat for a moment and springs back (bigger on a critical hit).
+		local body = model:FindFirstChild("Body")
+		if body and body:IsA("BasePart") and not body:GetAttribute("LvSquash") then
+			body:SetAttribute("LvSquash", true)
+			local size = body.Size
+			local stretch = if crit then 1.3 else 1.16
+			body.Size = Vector3.new(size.X * stretch, size.Y * (2 - stretch), size.Z * stretch)
+			UiKit.tween(body, 0.18, { Size = size }, Enum.EasingStyle.Back).Completed:Connect(function()
+				body:SetAttribute("LvSquash", nil)
+			end)
+		end
 	end
 	local jitter = Vector3.new(math.random() * 2 - 1, 0, math.random() * 2 - 1)
 	if crit then
@@ -436,6 +448,8 @@ end
 
 -- A rebirth at the Great Lantern: a big golden and crystal burst for everyone nearby.
 local function onRebirth(position: Vector3)
+	groundRing(position - Vector3.new(0, 5.5, 0), 22, GOLD, 1.1)
+	CameraRig.punch(6)
 	Effects.burst(position, GOLD, 80, 18)
 	Effects.burst(position, CRYSTAL_COLOR, 40, 14)
 	Audio.play("levelUp")
@@ -601,9 +615,12 @@ local function onLevelUp(who: Player, _level: number)
 	})
 	fadeOut(column, 0.9, { Size = Vector3.new(20, 1, 1) })
 	Effects.burst(root.Position, GOLD, 45, 12)
+	-- A ring of light spreads over the ground around whoever levelled up.
+	groundRing(root.Position - Vector3.new(0, 2.9, 0), 12, GOLD, 0.8)
 	if who == player then
 		Audio.play("levelUp")
 		Effects.shake(0.2, 0.3)
+		CameraRig.punch(4)
 	end
 end
 

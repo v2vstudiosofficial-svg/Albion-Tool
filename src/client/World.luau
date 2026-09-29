@@ -149,6 +149,8 @@ end
 -- Chests ----------------------------------------------------------------------------------------
 
 local chests: { [string]: Model } = {}
+-- Where each chest rests; the model floats and sways gently around it.
+local chestBase: { [string]: CFrame } = {}
 local WOOD_DARK = Color3.fromRGB(110, 75, 50)
 
 local function buildChest(spotId: string, chestType: string, position: Vector3): Model
@@ -157,7 +159,8 @@ local function buildChest(spotId: string, chestType: string, position: Vector3):
 	local model = Instance.new("Model")
 	model.Name = "Chest_" .. spotId
 	local base = CFrame.new(position + Vector3.new(0, 0.8, 0)) * CFrame.Angles(0, math.rad(20), 0)
-	localPart({ Size = Vector3.new(2.8, 1.6, 1.9), CFrame = base, Color = if chestType == "wood" then WOOD_DARK else color, Material = Enum.Material.Wood }, model)
+	local body = localPart({ Size = Vector3.new(2.8, 1.6, 1.9), CFrame = base, Color = if chestType == "wood" then WOOD_DARK else color, Material = Enum.Material.Wood }, model)
+	model.PrimaryPart = body
 	localPart({ Size = Vector3.new(2.9, 0.7, 2), CFrame = base * CFrame.new(0, 1.15, 0), Color = color, Material = Enum.Material.SmoothPlastic }, model)
 	for _, x in { -1, 1 } do
 		localPart({ Size = Vector3.new(0.25, 2.3, 2.05), CFrame = base * CFrame.new(x, 0.35, 0), Color = Color3.fromRGB(70, 60, 70), Material = Enum.Material.Metal }, model)
@@ -197,9 +200,23 @@ local function refreshChests()
 		local show = player:GetAttribute("DataState") == "ready" and (readyAt[spotId] == nil or now >= readyAt[spotId])
 		if show and not chests[spotId] then
 			chests[spotId] = buildChest(spotId, spot.type, WorldData.vector(spot.position))
+			chestBase[spotId] = chests[spotId]:GetPivot()
 		elseif not show and chests[spotId] then
 			chests[spotId]:Destroy()
 			chests[spotId] = nil
+			chestBase[spotId] = nil
+		end
+	end
+end
+
+-- Chests that are ready hover and sway a little, so they read as "take me" from far away.
+local function animateChests()
+	local now = os.clock()
+	for spotId, model in chests do
+		local base = chestBase[spotId]
+		if base and model.Parent and model.PrimaryPart then
+			local phase = #spotId
+			model:PivotTo(base * CFrame.new(0, 0.15 + math.sin(now * 2.2 + phase) * 0.14, 0) * CFrame.Angles(0, math.sin(now * 0.9 + phase) * 0.08, 0))
 		end
 	end
 end
@@ -365,6 +382,19 @@ end
 -- NPC idle life: a gentle breathing bob and turning toward a nearby local player (local only).
 
 local NPC_LOOK_DISTANCE = 16
+-- The NPC in a story scene nods along while talking, and hops once when the scene starts.
+local speakingNpc: string? = nil
+local greeted: { [string]: number } = {}
+local GREET_SECONDS = 0.45
+local FACE_PARTS = { "Head", "Hat", "Eye1", "Eye2" }
+
+function World.setSpeaking(npcName: string?)
+	speakingNpc = npcName
+end
+
+function World.greet(npcName: string)
+	greeted[npcName] = os.clock()
+end
 
 local function animateNpcs()
 	local map = workspace:WaitForChild("LanternValleyMap", 10)
@@ -376,7 +406,15 @@ local function animateNpcs()
 	for name in WorldData.npcs do
 		local model = village:WaitForChild(name, 10)
 		if model and model:IsA("Model") and model.PrimaryPart then
-			table.insert(npcs, { model = model, base = model:GetPivot(), yaw = 0, phase = #npcs * 1.7 })
+			local body = model.PrimaryPart :: BasePart
+			local face = {}
+			for _, partName in FACE_PARTS do
+				local part = model:FindFirstChild(partName)
+				if part and part:IsA("BasePart") then
+					table.insert(face, { part = part, offset = body.CFrame:ToObjectSpace(part.CFrame) })
+				end
+			end
+			table.insert(npcs, { name = name, model = model, base = model:GetPivot(), yaw = 0, phase = #npcs * 1.7, face = face })
 		end
 	end
 	RunService.RenderStepped:Connect(function(dt)
@@ -400,7 +438,21 @@ local function animateNpcs()
 			local difference = (targetYaw - npc.yaw + math.pi) % (2 * math.pi) - math.pi
 			npc.yaw += difference * math.min(dt * 6, 1)
 			local bob = math.sin(now * 2 + npc.phase) * 0.08
-			npc.model:PivotTo(base * CFrame.new(0, bob, 0) * CFrame.Angles(0, npc.yaw, 0))
+			local hop = 0
+			local greetAt = greeted[npc.name]
+			if greetAt and now - greetAt < GREET_SECONDS then
+				hop = math.sin((now - greetAt) / GREET_SECONDS * math.pi) * 0.9
+			end
+			npc.model:PivotTo(base * CFrame.new(0, bob + hop, 0) * CFrame.Angles(0, npc.yaw, 0))
+			-- Talking: the head bobs and tilts a little (the face parts are re-placed from the body
+			-- every frame so the motion never accumulates).
+			local body = npc.model.PrimaryPart :: BasePart
+			local talking = speakingNpc == npc.name
+			local nod = if talking then math.abs(math.sin(now * 9)) * 0.16 else 0
+			local tilt = if talking then math.sin(now * 4.5) * math.rad(5) else 0
+			for _, face in npc.face do
+				face.part.CFrame = body.CFrame * CFrame.new(0, nod, 0) * face.offset * CFrame.Angles(0, 0, tilt)
+			end
 		end
 	end)
 end
@@ -641,6 +693,7 @@ function World.start()
 	end)
 	task.spawn(animateNpcs)
 	RunService.RenderStepped:Connect(animateButterflies)
+	RunService.RenderStepped:Connect(animateChests)
 end
 
 return World

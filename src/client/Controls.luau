@@ -14,6 +14,7 @@ local Strings = require(Shared:WaitForChild("Strings"))
 local Effects = require(script.Parent.Effects)
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
+local Cinematic = require(script.Parent.Cinematic)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestWave = Remotes:WaitForChild("RequestWave") :: RemoteEvent
@@ -47,6 +48,9 @@ local function waveStats()
 end
 
 function Controls.wave()
+	if Cinematic.blocking() then
+		return
+	end
 	if not Progression.waveUnlocked(Attrs.get("Level", 1)) then
 		return
 	end

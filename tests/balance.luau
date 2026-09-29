@@ -10,6 +10,7 @@ local WeaponData = require("../src/shared/WeaponData")
 local SkillData = require("../src/shared/SkillData")
 local Stats = require("../src/shared/Stats")
 local ChestData = require("../src/shared/ChestData")
+local QuestData = require("../src/shared/QuestData")
 
 local verbose = (...) == "verbose"
 
@@ -161,6 +162,21 @@ end
 local function climb(rebirths: number, report: boolean): number
 	local state = { power = 0, upgrades = {}, coins = 0, slotLevel = if rebirths > 0 then WeaponData.maxSlotLevel else 0, minutes = 0 }
 	local reborn = rebirths > 0
+	-- The story: quests are done as their level opens (a reborn player finished them long ago), so
+	-- each pays its XP at that level and adds one blessing.
+	local credit = 0
+	local function questsDone(level: number): number
+		if reborn then
+			return #QuestData.order
+		end
+		local count = 0
+		for _, questId in QuestData.order do
+			if (QuestData.quests[questId].minLevel or 1) <= level then
+				count += 1
+			end
+		end
+		return count
+	end
 	for level = 1, Progression.MAX_LEVEL - 1 do
 		local skills = skillsAt(level)
 		local stats = Stats.of({
@@ -169,6 +185,7 @@ local function climb(rebirths: number, report: boolean): number
 			upgrades = state.upgrades,
 			skills = skills,
 			rebirths = rebirths,
+			storyDone = questsDone(level),
 		})
 		local main, second = bestWeapons(level, reborn)
 		local enemy = Progression.enemyStats(REFERENCE, level)
@@ -196,6 +213,17 @@ local function climb(rebirths: number, report: boolean): number
 
 		-- Time for this level: fights, walking, trips to the lantern.
 		local span = Progression.thresholds[level + 1] - Progression.thresholds[level]
+		if not reborn then
+			for _, questId in QuestData.order do
+				local quest = QuestData.quests[questId]
+				if (quest.minLevel or 1) == level or (level == 1 and not quest.minLevel) then
+					credit += quest.reward.xp
+				end
+			end
+			local used = math.min(credit, span)
+			span -= used
+			credit -= used
+		end
 		local xpPerKill = math.floor(enemy.reward.xp * stats.xpMultiplier + 0.5)
 		local kills = span / xpPerKill
 		local crystals = kills * enemy.reward.coins * stats.crystalMultiplier
@@ -225,7 +253,10 @@ local function climb(rebirths: number, report: boolean): number
 			snapshots[level] = { dps = dps, maxHealth = stats.maxHealth, regen = stats.regen }
 			check(level, "kill seconds", killSeconds, TARGET.killSeconds)
 			check(level, "survive seconds", surviveSeconds, TARGET.surviveSeconds)
-			check(level, "minutes per level", minutes, TARGET.minutesPerLevel)
+			-- A level the story pays for in full (a quest reward covers it) takes no play time.
+			if minutes > 0 then
+				check(level, "minutes per level", minutes, TARGET.minutesPerLevel)
+			end
 		end
 
 		if report and (verbose or level == 1 or level % 10 == 0 or level == 5 or level == 25 or level == 99) then

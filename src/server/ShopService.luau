@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage.Shared
 local Balance = require(Shared.Balance)
 local Profile = require(script.Parent.Profile)
 local PlayerProfiles = require(script.Parent.PlayerProfiles)
+local QuestLogic = require(script.Parent.QuestLogic)
 local QuestService = require(script.Parent.QuestService)
 local Targets = require(script.Parent.Targets)
 
@@ -88,7 +89,17 @@ function ShopService.start(map: Folder)
 	local prompt = smithBody.TalkPrompt :: ProximityPrompt
 	prompt.Triggered:Connect(function(player)
 		if nearSmith(player) and PlayerProfiles.get(player) then
-			npcSay:FireClient(player, "Smith", "smith_greet")
+			-- The Smith talks about the story the player has lived through.
+			local profile = PlayerProfiles.get(player)
+			local line = "smith_greet"
+			if profile and profile.rebirths > 0 then
+				line = "smith_greet_reborn"
+			elseif profile and QuestLogic.isCompleted(profile, "shadow_king") then
+				line = "smith_greet_final"
+			elseif profile and QuestLogic.isCompleted(profile, "warden") then
+				line = "smith_greet_east"
+			end
+			npcSay:FireClient(player, "Smith", line)
 			openShop:FireClient(player)
 		end
 	end)

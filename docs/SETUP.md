@@ -92,6 +92,13 @@ Oyun içi tüm metinler İngilizce.
    "Crowned Shadows" 3 elit yenince, "Tower Climber" kule 12. kata çıkınca tamamlanır. **Yeniden doğuş**: Sv100 için
    `LvDebugLevel` = 100; Büyük Fener direğine yaklaş → "Rebirth" → panel (neyin sıfırlandığı/kaldığı yazar) → onay.
    Sv1'e dönersin, 300 sikke; HUD'da seviye rozetinin altında "Rebirth 1", "Dawn Aura" kostümü, 5 sandık yuvası açık kalır.
+10i. M12: **Sinematik**: yeni oyuncu ilk girişte "prologue" sahnesini görür (siyah bantlar, kamera Büyük Fener'de, yazı harf harf
+   çıkar, dokun/Space/E ile devam, sağ altta **Skip**). Elder'a/Wren'e konuşunca görev sahnesi oynar; görev sürerken tekrar
+   konuşunca sahne tekrar oynar. Görev bitince kısa alt yazı; Warden ve Shadow King bitince 2,5 sn sonra tam sahne. Sahnede
+   hareket kilitlenir (Skip ile çıkılır). Sahneyi hemen görmek için (Studio): Workspace'e `LvDebugScene` (string) = `warden_end`.
+   Bittiğinde kamera yumuşakça geri döner. Konuşan NPC baş sallar. **Animasyon**: sandıklar süzülür, vuruşta yaratık ezilir,
+   seviye atlayınca yer halkası, düğmeler üstüne gelince büyür, HUD'da seviye/sikke artınca "pop". **Kutsama**: her ana görev
+   sonunda "Story blessing! +N% XP"; Smith hikâyeye göre farklı selam verir.
 11. Sv25/50/75/100'de karakterin arkasında havada süzülen 1–4 silah belirir ve kendiliğinden saldırır;
     Weapons → Slot N ile değiştirilebilir, "Auto pick" otomatik seçime döner.
 12. Bag: tılsım tak/çıkar (Wind → hız, Shell → az hasar, Sparkle → dalga).

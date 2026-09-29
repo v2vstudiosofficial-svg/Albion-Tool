@@ -90,6 +90,12 @@ function UiKit.button(props: { [string]: any }, parent: Instance, onClick: () ->
 	button.MouseButton1Up:Connect(function()
 		UiKit.tween(scale, 0.12, { Scale = 1 }, Enum.EasingStyle.Back)
 	end)
+	-- Buttons swell slightly under the mouse (not on touch screens).
+	button.MouseEnter:Connect(function()
+		if not UiKit.isTouch() then
+			UiKit.tween(scale, 0.12, { Scale = 1.05 })
+		end
+	end)
 	button.MouseLeave:Connect(function()
 		UiKit.tween(scale, 0.12, { Scale = 1 })
 	end)
