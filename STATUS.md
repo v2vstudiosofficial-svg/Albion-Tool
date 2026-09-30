@@ -39,7 +39,7 @@
   öne eğilip hızlı zıplar; geri itilenler sersemleyip sallanır; bosslar yer çarpmasından önce yükselip çakılır, küre saldırısında döner.
   M30: saldırı sesleri ve toz (istemci, yalnızca 90 birim yakındakiler): şarj edenler eşeler/atılır/iner, atıcılar "pop",
   Shade mor duman, bosslar uğultu + yer çarpmasında gümbürtü ve toz halkası; sesler 3B (`Audio.playAt`), `pitch` alanı.
-  Yalnızca kurulumdaki `content/sounds` dosyaları kullanıldı; sonra tüm sesler Creator Store kimlikleriyle değiştirildi (ProSoundEffects + Roblox; 16/16 Studio'da yüklendi, müzik boş).
+  Yalnızca kurulumdaki `content/sounds` dosyaları kullanıldı; sonra tüm sesler Creator Store kimlikleriyle değiştirildi (ProSoundEffects + Roblox; 16/16 Studio'da yüklendi); köy müziği APM "Peaceful Valley Scene A" döngüde.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

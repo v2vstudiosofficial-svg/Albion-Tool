@@ -1,5 +1,5 @@
 -- Sound ids by gameplay event. Empty strings are silent. The ids are Creator Store sounds from
--- ProSoundEffects (Roblox's licensed library, free in any experience) and Roblox's own uploads.
+-- ProSoundEffects and APM (Roblox's licensed libraries, free in any experience) and Roblox's own uploads.
 -- `pitch` (PlaybackSpeed, default 1) lets one file serve several events; `length` plays only the
 -- first that many seconds of a long file.
 return {
@@ -20,5 +20,5 @@ return {
 	creatureLand = { id = "rbxassetid://9118598279", volume = 0.5 }, -- Rock Hit Dirt Impact
 	bossCharge = { id = "rbxassetid://9113973128", volume = 0.6 }, -- Creature Growls Lion
 	ui = { id = "rbxassetid://15675059323", volume = 0.4 }, -- Roblox UI Bright Click
-	music = { id = "", volume = 0.25 },
+	music = { id = "rbxassetid://1847410594", volume = 0.25 }, -- APM: Peaceful Valley Scene A (looped)
 }

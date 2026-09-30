@@ -91,10 +91,10 @@ function Audio.start()
 		local sound = Instance.new("Sound")
 		sound.Name = "Music"
 		sound.SoundId = entry.id
-		sound.Volume = entry.volume
+		sound.Volume = entry.volume * masterVolume
 		sound.Looped = true
 		sound.Parent = SoundService
-		sound:Play()
+		sound.Playing = enabled
 		music = sound
 	end
 end

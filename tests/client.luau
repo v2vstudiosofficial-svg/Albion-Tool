@@ -642,7 +642,11 @@ test("creature attacks: dust and sounds for chargers, shooters, blinkers and sla
 	remotes.Fx.OnClientEvent:Fire("windup", rock, 0.3)
 	advance(0.1)
 	eq(sounds("creatureCharge"), charges, "sound off: silent")
+	local music = H.game:GetService("SoundService"):FindFirstChild("Music")
+	assert(music and music.SoundId == Sounds.music.id and music.Looped, "village music loops")
+	eq(music.Playing, false, "sound off: music stops")
 	setAttributes({ Pref_sound = true })
+	eq(music.Playing, true, "sound on: music plays")
 	for _, model in { rock, spore, far } do
 		model:Destroy()
 	end

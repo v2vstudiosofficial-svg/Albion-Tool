@@ -174,10 +174,11 @@ Oyun içi tüm metinler İngilizce.
 
 ## Sesler
 `src/shared/Sounds.luau`: her olay için Creator Store kimliği (`rbxassetid://`). Çoğu ProSoundEffects
-(Roblox'un lisanslı kütüphanesi, her oyunda serbest), `ui`/`questComplete` Roblox'un kendi sesleri.
+(Roblox'un lisanslı kütüphanesi, her oyunda serbest), `ui`/`questComplete` Roblox'un kendi sesleri; köy müziği APM'den
+"Peaceful Valley Scene A" (döngüde, Settings > Audio > Master ile).
 Değiştirmek için kimliği yenisiyle değiştir (kimlik uydurma; yanlış kimlik sessiz kalır). `pitch`
-perdeyi, `length` uzun dosyanın çalan kısmını ayarlar. `music` boş: döngülü, sakin, masalsı bir
-köy müziği seçilince doldurulur. Ses düzeyi oyun içinde Settings > Audio'dan.
+perdeyi, `length` uzun dosyanın çalan kısmını ayarlar.
+Ses düzeyi oyun içinde Settings > Audio'dan.
 
 ## Üçüncü taraf
 `src/server/Packages/ProfileStore.luau`: loleris (MAD STUDIO) ProfileStore, npm
