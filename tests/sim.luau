@@ -318,6 +318,32 @@ test("the village heals players", function()
 	toVillage(alice)
 end)
 
+test("creatures move their own way: Gloomlings hop upright, each at its own tempo", function()
+	teleport(alice, vec(WorldData.areas.glade.center, 3) + Vector3.new(0, 0, 30))
+	advance(0.5)
+	local gloom = nearestEnemy("Gloomling", vec(WorldData.areas.glade.center))
+	assert(gloom, "a Gloomling")
+	local low, high = math.huge, -math.huge
+	for _ = 1, 20 do
+		advance(0.05)
+		local cframe = gloom.Body.CFrame
+		low, high = math.min(low, cframe.Position.Y), math.max(high, cframe.Position.Y)
+		assert(cframe.UpVector.Y > 0.9, "stays upright while hopping")
+	end
+	assert(high - low > 0.6, "Gloomlings hop (" .. (high - low) .. ")")
+	-- Pack members are shaded a little differently.
+	local colors = {}
+	for _, model in enemiesOf("Gloomling") do
+		colors[tostring(model.Body.Color)] = true
+	end
+	local distinct = 0
+	for _ in colors do
+		distinct += 1
+	end
+	assert(distinct >= 2, "shades differ within a pack")
+	toVillage(alice)
+end)
+
 test("purified enemies respawn", function()
 	toVillage(alice)
 	toVillage(bob)

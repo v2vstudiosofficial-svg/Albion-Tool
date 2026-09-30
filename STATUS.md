@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M27 (yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M28 (yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -31,10 +31,13 @@
   harcanmaz) ve Lantern Glow (F, Sv10: canın %40'ı, 30 sn; can doluyken basılmaz), sunucuda doğrulanır (`RequestAbility`);
   doğu yaratıkları kendi silüetleriyle (yayvan çamur, kar bulutu, hayalet, jöle, cadı şapkalı mantar, buz kristali, lav küpü),
   Gloomling'e ağız+anten, Rockling'e yosun+kaş.
+  M28: her yaratık türü kendi hareketiyle (zıplama, paytak, süzülme, jöle sallanması, sekme, ağır adım, boss süzülmesi; birey
+  başına tempo farkı, eğilme); sürü içinde renk tonu farkı (boss hariç); süsler istemcide canlanıyor (kulak, rün/taç/buz dönmesi,
+  baloncuk yükselmesi, alev/çatlak/kristal titremesi) - yalnızca kameraya 120 birim yakın olanlar, Effects: Low'da kapalı.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 71, balance, api, scene 17, sim 60, client 54/55/55/1, place; hepsi geçti (sinematik akış,
+- logic 71, balance, api, scene 18, sim 61, client 55/56/56/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.

@@ -334,20 +334,33 @@ local function updateAggro(enemy: Enemy)
 	end
 end
 
+-- Each creature kind moves its own way (EnemyModels.motions); every individual has its own tempo.
 local function place(enemy: Enemy, now: number)
-	local behavior = enemy.stats.behavior
-	local wave = math.sin(now * 3 + enemy.id)
-	local height = if behavior == "shooter"
-		then math.abs(math.sin(now * 4.5 + enemy.id)) * 1.1
-		elseif behavior == "charger" then wave * 0.2
-		elseif enemy.stats.isBoss then wave * 0.7
-		else wave * 0.4
+	local motion = EnemyModels.motions[enemy.kind] or EnemyModels.motions[enemy.stats.model or ""] or "hop"
+	local t = now * (0.85 + ((enemy.id * 0.137) % 1) * 0.3) + enemy.id
+	local height, roll, pitch = 0, 0, 0
+	if motion == "hop" then
+		local hop = math.abs(math.sin(t * 4))
+		height, pitch = hop * 1.2, (hop - 0.5) * 0.15
+	elseif motion == "waddle" then
+		height, roll = math.abs(math.sin(t * 6)) * 0.25, math.sin(t * 6) * 0.2
+	elseif motion == "float" then
+		height, roll = 0.6 + math.sin(t * 1.8) * 0.7, math.sin(t * 1.1) * 0.12
+	elseif motion == "wobble" then
+		height, roll, pitch = math.abs(math.sin(t * 3)) * 0.5, math.sin(t * 3) * 0.1, math.cos(t * 3) * 0.1
+	elseif motion == "bounce" then
+		height = math.abs(math.sin(t * 4.5)) * 1.1
+	elseif motion == "stomp" then
+		height, roll = math.abs(math.sin(t * 2.5)) * 0.35, math.sin(t * 2.5) * 0.07
+	else -- hover
+		height, roll = math.sin(t * 3) * 0.7, math.sin(t * 1.5) * 0.05
+	end
 	local bob = Vector3.new(0, height, 0)
 	if enemy.state == "windup" then
 		bob += Vector3.new(math.sin(now * 60) * 0.12, 0, 0)
 	end
 	local position = enemy.position + bob
-	enemy.body.CFrame = CFrame.lookAt(position, position + enemy.facing)
+	enemy.body.CFrame = CFrame.lookAt(position, position + enemy.facing) * CFrame.Angles(pitch, 0, roll)
 end
 
 export type SpawnOptions = {
@@ -378,7 +391,7 @@ local function createEnemy(kind: string, level: number, position: Vector3, areaI
 	end
 	nextId += 1
 	local home = position + Vector3.new(0, stats.hoverHeight, 0)
-	local model, body = EnemyModels.build(kind, stats, CFrame.new(home))
+	local model, body = EnemyModels.build(kind, stats, CFrame.new(home), nextId)
 	model:SetAttribute("EnemyId", nextId)
 	model:SetAttribute("EnemyType", kind)
 	model:SetAttribute("Level", level)

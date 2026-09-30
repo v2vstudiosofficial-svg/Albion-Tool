@@ -280,8 +280,12 @@ test("enemy models build for every enemy kind", function()
 			if descendant:IsA("BasePart") and descendant ~= body then
 				eq(descendant.Anchored, false, kind .. " decoration unanchored")
 				eq(descendant.CanCollide, false, kind .. " decoration no collide")
-				local weld = descendant:FindFirstChildOfClass("WeldConstraint")
+				-- Animated decorations use a Weld (the client moves its C0), the rest a WeldConstraint.
+				local weld = descendant:FindFirstChildOfClass("WeldConstraint") or descendant:FindFirstChildOfClass("Weld")
 				assert(weld and weld.Part0 == body and weld.Part1 == descendant, kind .. " decoration welded to body")
+				if descendant:FindFirstChildOfClass("Weld") then
+					assert(descendant:GetAttribute("LvAnim"), kind .. " a Weld only for animated parts")
+				end
 				welded += 1
 			end
 		end
@@ -328,6 +332,32 @@ test("ground detail (patches, flowers, trail) stays off the path, plaza, houses 
 	end
 	assert(checked >= 40, "ground detail was built")
 	assert(#map.Forest.Trail:GetChildren() >= 30, "trail lanterns and stones were built")
+end)
+
+test("every creature moves its own way and has decorations that animate", function()
+	local styles = { bob = true, orbit = true, rise = true, flicker = true }
+	for kind, stats in Balance.enemies do
+		assert(EnemyModels.motions[kind], kind .. " has a motion")
+		local model = EnemyModels.build(kind, stats, roblox.CFrame.new(0, 5, 0), 7)
+		local count = 0
+		for _, child in model:GetChildren() do
+			local style = child:GetAttribute("LvAnim")
+			if style then
+				count += 1
+				assert(styles[style], kind .. " unknown animation " .. tostring(style))
+				assert(style == "flicker" or child:FindFirstChildOfClass("Weld"), kind .. " moving part has a Weld")
+			end
+		end
+		assert(count >= 1, kind .. " has at least one animated decoration")
+		model:Destroy()
+	end
+	-- Two creatures of one kind get slightly different shades; bosses keep theirs.
+	local a = EnemyModels.build("Gloomling", Balance.enemies.Gloomling, roblox.CFrame.new(), 1)
+	local b = EnemyModels.build("Gloomling", Balance.enemies.Gloomling, roblox.CFrame.new(), 2)
+	assert(a.Body.Color ~= b.Body.Color, "pack members differ in shade")
+	local king = EnemyModels.build("ShadowKing", Balance.enemies.ShadowKing, roblox.CFrame.new(), 3)
+	local c = Balance.enemies.ShadowKing.color
+	eq(king.Body.Color, roblox.Color3.fromRGB(c[1], c[2], c[3]), "bosses keep their colour")
 end)
 
 test("weapon models build for all eight weapons, welded in hand or anchored when floating", function()

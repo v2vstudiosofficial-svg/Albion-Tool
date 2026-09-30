@@ -715,6 +715,72 @@ local function onUpgrade(who: Player, tier: number)
 	end
 end
 
+-- Creature decorations the server marked with LvAnim (EnemyModels.animate) move here, on this
+-- screen only: ears flap, runes circle, bubbles rise, flames flicker. Only creatures near the camera
+-- are animated, and nothing moves with the "Low" effects setting.
+local ANIM_DISTANCE = 120
+type AnimPart = { part: BasePart, weld: Weld?, base: CFrame?, style: string, speed: number, amount: number, phase: number, transparency: number }
+local animated: { [Instance]: { body: BasePart, parts: { AnimPart } } } = {}
+
+local function watchAnimations(model: Instance)
+	local body = model:WaitForChild("Body", 5) :: BasePart?
+	if not body then
+		return
+	end
+	local entry = { body = body, parts = {} }
+	local function add(part: Instance)
+		if part:IsA("BasePart") and part:GetAttribute("LvAnim") then
+			local weld = part:FindFirstChildOfClass("Weld")
+			table.insert(entry.parts, {
+				part = part,
+				weld = weld,
+				base = weld and weld.C0,
+				style = part:GetAttribute("LvAnim"),
+				speed = part:GetAttribute("LvAnimSpeed") or 1,
+				amount = part:GetAttribute("LvAnimAmount") or 0,
+				phase = part:GetAttribute("LvAnimPhase") or 0,
+				transparency = part.Transparency,
+			})
+		end
+	end
+	for _, child in model:GetChildren() do
+		add(child)
+	end
+	model.ChildAdded:Connect(add)
+	animated[model] = entry
+end
+
+local function animateCreatures()
+	if Settings.get("effects") == "low" then
+		return
+	end
+	local camera = workspace.CurrentCamera
+	local eye = camera and camera.CFrame.Position
+	local t = os.clock()
+	for model, entry in animated do
+		if not model.Parent then
+			animated[model] = nil
+		elseif not eye or (entry.body.CFrame.Position - eye).Magnitude <= ANIM_DISTANCE then
+			for _, a in entry.parts do
+				local wave = t * a.speed + a.phase
+				if a.style == "flicker" then
+					a.part.Transparency = math.clamp(a.transparency + (math.sin(wave) * 0.5 + 0.5) * a.amount, 0, 1)
+				elseif a.weld and a.base then
+					if a.style == "bob" then
+						a.weld.C0 = CFrame.new(0, math.sin(wave) * a.amount, 0) * a.base
+					elseif a.style == "orbit" then
+						a.weld.C0 = CFrame.Angles(0, wave, 0) * a.base
+					elseif a.style == "rise" then
+						local lift = wave % 1
+						a.weld.C0 = CFrame.new(0, lift * a.amount, 0) * a.base
+						a.part.Transparency = a.transparency + (1 - a.transparency) * lift
+					end
+				end
+			end
+		end
+	end
+end
+
 local function attachEnemyUi(model: Instance)
 	if not model:IsA("Model") or model:GetAttribute("Boss") then
 		return
@@ -836,6 +902,7 @@ function Effects.start()
 	local enemies = workspace:WaitForChild("Enemies")
 	enemies.ChildAdded:Connect(function(child)
 		task.spawn(attachEnemyUi, child)
+		task.spawn(watchAnimations, child)
 		task.spawn(function()
 			local body = child:WaitForChild("Body", 5) :: BasePart?
 			if body then
@@ -845,6 +912,7 @@ function Effects.start()
 	end)
 	for _, child in enemies:GetChildren() do
 		task.spawn(attachEnemyUi, child)
+		task.spawn(watchAnimations, child)
 	end
 
 	-- Turning the creature name/health bars on or off applies to the ones already showing.
@@ -859,6 +927,7 @@ function Effects.start()
 
 	RunService.RenderStepped:Connect(updateProjectiles)
 	RunService.RenderStepped:Connect(spinPortals)
+	RunService.RenderStepped:Connect(animateCreatures)
 	RunService:BindToRenderStep("LvCameraShake", Enum.RenderPriority.Camera.Value + 1, function()
 		local now = os.clock()
 		if now >= shakeUntil then

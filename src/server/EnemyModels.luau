@@ -40,6 +40,46 @@ local function attach(model: Model, body: BasePart, part: BasePart, offset: CFra
 	part.Parent = model
 end
 
+-- Marks a decoration for the client to animate (client/Effects, only near the camera):
+--   "bob"     up and down by `amount` studs        "orbit"   turns around the body at `speed` rad/s
+--   "rise"    floats up `amount` studs and fades, then starts again (`speed` loops per second)
+--   "flicker" transparency pulses by `amount`
+-- Moving styles need a Weld (its C0 is what the client changes); flicker keeps the WeldConstraint.
+local function animate(part: BasePart, style: string, speed: number, amount: number, phase: number?)
+	part:SetAttribute("LvAnim", style)
+	part:SetAttribute("LvAnimSpeed", speed)
+	part:SetAttribute("LvAnimAmount", amount)
+	part:SetAttribute("LvAnimPhase", phase or math.random() * math.pi * 2)
+	local constraint = part:FindFirstChildOfClass("WeldConstraint")
+	if style ~= "flicker" and constraint then
+		local body = constraint.Part0 :: BasePart
+		local joint = Instance.new("Weld")
+		joint.Part0 = body
+		joint.Part1 = part
+		joint.C0 = body.CFrame:ToObjectSpace(part.CFrame)
+		joint.Parent = part
+		constraint:Destroy()
+	end
+end
+
+-- Runs `action` on every decoration whose name starts with `prefix`.
+local function each(model: Model, prefix: string, action: (BasePart, number) -> ())
+	local index = 0
+	for _, child in model:GetChildren() do
+		if child:IsA("BasePart") and child.Name ~= "Body" and string.sub(child.Name, 1, #prefix) == prefix then
+			index += 1
+			action(child, index)
+		end
+	end
+end
+
+-- How each creature moves (EnemyService.place): hop, waddle, float, wobble, bounce, stomp or hover.
+EnemyModels.motions = {
+	Gloomling = "hop", Snowpuff = "hop", Mudling = "waddle", Shade = "float", Bubbler = "wobble",
+	Sporeling = "bounce", Hexcap = "bounce", Rockling = "stomp", Frostling = "stomp", Obsidian = "stomp",
+	Warden = "hover", BogMother = "hover", FrostTitan = "hover", ShadowKing = "hover",
+}
+
 -- A rounded spike: a ball stretched along its own Y axis (`length` tall, `thickness` wide).
 local function spike(model: Model, body: BasePart, name: string, length: number, thickness: number, color: Color3, material: Enum.Material?, offset: CFrame): BasePart
 	local part = ball(name, length, color, material)
@@ -291,10 +331,133 @@ function accessories.ShadowKing(model, body, stats)
 	end
 end
 
-function EnemyModels.build(kind: string, stats, cframe: CFrame): (Model, BasePart)
+-- Which decorations move on each creature (see animate above).
+local animations = {}
+
+function animations.Gloomling(model, stats)
+	local phase = math.random() * 6
+	each(model, "Ear", function(part)
+		animate(part, "bob", 9, 0.22, phase)
+	end)
+	each(model, "AntennaTip", function(part)
+		animate(part, "bob", 5, 0.25)
+	end)
+end
+
+function animations.Sporeling(model, stats)
+	-- Cap and spots move together so the spots stay on the cap.
+	local phase = math.random() * 6
+	each(model, "Cap", function(part)
+		animate(part, "bob", 5, stats.size * 0.05, phase)
+	end)
+	each(model, "Spot", function(part)
+		animate(part, "bob", 5, stats.size * 0.05, phase)
+	end)
+end
+
+function animations.Rockling(model)
+	each(model, "Pebble", function(part)
+		animate(part, "orbit", 1.3, 0, 0)
+	end)
+end
+
+function animations.Warden(model)
+	each(model, "Flame", function(part)
+		animate(part, "flicker", 9, 0.35)
+	end)
+	-- Each hand and its glow float together, the two sides in turn.
+	each(model, "Hand", function(part)
+		animate(part, "bob", 2, 0.8, if (part.CFrame.Position - model.PrimaryPart.CFrame.Position):Dot(model.PrimaryPart.CFrame.RightVector) > 0 then 0 else math.pi)
+	end)
+end
+
+function animations.BogMother(model, stats)
+	animations.Warden(model)
+	local phase = math.random() * 6
+	for _, prefix in { "MushroomCap", "MushroomStem" } do
+		each(model, prefix, function(part)
+			animate(part, "bob", 4, stats.size * 0.012, phase)
+		end)
+	end
+end
+
+function animations.FrostTitan(model)
+	animations.Warden(model)
+	each(model, "IceSpike", function(part)
+		animate(part, "orbit", 0.6, 0, 0)
+	end)
+end
+
+function animations.ShadowKing(model)
+	animations.Warden(model)
+	each(model, "CrownSpike", function(part)
+		animate(part, "orbit", -0.8, 0, 0)
+	end)
+	each(model, "Cape", function(part, index)
+		animate(part, "bob", 2.5, 0.35, index)
+	end)
+end
+
+function animations.Mudling(model)
+	each(model, "MudLump", function(part, index)
+		animate(part, "bob", 4, 0.15, index * 2)
+	end)
+end
+
+function animations.Snowpuff(model)
+	each(model, "Tuft", function(part, index)
+		animate(part, "bob", 3, 0.12, index * 1.3)
+	end)
+end
+
+function animations.Shade(model)
+	each(model, "Wisp", function(part)
+		animate(part, "orbit", 2.2, 0, 0)
+	end)
+	each(model, "Arm", function(part, index)
+		animate(part, "bob", 3, 0.3, index * math.pi)
+	end)
+end
+
+function animations.Bubbler(model, stats)
+	each(model, "Bubble", function(part, index)
+		animate(part, "rise", 0.45, stats.size * 0.6, index * 0.25)
+	end)
+	each(model, "Core", function(part)
+		animate(part, "flicker", 3, 0.3)
+	end)
+end
+
+function animations.Hexcap(model)
+	each(model, "Rune", function(part)
+		animate(part, "orbit", 1.5, 0, 0)
+	end)
+end
+
+function animations.Frostling(model)
+	each(model, "Crystal", function(part)
+		animate(part, "flicker", 2.5, 0.3)
+	end)
+end
+
+function animations.Obsidian(model)
+	each(model, "Crack", function(part)
+		animate(part, "flicker", 12, 0.45)
+	end)
+end
+
+-- A slightly different shade for each creature, so a pack is not a row of clones (`seed` = id).
+local function tint(color: Color3, seed: number): Color3
+	local h, s, v = color:ToHSV()
+	local r = (seed * 0.6180339887) % 1
+	local r2 = (seed * 0.3713) % 1
+	return Color3.fromHSV((h + (r - 0.5) * 0.04) % 1, math.clamp(s * (0.9 + r * 0.2), 0, 1), math.clamp(v * (0.9 + r2 * 0.2), 0, 1))
+end
+
+function EnemyModels.build(kind: string, stats, cframe: CFrame, seed: number?): (Model, BasePart)
 	local model = Instance.new("Model")
 	model.Name = kind
-	local body = ball("Body", stats.size, rgb(stats.color))
+	local body = ball("Body", stats.size, if seed and not stats.isBoss then tint(rgb(stats.color), seed) else rgb(stats.color))
 	body.Anchored = true
 	body.Massless = false
 	body.CastShadow = true
@@ -310,6 +473,10 @@ function EnemyModels.build(kind: string, stats, cframe: CFrame): (Model, BasePar
 	if accessory then
 		accessory(model, body, stats)
 	end
+	local wiggle = animations[kind] or animations[stats.model or ""]
+	if wiggle then
+		wiggle(model, stats)
+	end
 	if stats.elite then
 		-- A little golden crown marks elites.
 		local gold = Color3.fromRGB(255, 205, 70)
@@ -317,6 +484,7 @@ function EnemyModels.build(kind: string, stats, cframe: CFrame): (Model, BasePar
 			local angle = index / 5 * math.pi * 2
 			local spike = ball("Crown" .. index, 0.7, gold, Enum.Material.Neon)
 			attach(model, body, spike, CFrame.new(math.cos(angle) * stats.size * 0.22, stats.size * 0.55, math.sin(angle) * stats.size * 0.22))
+			animate(spike, "orbit", 1, 0, 0)
 		end
 	end
 	return model, body
