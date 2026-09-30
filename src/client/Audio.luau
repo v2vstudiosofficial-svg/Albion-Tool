@@ -12,6 +12,15 @@ local masterVolume, sfxVolume = 1, 1
 local cache: { [string]: Sound } = {}
 local music: Sound? = nil
 
+-- Pitch and, for long files, the part of the file that plays.
+local function shape(sound: Sound, entry)
+	sound.PlaybackSpeed = entry.pitch or 1
+	sound.PlaybackRegionsEnabled = entry.length ~= nil
+	if entry.length then
+		sound.PlaybackRegion = NumberRange.new(0, entry.length)
+	end
+end
+
 local function soundFor(key: string): Sound?
 	local entry = Sounds[key]
 	if not entry or entry.id == "" then
@@ -36,7 +45,7 @@ function Audio.play(key: string)
 	local sound = soundFor(key)
 	if sound then
 		sound.Volume = Sounds[key].volume * masterVolume * sfxVolume
-		sound.PlaybackSpeed = Sounds[key].pitch or 1
+		shape(sound, Sounds[key])
 		SoundService:PlayLocalSound(sound)
 	end
 end
@@ -52,7 +61,7 @@ function Audio.playAt(key: string, emitter: Instance)
 	sound.Name = "Sfx_" .. key
 	sound.SoundId = entry.id
 	sound.Volume = entry.volume * masterVolume * sfxVolume
-	sound.PlaybackSpeed = entry.pitch or 1
+	shape(sound, entry)
 	sound.RollOffMaxDistance = 90
 	sound.Parent = emitter
 	sound:Play()

@@ -615,6 +615,8 @@ test("creature attacks: dust and sounds for chargers, shooters, blinkers and sla
 	remotes.Fx.OnClientEvent:Fire("windup", rock, 0.5)
 	advance(0.2)
 	eq(sounds("creatureCharge"), 1, "charge sound at the creature")
+	local paw = workspace.ClientFx:FindFirstChild("Sfx_creatureCharge", true)
+	assert(paw.PlaybackRegionsEnabled and math.abs(paw.PlaybackRegion.Max - Sounds.creatureCharge.length) < 0.01, "long file cut short")
 	assert(dustCount() > 0, "pawing dust")
 	advance(0.5)
 	eq(sounds("creatureDash"), 1, "dash sound")
