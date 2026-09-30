@@ -589,6 +589,42 @@ test("creature decorations animate near the camera and stop with Low effects", f
 	advance(0.1)
 end)
 
+test("music follows the place and one track fades out before the next fades in", function()
+	local Sounds = H.loadModule("src/shared/Sounds.luau")
+	local SoundService = H.game:GetService("SoundService")
+	local home = H.read(hero.Character.HumanoidRootPart, "Position")
+	local function audible(): { string }
+		local names = {}
+		for _, sound in SoundService:GetChildren() do
+			if sound:IsA("Sound") and sound.Name:sub(1, 6) == "Music_" and sound.Playing and sound.Volume > 0 then
+				table.insert(names, sound.Name)
+			end
+		end
+		return names
+	end
+	teleport(vec(WorldData.spawn, 3))
+	advance(3)
+	local village = SoundService:FindFirstChild("Music_village")
+	assert(village and village.Looped and village.SoundId == Sounds.music.tracks.village, "village music loops")
+	assert(math.abs(village.Volume - Sounds.music.volume) < 0.01, "village music at full volume")
+	teleport(vec(WorldData.areas.arena.center, 3))
+	advance(0.5)
+	eq(audible()[1], "Music_village", "a short visit does not change the music")
+	for _ = 1, 40 do
+		advance(0.1)
+		assert(#audible() <= 1, "never two tracks at once")
+	end
+	eq(audible()[1], "Music_boss", "boss music in the arena")
+	eq(village.Playing, false, "the village track stopped")
+	setAttributes({ Pref_sound = false })
+	eq(#audible(), 0, "sound off: music stops")
+	setAttributes({ Pref_sound = true })
+	eq(audible()[1], "Music_boss", "sound on: music plays again")
+	teleport(home)
+	advance(5)
+	eq(audible()[1], "Music_village", "back home")
+end)
+
 test("creature attacks: dust and sounds for chargers, shooters, blinkers and slams", function()
 	local Sounds = H.loadModule("src/shared/Sounds.luau")
 	local here = H.read(hero.Character.HumanoidRootPart, "Position")
@@ -642,11 +678,7 @@ test("creature attacks: dust and sounds for chargers, shooters, blinkers and sla
 	remotes.Fx.OnClientEvent:Fire("windup", rock, 0.3)
 	advance(0.1)
 	eq(sounds("creatureCharge"), charges, "sound off: silent")
-	local music = H.game:GetService("SoundService"):FindFirstChild("Music")
-	assert(music and music.SoundId == Sounds.music.id and music.Looped, "village music loops")
-	eq(music.Playing, false, "sound off: music stops")
 	setAttributes({ Pref_sound = true })
-	eq(music.Playing, true, "sound on: music plays")
 	for _, model in { rock, spore, far } do
 		model:Destroy()
 	end

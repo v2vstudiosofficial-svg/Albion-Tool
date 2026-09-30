@@ -20,5 +20,17 @@ return {
 	creatureLand = { id = "rbxassetid://9118598279", volume = 0.5 }, -- Rock Hit Dirt Impact
 	bossCharge = { id = "rbxassetid://9113973128", volume = 0.6 }, -- Creature Growls Lion
 	ui = { id = "rbxassetid://15675059323", volume = 0.4 }, -- Roblox UI Bright Click
-	music = { id = "rbxassetid://1847410594", volume = 0.25 }, -- APM: Peaceful Valley Scene A (looped)
+	-- Music by place (MusicLogic.theme), APM tracks, looped; one plays at a time.
+	music = {
+		volume = 0.25,
+		tracks = {
+			village = "rbxassetid://1847410594", -- Peaceful Valley Scene A
+			wilds = "rbxassetid://1837134419", -- The Magical Forest
+			marsh = "rbxassetid://9048681794", -- Mysterious Forest
+			peaks = "rbxassetid://9043599529", -- Frozen Forest (c)
+			citadel = "rbxassetid://1839814486", -- Dark Castle
+			boss = "rbxassetid://1837222909", -- Heroic Battle
+			tower = "rbxassetid://81858348740186", -- Ancient Curse (underscore)
+		},
+	},
 }

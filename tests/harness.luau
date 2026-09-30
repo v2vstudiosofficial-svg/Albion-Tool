@@ -178,6 +178,9 @@ end)
 roblox.implementMethod("DataStoreOptions", "SetExperimentalFeatures", function() end)
 roblox.implementMethod("SoundService", "PlayLocalSound", function() end)
 roblox.implementMethod("Sound", "Play", function() end)
+roblox.implementMethod("Sound", "Stop", function(sound)
+	sound.Playing = false
+end)
 roblox.implementMethod("ParticleEmitter", "Emit", function() end)
 roblox.implementMethod("StarterGui", "SetCoreGuiEnabled", function() end)
 -- Tests may set Harness.guiAtPosition to simulate what sits under the pointer.

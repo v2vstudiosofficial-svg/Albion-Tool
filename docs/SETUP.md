@@ -174,8 +174,10 @@ Oyun içi tüm metinler İngilizce.
 
 ## Sesler
 `src/shared/Sounds.luau`: her olay için Creator Store kimliği (`rbxassetid://`). Çoğu ProSoundEffects
-(Roblox'un lisanslı kütüphanesi, her oyunda serbest), `ui`/`questComplete` Roblox'un kendi sesleri; köy müziği APM'den
-"Peaceful Valley Scene A" (döngüde, Settings > Audio > Master ile).
+(Roblox'un lisanslı kütüphanesi, her oyunda serbest), `ui`/`questComplete` Roblox'un kendi sesleri; müzikler APM'den,
+bölgeye göre (`shared/MusicLogic`): köy, vadideki yaratık bölgeleri, bataklık, zirveler, kale,
+boss arenaları ve Gölge Kulesi. Bölge değişince (1 sn bekler) eski parça 1,5 sn'de tamamen susar,
+sonra yenisi 1,5 sn'de yükselir; iki parça hiç üst üste çalmaz.
 Değiştirmek için kimliği yenisiyle değiştir (kimlik uydurma; yanlış kimlik sessiz kalır). `pitch`
 perdeyi, `length` uzun dosyanın çalan kısmını ayarlar.
 Ses düzeyi oyun içinde Settings > Audio'dan.

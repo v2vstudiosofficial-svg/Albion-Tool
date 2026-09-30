@@ -568,9 +568,17 @@ test("every charm is rewarded by exactly one quest", function()
 end)
 
 test("sound entries are silent or use an explicit asset scheme", function()
+	local function valid(id: string): boolean
+		return id == "" or string.match(id, "^rbxasset://") ~= nil or string.match(id, "^rbxassetid://%d+$") ~= nil
+	end
 	for key, entry in Sounds do
-		local ok = entry.id == "" or string.match(entry.id, "^rbxasset://") or string.match(entry.id, "^rbxassetid://%d+$")
-		assert(ok, "bad sound id for " .. key)
+		if key == "music" then
+			for theme, id in entry.tracks do
+				assert(valid(id), "bad music id for " .. theme)
+			end
+		else
+			assert(valid(entry.id), "bad sound id for " .. key)
+		end
 	end
 end)
 
@@ -1754,6 +1762,34 @@ test("titles: earned by progress, chosen only when earned, saved choice is clean
 	eq(saved(5), "")
 	eq(saved("reborn"), "reborn")
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).equippedTitle, "", "missing value")
+end)
+
+test("music: each place has its track, boss arenas and the tower override their region", function()
+	local MusicLogic = require("../src/shared/MusicLogic")
+	local WorldData = require("../src/shared/WorldData")
+	local function at(p): string
+		return MusicLogic.theme(p[1], p[3])
+	end
+	eq(at(WorldData.spawn), "village")
+	eq(at(WorldData.plaza), "village")
+	eq(at(WorldData.npcs.Smith.position), "village", "the smithy is still the village")
+	eq(at(WorldData.areas.glade.center), "wilds")
+	eq(at(WorldData.areas.hollow.center), "wilds")
+	eq(at(WorldData.areas.arena.center), "boss")
+	eq(at(WorldData.areas.tower.center), "tower")
+	eq(at(WorldData.npcs.Wren.position), "marsh", "just past the ridge")
+	eq(at(WorldData.areas.marsh.center), "marsh")
+	eq(at(WorldData.areas.bog.center), "boss")
+	eq(at(WorldData.areas.peaks.center), "peaks")
+	eq(at(WorldData.areas.summit.center), "boss")
+	eq(at(WorldData.areas.citadel.center), "citadel")
+	eq(at(WorldData.areas.keep.center), "citadel")
+	eq(at(WorldData.areas.throne.center), "boss")
+	-- Every zone's own spot plays a track that exists.
+	local Sounds = require("../src/shared/Sounds")
+	for name, area in WorldData.areas do
+		assert(Sounds.music.tracks[at(area.center)], name .. " has a track")
+	end
 end)
 
 test("mini map: north is up, the near view follows the player, the world view fits every zone", function()
