@@ -173,17 +173,11 @@ Oyun içi tüm metinler İngilizce.
 - Altyapı: `tests/harness.luau` (sahte saat/zamanlayıcı, sinyaller, remote'lar, yükleyici).
 
 ## Sesler
-`src/shared/Sounds.luau` içindeki boş kimlikler sessizdir. Creator Store'dan lisansı uygun
-sesler seçip `rbxassetid://<id>` biçiminde doldur (kimlik uydurma; yanlış kimlik sessiz kalır).
-Hangi anahtar ne zaman çalar ve neye benzemeli (Creator Store'da arama önerisi):
-- `ui`: her düğme/pencere (27 yer): kısa, yumuşak "tık" — "ui click soft".
-- `hit`: vuruş: kısa tok bir çarpma — "hit soft impact". `attack`: silah savurma (şimdilik: action_swim, yüksek perde).
-- `purify`/`pickup`: arındırma ve kristal toplama: parlak çıngırak — "magic chime short".
-- `levelUp`/`questComplete`: 1–2 sn zafer melodisi — "level up fanfare".
-- `wave`: Light Wave: geniş "vuu" — "magic whoosh". `slamWarn`/`slam`: boss uyarısı ve yere vuruş —
-  "warning low tone", "heavy slam".
-- `music`: döngülü, sakin, masalsı köy müziği — "fantasy village ambient loop".
-Ses düzeyini oyun içinde Settings > Audio'dan ayarlayabilirsin.
+`src/shared/Sounds.luau`: her olay için Creator Store kimliği (`rbxassetid://`). Çoğu ProSoundEffects
+(Roblox'un lisanslı kütüphanesi, her oyunda serbest), `ui`/`questComplete` Roblox'un kendi sesleri.
+Değiştirmek için kimliği yenisiyle değiştir (kimlik uydurma; yanlış kimlik sessiz kalır). `pitch`
+perdeyi, `length` uzun dosyanın çalan kısmını ayarlar. `music` boş: döngülü, sakin, masalsı bir
+köy müziği seçilince doldurulur. Ses düzeyi oyun içinde Settings > Audio'dan.
 
 ## Üçüncü taraf
 `src/server/Packages/ProfileStore.luau`: loleris (MAD STUDIO) ProfileStore, npm
