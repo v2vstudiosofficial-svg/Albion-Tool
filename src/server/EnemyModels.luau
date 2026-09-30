@@ -72,6 +72,11 @@ function builders.Gloomling(model: Model, body: BasePart, stats)
 		attach(model, body, ball("Ear", 1, ear), CFrame.new(side * 1.1, s * 0.42, 0.2))
 		attach(model, body, ball("Foot", s * 0.28, ear), CFrame.new(side * s * 0.26, -s * 0.4, -s * 0.12))
 	end
+	local mouth = ball("Mouth", s * 0.2, PUPIL)
+	squash(mouth, Vector3.new(1, 0.4, 0.5))
+	attach(model, body, mouth, CFrame.new(0, -s * 0.08, -s * 0.46))
+	spike(model, body, "Antenna", s * 0.35, s * 0.06, ear, nil, CFrame.new(0, s * 0.55, 0) * CFrame.Angles(0, 0, math.rad(15)))
+	attach(model, body, ball("AntennaTip", s * 0.14, Color3.fromRGB(200, 160, 255), Enum.Material.Neon), CFrame.new(-s * 0.05, s * 0.72, 0))
 end
 
 function builders.Sporeling(model: Model, body: BasePart, stats)
@@ -97,6 +102,12 @@ function builders.Rockling(model: Model, body: BasePart, stats)
 		local pebble = ball("Pebble", 1.1, rgb(stats.color):Lerp(WHITE, 0.2), Enum.Material.Slate)
 		attach(model, body, pebble, CFrame.new(side * 1.5, s * 0.35, 0.4))
 	end
+	local moss = ball("Moss", s * 0.55, Color3.fromRGB(110, 170, 80), Enum.Material.Grass)
+	squash(moss, Vector3.new(1, 0.3, 1))
+	attach(model, body, moss, CFrame.new(0, s * 0.4, s * 0.05))
+	local brow = ball("Brow", s * 0.5, rgb(stats.color):Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Slate)
+	squash(brow, Vector3.new(1.2, 0.3, 0.5))
+	attach(model, body, brow, CFrame.new(0, s * 0.3, -s * 0.4))
 end
 
 function builders.Warden(model: Model, body: BasePart, stats)
@@ -116,9 +127,7 @@ function builders.Warden(model: Model, body: BasePart, stats)
 	end
 end
 
--- Extra details that tell the east-land creatures and legends apart from their base shape.
--- Keyed by creature kind; each runs after the base builder.
-local accessories = {}
+-- East-land creatures: each has its own silhouette (not just a recoloured base creature).
 
 local function around(count: number, radius: number, height: number, place: (number, CFrame) -> ())
 	for index = 1, count do
@@ -128,64 +137,124 @@ local function around(count: number, radius: number, height: number, place: (num
 	end
 end
 
-function accessories.Mudling(model, body, stats)
+-- Mudling: a wide, flat puddle of mud with lumps on its back and eyes on little stalks.
+function builders.Mudling(model: Model, body: BasePart, stats)
 	local s = stats.size
-	for index, at in { Vector3.new(0.28, 0.42, -0.1), Vector3.new(-0.3, 0.4, 0.15), Vector3.new(0.02, 0.47, 0.3) } do
-		attach(model, body, ball("MudLump" .. index, s * 0.28, Color3.fromRGB(88, 68, 42), Enum.Material.Slate), CFrame.new(at * s))
+	local mud = rgb(stats.color)
+	body.Material = Enum.Material.Ground
+	squash(body, Vector3.new(1.4, 0.6, 1.3))
+	for index, at in { Vector3.new(0.3, 0.2, 0.05), Vector3.new(-0.32, 0.18, 0.2), Vector3.new(0.02, 0.24, 0.35) } do
+		attach(model, body, ball("MudLump" .. index, s * 0.3, mud:Lerp(Color3.new(0, 0, 0), 0.25), Enum.Material.Ground), CFrame.new(at * s))
 	end
+	for index, at in { Vector3.new(0.72, -0.2, -0.1), Vector3.new(-0.7, -0.22, 0.25), Vector3.new(0.2, -0.24, 0.62) } do
+		local drip = ball("Drip" .. index, s * 0.22, mud, Enum.Material.Ground)
+		squash(drip, Vector3.new(1.3, 0.5, 1.3))
+		attach(model, body, drip, CFrame.new(at * s))
+	end
+	for _, side in { -1, 1 } do
+		spike(model, body, "Stalk", s * 0.4, s * 0.08, mud, Enum.Material.Ground, CFrame.new(side * s * 0.2, s * 0.35, -s * 0.2))
+	end
+	eyes(model, body, 0.7, s * 0.2, s * 0.58, s * 0.24)
 end
 
-function accessories.Snowpuff(model, body, stats)
+-- Snowpuff: a fluffy snow cloud with pink cheeks and a tiny carrot nose.
+function builders.Snowpuff(model: Model, body: BasePart, stats)
 	local s = stats.size
-	for index, at in { Vector3.new(0.28, 0.42, -0.1), Vector3.new(-0.3, 0.4, 0.15), Vector3.new(0.02, 0.47, 0.3) } do
-		attach(model, body, ball("Tuft" .. index, s * 0.3, WHITE), CFrame.new(at * s))
+	body.Material = Enum.Material.Snow
+	for index, at in { Vector3.new(0.45, 0.1, 0.1), Vector3.new(-0.45, 0.1, 0.1), Vector3.new(0, 0.42, 0.1), Vector3.new(0.25, 0.3, 0.35), Vector3.new(-0.25, 0.3, 0.35) } do
+		attach(model, body, ball("Tuft" .. index, s * 0.55, WHITE, Enum.Material.Snow), CFrame.new(at * s))
 	end
 	for _, side in { -1, 1 } do
 		attach(model, body, ball("Cheek", s * 0.16, Color3.fromRGB(255, 170, 175)), CFrame.new(side * s * 0.3, -s * 0.05, -s * 0.42))
 	end
+	spike(model, body, "Nose", s * 0.3, s * 0.1, Color3.fromRGB(255, 150, 60), nil, CFrame.new(0, 0, -s * 0.52) * CFrame.Angles(math.rad(-90), 0, 0))
+	eyes(model, body, 0.6, s * 0.17, s * 0.14, s * 0.45)
 end
 
-function accessories.Shade(model, body, stats)
+-- Shade: a see-through ghost with glowing eyes, little arms and a wispy tail.
+function builders.Shade(model: Model, body: BasePart, stats)
 	local s = stats.size
+	local glow = Color3.fromRGB(190, 130, 255)
+	body.Transparency = 0.25
+	squash(body, Vector3.new(0.9, 1.1, 0.9))
+	eyes(model, body, 0.8, s * 0.18, s * 0.12, s * 0.42, glow)
 	for index, size in { 0.3, 0.22, 0.15 } do
-		local wisp = ball("Wisp" .. index, s * size, Color3.fromRGB(150, 90, 230), Enum.Material.Neon)
+		local wisp = ball("Wisp" .. index, s * size, glow, Enum.Material.Neon)
 		wisp.Transparency = 0.35 + index * 0.1
-		attach(model, body, wisp, CFrame.new(0, -s * (0.1 + index * 0.08), s * (0.35 + index * 0.25)))
+		attach(model, body, wisp, CFrame.new(0, -s * (0.35 + index * 0.1), s * (0.2 + index * 0.22)))
+	end
+	for _, side in { -1, 1 } do
+		local arm = ball("Arm", s * 0.24, rgb(stats.color))
+		arm.Transparency = 0.25
+		attach(model, body, arm, CFrame.new(side * s * 0.52, -s * 0.05, -s * 0.1))
 	end
 end
 
-function accessories.Bubbler(model, body, stats)
+-- Bubbler: a wobbly jelly with a glowing heart and bubbles rising from it.
+function builders.Bubbler(model: Model, body: BasePart, stats)
 	local s = stats.size
-	for index, at in { Vector3.new(0.8, 0.9, 0.2), Vector3.new(-0.7, 1.05, -0.3), Vector3.new(0.2, 1.2, -0.7), Vector3.new(-0.3, 0.85, 0.7) } do
-		local bubble = ball("Bubble" .. index, s * 0.2, Color3.fromRGB(200, 255, 220), Enum.Material.Glass)
+	body.Material = Enum.Material.Glass
+	body.Transparency = 0.35
+	squash(body, Vector3.new(1, 0.85, 1))
+	attach(model, body, ball("Core", s * 0.35, rgb(stats.friendColor), Enum.Material.Neon), CFrame.new(0, -s * 0.05, 0))
+	for index, at in { Vector3.new(0.3, 0.55, 0.1), Vector3.new(-0.25, 0.65, -0.1), Vector3.new(0.05, 0.8, 0.25), Vector3.new(-0.1, 0.52, 0.35) } do
+		local bubble = ball("Bubble" .. index, s * (0.12 + index * 0.03), Color3.fromRGB(200, 255, 220), Enum.Material.Glass)
 		bubble.Transparency = 0.45
 		attach(model, body, bubble, CFrame.new(at * s))
 	end
+	eyes(model, body, 0.6, s * 0.17, s * 0.08, s * 0.4)
 end
 
-function accessories.Hexcap(model, body, stats)
+-- Hexcap: a witch-hat mushroom with glowing eyes and runes circling around it.
+function builders.Hexcap(model: Model, body: BasePart, stats)
 	local s = stats.size
+	local cap = rgb(stats.color)
+	body.Color = Color3.fromRGB(225, 210, 235)
+	squash(body, Vector3.new(0.8, 0.8, 0.8))
+	local brim = ball("Brim", s * 1.3, cap)
+	squash(brim, Vector3.new(1, 0.18, 1))
+	attach(model, body, brim, CFrame.new(0, s * 0.3, 0))
+	spike(model, body, "Hat", s * 1.1, s * 0.55, cap, nil, CFrame.new(0, s * 0.72, s * 0.05) * CFrame.Angles(math.rad(12), 0, 0))
 	around(3, s * 0.95, s * 0.3, function(index, offset)
 		attach(model, body, ball("Rune" .. index, s * 0.14, Color3.fromRGB(215, 140, 255), Enum.Material.Neon), CFrame.new(offset.Position))
 	end)
+	eyes(model, body, 0.55, s * 0.16, 0, s * 0.33, Color3.fromRGB(230, 170, 255))
 end
 
-function accessories.Frostling(model, body, stats)
+-- Frostling: a clear ice crystal golem with shards on its head.
+function builders.Frostling(model: Model, body: BasePart, stats)
 	local s = stats.size
 	local ice = Color3.fromRGB(190, 230, 255)
-	for index, at in { Vector3.new(-0.25, 0.5, 0.2), Vector3.new(0.25, 0.5, 0.2), Vector3.new(0, 0.55, 0.32) } do
+	body.Material = Enum.Material.Ice
+	body.Transparency = 0.15
+	squash(body, Vector3.new(0.85, 1.15, 0.85))
+	for index, at in { Vector3.new(-0.22, 0.45, 0.15), Vector3.new(0.22, 0.45, 0.15), Vector3.new(0, 0.55, 0.3) } do
 		local lean = CFrame.Angles(math.rad(-18), 0, math.rad((index - 2) * -22))
 		spike(model, body, "Crystal" .. index, s * 0.75, s * 0.22, ice, Enum.Material.Ice, CFrame.new(at * s) * lean)
 	end
+	for _, side in { -1, 1 } do
+		spike(model, body, "Shoulder", s * 0.45, s * 0.2, ice, Enum.Material.Ice, CFrame.new(side * s * 0.45, s * 0.15, 0) * CFrame.Angles(0, 0, math.rad(side * -55)))
+	end
+	eyes(model, body, 0.7, s * 0.17, s * 0.15, s * 0.4, Color3.fromRGB(120, 220, 255))
 end
 
-function accessories.Obsidian(model, body, stats)
+-- Obsidian: a blocky lava rock with horns, glowing cracks and ember eyes.
+function builders.Obsidian(model: Model, body: BasePart, stats)
 	local s = stats.size
+	body.Material = Enum.Material.Basalt
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Brick
+	mesh.Scale = Vector3.new(0.9, 0.8, 0.9)
+	mesh.Parent = body
 	for _, side in { -1, 1 } do
-		spike(model, body, "Horn", s * 0.6, s * 0.2, Color3.fromRGB(35, 30, 45), Enum.Material.Slate, CFrame.new(side * s * 0.32, s * 0.5, -s * 0.05) * CFrame.Angles(0, 0, math.rad(side * -20)))
-		spike(model, body, "Crack", s * 0.5, s * 0.1, Color3.fromRGB(255, 110, 40), Enum.Material.Neon, CFrame.new(side * s * 0.36, s * 0.05, -s * 0.36) * CFrame.Angles(math.rad(10), 0, math.rad(side * 25)))
+		spike(model, body, "Horn", s * 0.6, s * 0.2, Color3.fromRGB(35, 30, 45), Enum.Material.Basalt, CFrame.new(side * s * 0.32, s * 0.5, -s * 0.05) * CFrame.Angles(0, 0, math.rad(side * -20)))
+		spike(model, body, "Crack", s * 0.5, s * 0.1, Color3.fromRGB(255, 110, 40), Enum.Material.Neon, CFrame.new(side * s * 0.36, s * 0.05, -s * 0.4) * CFrame.Angles(math.rad(10), 0, math.rad(side * 25)))
 	end
+	eyes(model, body, 0.7, s * 0.2, s * 0.15, s * 0.45, Color3.fromRGB(255, 150, 50))
 end
+
+-- Legends keep the Warden's body and flames, plus their own details.
+local accessories = {}
 
 function accessories.BogMother(model, body, stats)
 	local s = stats.size
@@ -232,8 +301,8 @@ function EnemyModels.build(kind: string, stats, cframe: CFrame): (Model, BasePar
 	body.CFrame = cframe
 	body.Parent = model
 	model.PrimaryPart = body
-	-- Variants (east-land creatures, legends) share a base creature's shape.
-	local builder = builders[stats.model or kind]
+	-- East-land creatures have their own builder; legends share the Warden's (plus accessories).
+	local builder = builders[kind] or builders[stats.model]
 	if builder then
 		builder(model, body, stats)
 	end

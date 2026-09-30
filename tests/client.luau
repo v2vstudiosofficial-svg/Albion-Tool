@@ -580,6 +580,67 @@ test("light wave is locked until level 3", function()
 	assert(shownText(Strings.get("notice_wave_unlocked")), "unlock banner")
 end)
 
+test("Star Fall and Lantern Glow: locked by level, need a target / missing health, local cooldown", function()
+	local function casts(id: string): number
+		return sent("RequestAbility", function(args)
+			return args[1] == id
+		end)
+	end
+	local character = hero.Character
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	setAttributes({ Level = 5 })
+	actions.LvStarFall("LvStarFall", Enum.UserInputState.Begin, {})
+	actions.LvLanternGlow("LvLanternGlow", Enum.UserInputState.Begin, {})
+	eq(casts("star") + casts("heal"), 0, "both locked below their levels")
+	setAttributes({ Level = 10 })
+	humanoid.Health = humanoid.MaxHealth
+	actions.LvLanternGlow("LvLanternGlow", Enum.UserInputState.Begin, {})
+	eq(casts("heal"), 0, "no glow at full health")
+	humanoid.Health = humanoid.MaxHealth * 0.5
+	actions.LvLanternGlow("LvLanternGlow", Enum.UserInputState.Begin, {})
+	eq(casts("heal"), 1, "glow when hurt")
+	actions.LvLanternGlow("LvLanternGlow", Enum.UserInputState.Begin, {})
+	eq(casts("heal"), 1, "glow cooldown")
+	humanoid.Health = humanoid.MaxHealth
+	-- Star Fall needs a living creature in reach.
+	local saved = H.read(rootPart, "Position")
+	rootPart.Position = Vector3.new(0, 3, 5000)
+	rootPart.CFrame = CFrame.new(rootPart.Position)
+	actions.LvStarFall("LvStarFall", Enum.UserInputState.Begin, {})
+	eq(casts("star"), 0, "no creature in reach: nothing cast")
+	rootPart.Position = saved
+	rootPart.CFrame = CFrame.new(saved)
+	local target = nil
+	for _, model in workspace.Enemies:GetChildren() do
+		if model:GetAttribute("Alive") and model:FindFirstChild("Body") then
+			target = model
+			break
+		end
+	end
+	assert(target, "a living creature for the test")
+	rootPart.Position = H.read(target.Body, "Position") + Vector3.new(0, 0, 6)
+	rootPart.CFrame = CFrame.new(rootPart.Position)
+	actions.LvStarFall("LvStarFall", Enum.UserInputState.Begin, {})
+	eq(casts("star"), 1, "star cast at a creature in reach")
+	actions.LvStarFall("LvStarFall", Enum.UserInputState.Begin, {})
+	eq(casts("star"), 1, "star cooldown")
+	rootPart.Position = saved
+	rootPart.CFrame = CFrame.new(saved)
+	-- The server's effects play for every player without errors.
+	remotes.Fx.OnClientEvent:Fire("ability", hero, "star", H.read(target.Body, "Position"), 0)
+	remotes.Fx.OnClientEvent:Fire("ability", friend, "heal", saved, 40)
+	local healShown = false
+	for _, descendant in workspace:GetDescendants() do
+		if descendant:IsA("TextLabel") and descendant.Text == "+40" then
+			healShown = true
+		end
+	end
+	assert(healShown, "heal amount shown")
+	advance(1)
+	setAttributes({ Level = 3 })
+end)
+
 test("quest 2 flowers are personal, collectable and disappear when found", function()
 	setAttributes({ QuestId = "lantern_flowers", QuestState = "active", QuestCount = 0, QuestGoal = 5, QuestFound = "" })
 	local count = 0
@@ -966,6 +1027,10 @@ test("story scenes: typewriter caption, tap to continue, Skip, soft captions, qu
 	assert(shownText(Strings.get("npc_elder_name")), "speaker name shown")
 	assert(shownText(Strings.get("cinematic_skip")), "Skip in the corner")
 	assert(barsVisible(), "letterbox bars")
+	local abilityBar = playerGui.Controls:FindFirstChild("AbilityBar")
+	if abilityBar then
+		eq(abilityBar.Visible, false, "the ability bar hides during a full scene (it would sit under Skip)")
+	end
 	local first = Strings.get(scene.lines[1].key)
 	assert(not shownText(first), "the caption is still being typed")
 	advance(0.6)
@@ -988,6 +1053,9 @@ test("story scenes: typewriter caption, tap to continue, Skip, soft captions, qu
 	advance(1)
 	assert(not shownText(Strings.get("cinematic_skip")), "scene over: Skip gone")
 	assert(not barsVisible(), "bars away")
+	if abilityBar then
+		eq(abilityBar.Visible, true, "the ability bar comes back after the scene")
+	end
 	-- Skip ends a scene at once.
 	remotes.Cinematic.OnClientEvent:Fire("shadow_king")
 	advance(0.5)
@@ -1909,14 +1977,16 @@ if withJumpButton then
 	test("touch: big ability buttons sit beside the jump button without overlapping", function()
 		local abilities = playerGui:FindFirstChild("TouchAbilities")
 		assert(abilities, "touch ability gui")
-		eq(casButtons.LvLightWave, nil, "no CAS touch button when the custom one exists")
+		for _, name in { "LvLightWave", "LvStarFall", "LvLanternGlow" } do
+			eq(casButtons[name], nil, "no CAS touch button when the custom one exists: " .. name)
+		end
 		local buttons = {}
 		for _, child in abilities:GetChildren() do
 			if child:IsA("TextButton") then
 				table.insert(buttons, child)
 			end
 		end
-		eq(#buttons, 1, "one ability button (attacks are automatic)")
+		eq(#buttons, 3, "three ability buttons: wave, star, glow (attacks are automatic)")
 		local function rect(position, size)
 			return { position.X, position.Y, position.X + size.X, position.Y + size.Y }
 		end
@@ -1932,6 +2002,9 @@ if withJumpButton then
 			assert(not overlaps(r, jumpRect), "overlaps the jump button")
 			assert(r[1] >= 0 and r[2] >= 0 and r[3] <= 640 and r[4] <= 360, "inside the screen")
 			assert(button:FindFirstChildWhichIsA("Frame"), "decorated face")
+			for _, other in rects do
+				assert(not overlaps(r, other), "ability buttons do not overlap each other")
+			end
 			table.insert(rects, r)
 		end
 
@@ -1954,13 +2027,13 @@ if withJumpButton then
 		setAttributes({ Level = 5 })
 		advance(12)
 		local before = sent("RequestWave")
-		buttons[1].MouseButton1Down:Fire()
+		abilities.wave.MouseButton1Down:Fire()
 		advance(0.1)
 		assert(sent("RequestWave") > before, "pressing the touch button casts the wave")
 	end)
 elseif touchMode then
 	test("touch without a jump button: falls back to decorated CAS buttons", function()
-		for _, name in { "LvLightWave" } do
+		for _, name in { "LvLightWave", "LvStarFall", "LvLanternGlow" } do
 			local button = casButtons[name]
 			assert(button, name .. " touch button")
 			eq(button.ImageTransparency, 1, "default art hidden")

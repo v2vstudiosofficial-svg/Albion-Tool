@@ -1,7 +1,7 @@
 -- Automatic weapon attacks and the light wave. Players never pick targets: every living player
 -- with a loaded profile attacks the nearest enemy in range with the main weapon and with each
 -- floating weapon, each on its own cooldown. Damage, range, line of sight and unlocks are all
--- decided here; the client only asks for the wave and for weapon changes.
+-- decided here; the client only asks for the wave, the other abilities and weapon changes.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -20,6 +20,7 @@ local WeaponLogic = require(script.Parent.WeaponLogic)
 
 local Remotes = ReplicatedStorage.Remotes
 local requestWave = Remotes.RequestWave :: RemoteEvent
+local requestAbility = Remotes.RequestAbility :: RemoteEvent
 local equipWeapon = Remotes.EquipWeapon :: RemoteEvent
 local fx = Remotes.Fx :: RemoteEvent
 
@@ -165,6 +166,60 @@ local function onRequestWave(player: Player)
 	QuestService.onWave(player, center, stats.radius)
 end
 
+-- Star Fall and Lantern Glow. `id` comes from the client, so it is checked against Balance.
+local lastAbility: { [Player]: { [string]: number } } = {}
+
+local function onRequestAbility(player: Player, id: unknown)
+	if typeof(id) ~= "string" or Balance.abilities[id :: string] == nil then
+		return
+	end
+	local abilityId = id :: string
+	local ability = Balance.abilities[abilityId]
+	local now = os.clock()
+	local profile = PlayerProfiles.get(player)
+	local target = Targets.of(player)
+	if not profile or not target then
+		return
+	end
+	local level = Progression.levelForXp(profile.xp)
+	if not Progression.abilityUnlocked(abilityId, level) then
+		return
+	end
+	local timers = lastAbility[player] or {}
+	lastAbility[player] = timers
+	if timers[abilityId] and now - timers[abilityId] < ability.cooldown - COOLDOWN_TOLERANCE then
+		return
+	end
+	local center = target.root.Position
+	if abilityId == "star" then
+		local best, bestDistance = nil, ability.range
+		for _, foe in EnemyService.foes() do
+			local distance = math.sqrt((foe.x - center.X) ^ 2 + (foe.z - center.Z) ^ 2)
+			if distance <= bestDistance then
+				best, bestDistance = foe, distance
+			end
+		end
+		local enemy = best and EnemyService.get(best.id)
+		if not best or not enemy then
+			return -- nothing to hit: the cooldown is not spent
+		end
+		local playerStats = Stats.of(profile)
+		local main = Profile.loadout(profile)
+		local damage = Progression.weaponDamage(main, profile.staffUpgrade, level, false, profile.slotLevels[1], profile.weaponStars[main])
+			* playerStats.damageMultiplier
+			* ability.damageMultiplier
+		timers[abilityId] = now
+		fx:FireAllClients("ability", player, "star", enemy.body.Position, 0)
+		EnemyService.damage(best.id, player, math.max(1, math.floor(damage + 0.5)), nil, true)
+	elseif abilityId == "heal" then
+		local humanoid = target.humanoid
+		local healed = math.floor(math.min(humanoid.MaxHealth - humanoid.Health, humanoid.MaxHealth * ability.healShare) + 0.5)
+		timers[abilityId] = now
+		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + healed)
+		fx:FireAllClients("ability", player, "heal", center, healed)
+	end
+end
+
 -- slot 0 = main weapon, 1..4 = floating slots; weaponId "" returns a floating slot to auto.
 local function onEquipWeapon(player: Player, slot: unknown, weaponId: unknown)
 	local now = os.clock()
@@ -185,11 +240,13 @@ local CombatService = {}
 
 function CombatService.start()
 	requestWave.OnServerEvent:Connect(onRequestWave)
+	requestAbility.OnServerEvent:Connect(onRequestAbility)
 	equipWeapon.OnServerEvent:Connect(onEquipWeapon)
 	RunService.Heartbeat:Connect(update)
 	Players.PlayerRemoving:Connect(function(player)
 		nextAttack[player] = nil
 		lastWave[player] = nil
+		lastAbility[player] = nil
 		lastEquip[player] = nil
 	end)
 end

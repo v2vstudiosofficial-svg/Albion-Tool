@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M26 (grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M27 (yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -26,10 +26,15 @@
   kapatıyordu; artık yerleşik olanlar devralınıyor); düşmanlar: göz parıltısı, Gloomling ayakları, her doğu yaratığı ve 3 boss için
   kendi ayrıntıları (çamur, tüy, hayalet dumanı, kristal, boynuz, mantar, buz sivrisi, neon taç); harita: çim yamaları, yabani çiçekler,
   orman patikasında parlayan fenerler ve kenar taşları (yalnızca görsel, parça bütçesi 843/900).
+  M27: yetenek çubuğu (masaüstünde sağ altta ikon, tuş rozeti, isim, sayısal geri sayım, kilit; sinematikte gizlenir; dokunmatikte
+  zıplama düğmesinin çevresinde 3 düğme); yeni yetenekler: Star Fall (R, Sv6: en yakın yaratığa ana silah x3, 12 sn, hedef yoksa
+  harcanmaz) ve Lantern Glow (F, Sv10: canın %40'ı, 30 sn; can doluyken basılmaz), sunucuda doğrulanır (`RequestAbility`);
+  doğu yaratıkları kendi silüetleriyle (yayvan çamur, kar bulutu, hayalet, jöle, cadı şapkalı mantar, buz kristali, lav küpü),
+  Gloomling'e ağız+anten, Rockling'e yosun+kaş.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 71, balance, api, scene 17, sim 59, client 53/54/54/1, place; hepsi geçti (sinematik akış,
+- logic 71, balance, api, scene 17, sim 60, client 54/55/55/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.

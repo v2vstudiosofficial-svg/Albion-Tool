@@ -285,6 +285,56 @@ local function sweep(origin: Vector3, direction: Vector3, radius: number, arcDeg
 	end
 end
 
+local STAR_COLOR = Color3.fromRGB(255, 225, 110)
+local HEAL_COLOR = Color3.fromRGB(130, 245, 170)
+
+-- Star Fall (a star drops onto `position`) and Lantern Glow (a green glow at the caster's feet).
+function Effects.ability(attacker: Player?, id: string, position: Vector3, amount: number?)
+	local mine = attacker == player
+	if id == "star" then
+		local star = newPart({
+			Size = Vector3.new(2.4, 2.4, 2.4),
+			CFrame = CFrame.new(position + Vector3.new(6, 32, 0)) * CFrame.Angles(math.rad(45), 0, math.rad(45)),
+			Color = STAR_COLOR,
+			Material = Enum.Material.Neon,
+		})
+		local trail = newPart({ Size = Vector3.new(0.6, 0.6, 14), CFrame = CFrame.lookAt(star.Position, position), Color = STAR_COLOR, Material = Enum.Material.Neon, Transparency = 0.4 })
+		UiKit.tween(star, 0.28, { CFrame = CFrame.new(position) * CFrame.Angles(math.rad(225), 0, math.rad(45)) }, Enum.EasingStyle.Quad)
+		UiKit.tween(trail, 0.28, { CFrame = CFrame.lookAt(position + (star.Position - position).Unit * 7, position) }, Enum.EasingStyle.Quad)
+		task.delay(0.28, function()
+			fadeOut(star, 0.15, { Size = Vector3.one * 6 })
+			fadeOut(trail, 0.1)
+			groundRing(position - Vector3.new(0, 2, 0), 7, STAR_COLOR, 0.5)
+			Effects.burst(position, STAR_COLOR, 36, 18)
+			if mine then
+				Audio.play("wave")
+				Effects.shake(0.35, 0.25)
+			end
+		end)
+	elseif id == "heal" then
+		local feet = position - Vector3.new(0, 2.7, 0)
+		groundRing(feet, 6, HEAL_COLOR, 0.7)
+		Effects.burst(position, HEAL_COLOR, 24, 6)
+		local column = newPart({
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(1, 5, 5),
+			CFrame = CFrame.new(feet + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = HEAL_COLOR,
+			Material = Enum.Material.Neon,
+			Transparency = 0.55,
+		})
+		UiKit.tween(column, 0.6, { Size = Vector3.new(9, 5, 5), CFrame = CFrame.new(feet + Vector3.new(0, 4.5, 0)) * CFrame.Angles(0, 0, math.rad(90)) })
+		fadeOut(column, 0.7)
+		if amount and amount > 0 then
+			Effects.popup(position + Vector3.new(0, 2, 0), "+" .. Format.short(amount), HEAL_COLOR, 26)
+		end
+		if mine then
+			Audio.play("pickup")
+		end
+	end
+	swingArm(attacker and attacker.Character)
+end
+
 function Effects.attack(attacker: Player?, weaponId: string, slot: number, origin: Vector3, aim: Vector3, tier: number)
 	local weapon = WeaponData.weapons[weaponId]
 	if not weapon then
@@ -746,6 +796,7 @@ local handlers = {
 			Effects.wave(attacker, center, radius, tier)
 		end
 	end,
+	ability = Effects.ability,
 	hit = onHit,
 	crystals = onCrystals,
 	riftOpened = onRiftOpened,

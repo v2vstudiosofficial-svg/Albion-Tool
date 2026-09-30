@@ -266,7 +266,11 @@ local texts = {
 	banner_boss_down_sub = "Another Legendary Shadow is at peace!",
 	notice_respawn = "You respawned in the village. Nothing was lost!",
 
-	wave_button = "WAVE",
+	wave_button = "Light Wave",
+	ability_star = "Star Fall",
+	ability_heal = "Lantern Glow",
+	notice_star_unlocked = "Star Fall unlocked! (R)",
+	notice_heal_unlocked = "Lantern Glow unlocked! (F)",
 	wave_locked = "Lv %d",
 	hint_auto = "Walk up to creatures - you attack automatically!",
 	hint_wave_pc = "Q: Light Wave",

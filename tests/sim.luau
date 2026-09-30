@@ -505,6 +505,71 @@ test("charms can be switched and unequipped", function()
 	eq(attr(alice, "Charm"), "glow")
 end)
 
+test("Star Fall and Lantern Glow: server checks level, target, cooldown and max health", function()
+	local PlayerProfiles = H.loadModule("src/server/PlayerProfiles.luau")
+	local profile = PlayerProfiles.get(alice)
+	local savedXp = profile.xp
+	local function abilityFx(id: string): number
+		return logCount("Fx", function(e)
+			return e.args[1] == "ability" and e.args[2] == alice and e.args[3] == id
+		end)
+	end
+	-- Bad payloads and locked abilities do nothing.
+	profile.xp = Progression.thresholds[Balance.abilities.star.unlockLevel - 1]
+	PlayerProfiles.sync(alice)
+	for _, bad in { 5, "wave", "nope", string.rep("a", 300), {}, "star", "heal" } do
+		remotes.RequestAbility.OnServerEvent:Fire(alice, bad)
+	end
+	advance(0.2)
+	eq(abilityFx("star") + abilityFx("heal"), 0, "nothing cast while locked or with bad ids")
+
+	profile.xp = Progression.thresholds[Balance.abilities.heal.unlockLevel]
+	PlayerProfiles.sync(alice)
+	-- Lantern Glow heals a share of max health, never above the max.
+	local h = humanoid(alice)
+	h.Health = h.MaxHealth * 0.3
+	remotes.RequestAbility.OnServerEvent:Fire(alice, "heal")
+	advance(0.1)
+	eq(abilityFx("heal"), 1, "glow cast")
+	assert(math.abs(h.Health - h.MaxHealth * (0.3 + Balance.abilities.heal.healShare)) < 1, "healed by the share")
+	h.Health = h.MaxHealth * 0.9
+	remotes.RequestAbility.OnServerEvent:Fire(alice, "heal")
+	advance(0.1)
+	eq(abilityFx("heal"), 1, "cooldown blocks a second glow")
+	advance(Balance.abilities.heal.cooldown)
+	remotes.RequestAbility.OnServerEvent:Fire(alice, "heal")
+	advance(0.1)
+	eq(abilityFx("heal"), 2, "ready again after the cooldown")
+	eq(h.Health, h.MaxHealth, "never above max health")
+
+	-- Star Fall needs a creature in range; without one the cooldown is not spent.
+	teleport(alice, vec({ -320, 0, 200 }, 3)) -- far from every creature
+	remotes.RequestAbility.OnServerEvent:Fire(alice, "star")
+	advance(0.1)
+	eq(abilityFx("star"), 0, "no creature in range: nothing happens")
+	local gloom = nearestEnemy("Gloomling", vec(WorldData.areas.glade.center))
+	assert(gloom, "a Gloomling to hit")
+	teleport(alice, positionOf(gloom.Body) + Vector3.new(0, 1, 20))
+	local hits = logCount("Fx", function(e)
+		return e.args[1] == "hit" and e.args[5] == true
+	end)
+	remotes.RequestAbility.OnServerEvent:Fire(alice, "star")
+	advance(0.1)
+	eq(abilityFx("star"), 1, "star cast at the nearest creature")
+	assert(logCount("Fx", function(e)
+		return e.args[1] == "hit" and e.args[5] == true
+	end) > hits, "the star deals a big hit")
+	remotes.RequestAbility.OnServerEvent:Fire(alice, "star")
+	advance(0.1)
+	eq(abilityFx("star"), 1, "star cooldown enforced")
+
+	heal(alice)
+	profile.xp = savedXp
+	PlayerProfiles.sync(alice)
+	toVillage(alice)
+	advance(1)
+end)
+
 test("quest 6: boss fight with telegraphed attacks, rewards, festival", function()
 	local state = attr(alice, "QuestState")
 	assert(state == "level" or state == "available", "boss quest waiting: " .. tostring(state))

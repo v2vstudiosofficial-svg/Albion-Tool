@@ -19,6 +19,9 @@
         "RequestWave": {
           "$className": "RemoteEvent"
         },
+        "RequestAbility": {
+          "$className": "RemoteEvent"
+        },
         "Interact": {
           "$className": "RemoteEvent"
         },

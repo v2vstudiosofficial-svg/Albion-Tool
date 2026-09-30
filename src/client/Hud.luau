@@ -424,9 +424,15 @@ function Hud.start()
 			return
 		end
 		if knownLevel and level > knownLevel then
-			local subtitle = if not Progression.waveUnlocked(knownLevel) and Progression.waveUnlocked(level)
-				then Strings.get("notice_wave_unlocked")
-				else Strings.get("notice_level_up", level)
+			local subtitle = Strings.get("notice_level_up", level)
+			if not Progression.waveUnlocked(knownLevel) and Progression.waveUnlocked(level) then
+				subtitle = Strings.get("notice_wave_unlocked")
+			end
+			for id, key in { star = "notice_star_unlocked", heal = "notice_heal_unlocked" } do
+				if not Progression.abilityUnlocked(id, knownLevel) and Progression.abilityUnlocked(id, level) then
+					subtitle = Strings.get(key)
+				end
+			end
 			showBanner(Strings.get("hud_level", level) .. "!", subtitle)
 		end
 		knownLevel = level

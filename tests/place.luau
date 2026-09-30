@@ -53,6 +53,7 @@ for _, name in {
 	"EquipCosmetic",
 	"ClaimPass",
 	"RequestWave",
+	"RequestAbility",
 	"Interact",
 	"BuyUpgrade",
 	"EquipCharm",

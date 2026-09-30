@@ -218,6 +218,12 @@ function Progression.waveUnlocked(level: number): boolean
 	return level >= Balance.wave.unlockLevel
 end
 
+-- Star Fall / Lantern Glow (Balance.abilities); false for unknown ids.
+function Progression.abilityUnlocked(id: string, level: number): boolean
+	local ability = Balance.abilities[id]
+	return ability ~= nil and level >= ability.unlockLevel
+end
+
 -- waveRank: rank of the "wave" skill card (shorter cooldown, bigger radius).
 function Progression.waveStats(staffUpgrade: number, level: number, charmId: string?, waveRank: number?)
 	local charm = charmId and Balance.charms[charmId]

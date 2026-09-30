@@ -220,6 +220,7 @@ local remoteNames = {
 	"EquipCosmetic",
 	"ClaimPass",
 	"RequestWave",
+	"RequestAbility",
 	"Interact",
 	"BuyUpgrade",
 	"EquipCharm",

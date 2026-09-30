@@ -50,6 +50,13 @@ local Balance = {
 		knockback = 7,
 		stagger = 0.5,
 	},
+	-- The other abilities (Light Wave above has its own table). Server-validated like the wave.
+	--   star: a falling star hits the nearest creature within `range` (main-weapon damage x mult).
+	--   heal: restores `healShare` of the player's max health.
+	abilities = {
+		star = { unlockLevel = 6, cooldown = 12, range = 40, damageMultiplier = 3 },
+		heal = { unlockLevel = 10, cooldown = 30, healShare = 0.4 },
+	},
 
 	charmOrder = { "swift", "guard", "glow" },
 	charms = {
