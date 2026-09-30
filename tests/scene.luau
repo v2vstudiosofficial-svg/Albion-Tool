@@ -290,6 +290,46 @@ test("enemy models build for every enemy kind", function()
 	end
 end)
 
+test("east-land creatures and legends carry their own details on top of the base shape", function()
+	local function has(kind: string, partName: string): boolean
+		local model = EnemyModels.build(kind, Balance.enemies[kind], roblox.CFrame.new(0, 5, 0))
+		local found = model:FindFirstChild(partName) ~= nil
+		model:Destroy()
+		return found
+	end
+	for kind, partName in {
+		Mudling = "MudLump1", Snowpuff = "Tuft1", Shade = "Wisp1", Bubbler = "Bubble1", Hexcap = "Rune1",
+		Frostling = "Crystal1", Obsidian = "Horn", BogMother = "MushroomCap1", FrostTitan = "IceSpike1", ShadowKing = "CrownSpike1",
+	} do
+		assert(has(kind, partName), kind .. " lost its own detail " .. partName)
+	end
+	assert(not has("Gloomling", "Tuft1"), "the base Gloomling stays plain")
+end)
+
+test("ground detail (patches, flowers, trail) stays off the path, plaza, houses and fight zones", function()
+	local checked = 0
+	for _, folder in { map.Forest.Detail, map.Village.Detail } do
+		for _, child in folder:GetChildren() do
+			checked += 1
+			local position = positionOf(child)
+			for name, area in WorldData.areas do
+				local dx, dz = position.X - area.center[1], position.Z - area.center[3]
+				assert(math.sqrt(dx * dx + dz * dz) >= area.radius or folder == map.Village.Detail, "detail in zone " .. name .. ": " .. child.Name)
+			end
+			if position.Z < -6 then
+				assert(math.abs(position.X - math.sin(position.Z * 0.06) * 4) >= 4.5, "detail on the path: " .. child.Name)
+			end
+			local plaza = WorldData.plaza
+			if folder == map.Village.Detail then
+				local dx, dz = position.X - plaza[1], position.Z - plaza[3]
+				assert(math.sqrt(dx * dx + dz * dz) >= 24, "detail on the plaza: " .. child.Name)
+			end
+		end
+	end
+	assert(checked >= 40, "ground detail was built")
+	assert(#map.Forest.Trail:GetChildren() >= 30, "trail lanterns and stones were built")
+end)
+
 test("weapon models build for all eight weapons, welded in hand or anchored when floating", function()
 	for _, weaponId in WeaponData.order do
 		for _, anchored in { false, true } do

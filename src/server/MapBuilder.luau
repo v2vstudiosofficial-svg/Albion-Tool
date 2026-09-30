@@ -646,6 +646,72 @@ local function buildForestProps(forest: Instance, avoid: { { number } })
 	end)
 end
 
+local FLOWER_COLORS = {
+	Color3.fromRGB(255, 150, 190),
+	Color3.fromRGB(255, 220, 110),
+	Color3.fromRGB(150, 190, 255),
+	Color3.fromRGB(255, 255, 245),
+}
+local PATCH_COLORS = {
+	Color3.fromRGB(105, 175, 90),
+	Color3.fromRGB(145, 208, 105),
+	Color3.fromRGB(88, 150, 80),
+}
+
+-- Livelier ground: grass patches in slightly different greens and wild flowers. Purely visual.
+local function buildGroundDetail(parent: Instance, prefix: string, seed: number, rect: { number }, avoid: { { number } }, patches: number, flowers: number)
+	local detail = ensure(parent, "Detail", "Folder")
+	scatter(seed, patches, rect, 5, avoid, function(index, x, z, rng)
+		local patch = disc(detail, prefix .. "Patch" .. index, rng:NextNumber(7, 15), Vector3.new(x, 0, z), PATCH_COLORS[index % #PATCH_COLORS + 1], Enum.Material.Grass)
+		patch.CanCollide = false
+	end)
+	scatter(seed + 1, flowers, rect, 5, avoid, function(index, x, z, rng)
+		local height = rng:NextNumber(0.7, 1.2)
+		cylinder(detail, prefix .. "Flower" .. index .. "_Stem", height, 0.14, Vector3.new(x, 0, z), COLOR.reed, { CanCollide = false })
+		ballPart(detail, prefix .. "Flower" .. index .. "_Head", rng:NextNumber(0.6, 0.9), Vector3.new(x, height + 0.15, z), FLOWER_COLORS[index % #FLOWER_COLORS + 1], { CanCollide = false })
+	end)
+end
+
+-- Glowing lanterns beside the forest trail and small stones along its edge.
+local function buildTrail(forest: Instance)
+	local trail = ensure(forest, "Trail", "Folder")
+	local glow = Color3.fromRGB(255, 205, 120)
+	for index, z in { -84, -108, -132, -156, -180, -204 } do
+		local side = if index % 2 == 0 then -1 else 1
+		local base = Vector3.new(pathX(z) + side * 6, 0, z)
+		cylinder(trail, "TrailLampPost" .. index, 5.5, 0.35, base, COLOR.trunk, { CanCollide = false })
+		local lamp = ballPart(trail, "TrailLamp" .. index, 1.5, base + Vector3.new(0, 6, 0), glow, { Material = Enum.Material.Neon, CanCollide = false })
+		-- (The scene keeps a small budget of real lights: every other lantern casts one.)
+		if index % 2 == 1 then
+			ensure(lamp, "Glow", "PointLight", { Color = glow, Range = 22, Brightness = 1.2, Shadows = false })
+		end
+	end
+	local rng = Random.new(23)
+	local count = 0
+	for z = -12, -222, -20 do
+		for _, side in { -1, 1 } do
+			count += 1
+			local size = rng:NextNumber(0.9, 1.5)
+			local x = pathX(z) + side * (4.6 + rng:NextNumber(0, 0.5))
+			ballPart(trail, "TrailStone" .. count, size, Vector3.new(x, size * 0.3, z + rng:NextNumber(-2, 2)), if count % 2 == 0 then COLOR.stone else COLOR.stoneDark, {
+				Material = Enum.Material.Slate,
+				CanCollide = false,
+			})
+		end
+	end
+end
+
+-- The same ground detail in the village, kept off the plaza, the houses and the tower gate.
+local function buildVillageDetail(map: Instance)
+	local village = ensure(map, "Village", "Folder")
+	local plaza = v(WorldData.plaza)
+	local avoid = { { plaza.X, plaza.Z, 24 }, { WorldData.towerGate.position[1], WorldData.towerGate.position[3], 8 } }
+	for _, house in WorldData.houses do
+		table.insert(avoid, { house[1], house[3], 11 })
+	end
+	buildGroundDetail(village, "Village", 41, { -74, 74, -40, 64 }, avoid, 10, 18)
+end
+
 local function buildForest(map: Instance)
 	local forest = ensure(map, "Forest", "Folder")
 	local index = 0
@@ -684,6 +750,8 @@ local function buildForest(map: Instance)
 
 	buildLandmarks(forest)
 	buildForestProps(forest, exclusions)
+	buildTrail(forest)
+	buildGroundDetail(forest, "Forest", 31, { -74, 74, -224, -78 }, exclusions, 14, 22)
 end
 
 local function buildRuins(map: Instance)
@@ -993,6 +1061,7 @@ function MapBuilder.build(): Folder
 	buildGround(map)
 	buildVillage(map)
 	buildForest(map)
+	buildVillageDetail(map)
 	buildRuins(map)
 	buildEast(map)
 	buildTower(map)

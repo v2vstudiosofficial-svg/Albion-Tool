@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M25 (yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M26 (grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -22,10 +22,14 @@
   M18: 3 yeni yetenek; M19: fuzz testleri; M20: Kael epilogu (2 görev, köyde buluşma);
   M21: 11 unvan (Bag → Titles); M22: mini harita; M23: oyuncu etiketleri; M24: günlük hediye
   (UTC günde 1, ≈8 dk gelir); M25: Yaratık Kodeksi (Adventure Log → Creatures, tür sayacı + sikke taşları).
+  M26: grafik kalitesi hatası düzeltildi (yerleşik Bloom/Atmosphere/ColorCorrection/SunRays açık kalıyordu, ayar yalnızca `Lv*` kopyalarını
+  kapatıyordu; artık yerleşik olanlar devralınıyor); düşmanlar: göz parıltısı, Gloomling ayakları, her doğu yaratığı ve 3 boss için
+  kendi ayrıntıları (çamur, tüy, hayalet dumanı, kristal, boynuz, mantar, buz sivrisi, neon taç); harita: çim yamaları, yabani çiçekler,
+  orman patikasında parlayan fenerler ve kenar taşları (yalnızca görsel, parça bütçesi 843/900).
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 71, balance, api, scene 15, sim 59, client 52/53/53/1, place; hepsi geçti (sinematik akış,
+- logic 71, balance, api, scene 17, sim 59, client 53/54/54/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.

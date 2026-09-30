@@ -9,7 +9,9 @@ local Graphics = {}
 local QUALITY_LEVELS = { low = 3, medium = 5, high = 8, ultra = 10 }
 
 local function effect(className: string, name: string): any
-	local existing = Lighting:FindFirstChild(name)
+	-- The place already ships one of each effect (default.project.json); take those over, or the
+	-- quality choices would only switch a copy on and the built-in one would stay on.
+	local existing = Lighting:FindFirstChild(name) or Lighting:FindFirstChildOfClass(className)
 	if existing then
 		return existing
 	end

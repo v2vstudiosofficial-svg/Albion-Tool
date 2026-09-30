@@ -1192,6 +1192,40 @@ test("settings window: pages, presets, single options make it Custom, reset, not
 	setAttributes({ Pref_quality = "auto", Pref_shadows = true, Pref_effects = "high", Pref_bloom = true, Pref_atmosphere = true, Pref_detail = "high" })
 end)
 
+test("quality presets switch off the effects the place already ships (default.project.json)", function()
+	local Lighting = H.game:GetService("Lighting")
+	-- The real place has its own Atmosphere/Bloom/ColorCorrection/SunRays; start from that.
+	for _, name in { "LvBloom", "LvAtmosphere", "LvGrading", "LvRays" } do
+		local copy = Lighting:FindFirstChild(name)
+		if copy then
+			copy:Destroy()
+		end
+	end
+	local builtIn = {}
+	for name, className in { Bloom = "BloomEffect", Atmosphere = "Atmosphere", ColorCorrection = "ColorCorrectionEffect", SunRays = "SunRaysEffect" } do
+		local instance = Instance.new(className)
+		instance.Name = name
+		instance.Parent = Lighting
+		builtIn[name] = instance
+	end
+	setAttributes({ Pref_quality = "ultra" })
+	eq(builtIn.Bloom.Enabled, true, "Ultra: the built-in glow is on")
+	eq(builtIn.SunRays.Enabled, true, "Ultra: the built-in sun rays are on")
+	setAttributes({ Pref_quality = "low" })
+	eq(builtIn.Bloom.Enabled, false, "Low turns the built-in glow off")
+	eq(builtIn.ColorCorrection.Enabled, false, "Low turns the built-in colour grading off")
+	eq(builtIn.SunRays.Enabled, false, "Low turns the built-in sun rays off")
+	assert(builtIn.Atmosphere.Parent == nil, "Low removes the built-in haze")
+	assert(not Lighting:FindFirstChild("LvBloom") and not Lighting:FindFirstChild("LvAtmosphere"), "no second copy of an effect is made")
+	setAttributes({ Pref_quality = "high" })
+	eq(builtIn.Bloom.Enabled, true, "High: the glow is back")
+	assert(Lighting:FindFirstChildOfClass("Atmosphere"), "High: haze is back")
+	builtIn.Bloom:Destroy()
+	builtIn.ColorCorrection:Destroy()
+	builtIn.SunRays:Destroy()
+	setAttributes({ Pref_quality = "auto" })
+end)
+
 test("settings apply: look, effects, damage numbers, creature bars, camera scenes, interface size", function()
 	local Lighting = H.game:GetService("Lighting")
 	setAttributes({ Pref_quality = "low" })
