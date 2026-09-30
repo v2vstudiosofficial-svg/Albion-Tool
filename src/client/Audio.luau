@@ -36,8 +36,26 @@ function Audio.play(key: string)
 	local sound = soundFor(key)
 	if sound then
 		sound.Volume = Sounds[key].volume * masterVolume * sfxVolume
+		sound.PlaybackSpeed = Sounds[key].pitch or 1
 		SoundService:PlayLocalSound(sound)
 	end
+end
+
+-- Plays `key` from `emitter` (a part in the world), so it is louder near it and fades with distance.
+-- The caller removes `emitter` (and so the sound) after a few seconds.
+function Audio.playAt(key: string, emitter: Instance)
+	local entry = Sounds[key]
+	if not enabled or not entry or entry.id == "" then
+		return
+	end
+	local sound = Instance.new("Sound")
+	sound.Name = "Sfx_" .. key
+	sound.SoundId = entry.id
+	sound.Volume = entry.volume * masterVolume * sfxVolume
+	sound.PlaybackSpeed = entry.pitch or 1
+	sound.RollOffMaxDistance = 90
+	sound.Parent = emitter
+	sound:Play()
 end
 
 function Audio.isEnabled(): boolean

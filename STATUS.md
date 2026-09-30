@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M29 (saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M30 (saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -37,10 +37,13 @@
   M29: saldırı pozları (`shared/CreatureMotion`, saf): şarj edenler çömelip geriye yaslanır ve titrer, atılırken öne eğilir;
   atıcılar şişip geriye eğilir, atışta öne fırlar; Shade ışınlanmadan önce çöküp hızlanarak döner; temasla vuranlar yakındayken
   öne eğilip hızlı zıplar; geri itilenler sersemleyip sallanır; bosslar yer çarpmasından önce yükselip çakılır, küre saldırısında döner.
+  M30: saldırı sesleri ve toz (istemci, yalnızca 90 birim yakındakiler): şarj edenler eşeler/atılır/iner, atıcılar "pop",
+  Shade mor duman, bosslar uğultu + yer çarpmasında gümbürtü ve toz halkası; sesler 3B (`Audio.playAt`), `pitch` alanı.
+  Yalnızca kurulumdaki `content/sounds` dosyaları kullanıldı; mevcut `swordslash.wav`/`electronicpingshort.wav` orada yok.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 72, balance, api, scene 18, sim 62, client 55/56/56/1, place; hepsi geçti (sinematik akış,
+- logic 72, balance, api, scene 18, sim 62, client 56/57/57/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.

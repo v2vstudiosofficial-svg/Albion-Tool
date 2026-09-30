@@ -511,9 +511,103 @@ local function spinPortals()
 	end
 end
 
+local function nearLocal(position: Vector3, distance: number): boolean
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	return root ~= nil and (root.Position - position).Magnitude <= distance
+end
+
+-- Creature attacks: dust and sounds ----------------------------------------------------------
+local DUST_COLOR = Color3.fromRGB(190, 170, 140)
+local CREATURE_FX_DISTANCE = 90
+
+-- A few soft dust puffs on the ground around `position` that grow and fade.
+local function dust(position: Vector3, radius: number, count: number, color: Color3?)
+	count = math.max(1, math.floor(count * SettingsData.effectDensity[Settings.get("effects")] + 0.5))
+	for _ = 1, count do
+		local angle = math.random() * math.pi * 2
+		local distance = math.random() * radius
+		local size = 0.8 + math.random() * 1.2
+		local puff = newPart({
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * size,
+			Position = position + Vector3.new(math.cos(angle) * distance, size * 0.3, math.sin(angle) * distance),
+			Color = color or DUST_COLOR,
+			Material = Enum.Material.SmoothPlastic,
+			Transparency = 0.35,
+		})
+		fadeOut(puff, 0.5 + math.random() * 0.3, { Size = Vector3.one * size * 2.2, Position = puff.Position + Vector3.new(0, 1.2, 0) })
+	end
+end
+
+-- Plays a creature sound from `position`.
+local function soundAt(key: string, position: Vector3)
+	local emitter = newPart({ Size = Vector3.new(0.2, 0.2, 0.2), Position = position, Transparency = 1 })
+	Audio.playAt(key, emitter)
+	Debris:AddItem(emitter, 4)
+end
+
+local function feetOf(body: BasePart, size: number): Vector3
+	return body.CFrame.Position - Vector3.new(0, size * 0.5, 0)
+end
+
+-- Plays the tell for a creature's wind-up (the server only says "windup" and how long): chargers
+-- paw the ground and kick up a dust trail in their dash, shooters hiss and pop, blinkers vanish in
+-- smoke, bosses rumble.
+local function onCreatureWindup(model: Model, duration: number)
+	local stats = Balance.enemies[model:GetAttribute("EnemyType") or ""]
+	local body = model:FindFirstChild("Body") :: BasePart?
+	if not stats or not body or not nearLocal(body.CFrame.Position, CREATURE_FX_DISTANCE) then
+		return
+	end
+	local size = stats.size
+	if stats.isBoss then
+		soundAt("bossCharge", body.CFrame.Position)
+		dust(feetOf(body, size) - Vector3.new(0, stats.hoverHeight or 0, 0), size, 10, SHADOW_COLOR)
+	elseif stats.behavior == "charger" then
+		soundAt("creatureCharge", body.CFrame.Position)
+		task.spawn(function()
+			-- Pawing: small puffs behind the creature while it winds up.
+			local untilTime = os.clock() + duration
+			while os.clock() < untilTime and body.Parent do
+				dust(feetOf(body, size) - body.CFrame.LookVector * size * 0.4, size * 0.3, 2)
+				task.wait(0.15)
+			end
+			if not body.Parent then
+				return
+			end
+			-- The dash: a trail of dust behind it.
+			soundAt("creatureDash", body.CFrame.Position)
+			local dashUntil = os.clock() + (stats.dashDuration or 0.5)
+			while os.clock() < dashUntil and body.Parent do
+				dust(feetOf(body, size), size * 0.4, 2)
+				task.wait(0.08)
+			end
+			if body.Parent then
+				soundAt("creatureLand", body.CFrame.Position)
+			end
+		end)
+	elseif stats.behavior == "shooter" then
+		soundAt("creatureCharge", body.CFrame.Position)
+		task.delay(duration, function()
+			if body.Parent then
+				soundAt("creatureShoot", body.CFrame.Position)
+				Effects.burst(body.CFrame.Position, UiKit.rgb(stats.color), 8, 10)
+			end
+		end)
+	elseif stats.blink then
+		soundAt("creatureBlink", body.CFrame.Position)
+		dust(feetOf(body, size), size * 0.6, 6, RIFT_COLOR)
+	end
+end
+
 local function onBlink(from: Vector3, to: Vector3)
 	Effects.burst(from, RIFT_COLOR, 14, 8)
 	Effects.burst(to, RIFT_COLOR, 14, 8)
+	if nearLocal(to, CREATURE_FX_DISTANCE) then
+		dust(to - Vector3.new(0, 2, 0), 2, 5, RIFT_COLOR)
+		soundAt("creatureLand", to)
+	end
 end
 
 local function onDespawn(position: Vector3)
@@ -620,17 +714,14 @@ local function onTelegraph(position: Vector3, radius: number, duration: number)
 	Audio.play("slamWarn")
 end
 
-local function nearLocal(position: Vector3, distance: number): boolean
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	return root ~= nil and (root.Position - position).Magnitude <= distance
-end
-
 local function onSlam(position: Vector3, radius: number)
 	local blast = disc(position, radius * 2, SHADOW_COLOR, 0.15, 0.2)
 	fadeOut(blast, 0.45, { Size = Vector3.new(0.15, radius * 2.4, radius * 2.4) })
 	Effects.burst(position + Vector3.new(0, 1, 0), SHADOW_COLOR, 30, 14)
-	Audio.play("slam")
+	dust(position, radius, 12)
+	if nearLocal(position, CREATURE_FX_DISTANCE) then
+		soundAt("slam", position)
+	end
 	if nearLocal(position, radius + 14) then
 		Effects.shake(0.45, 0.35)
 	end
@@ -666,6 +757,7 @@ local function onWindup(model: Model?, duration: number)
 	highlight.Parent = model
 	UiKit.tween(highlight, duration, { FillTransparency = 0.15 }, Enum.EasingStyle.Linear)
 	Debris:AddItem(highlight, duration + 0.05)
+	onCreatureWindup(model, duration)
 end
 
 local function onBossPhase(model: Model?)

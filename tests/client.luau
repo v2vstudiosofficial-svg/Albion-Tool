@@ -307,7 +307,8 @@ if returning then
 		assert(not shownText(Strings.get("hint_wave_pc")), "no 'wave unlocked' hint for saved levels")
 		assert(not shownText(Strings.get("notice_wave_unlocked")), "no unlock banner for saved levels")
 		eq(#workspace.ClientFx:GetChildren(), 0, "no celebration bursts for saved restorations")
-		eq(#H.threadErrors, 0, "thread errors")
+		for _, message in H.threadErrors do print("THREADERR " .. message) end
+	eq(#H.threadErrors, 0, "thread errors")
 	end)
 	H.finish("client tests (returning)")
 	return
@@ -518,6 +519,7 @@ test("automatic attacks from the server render for every weapon style", function
 	end
 	remotes.Fx.OnClientEvent:Fire("attack", hero, "not-a-weapon", 0, origin, origin, 0)
 	advance(1)
+	for _, message in H.threadErrors do print("THREADERR " .. message) end
 	eq(#H.threadErrors, 0, "thread errors")
 	eq(sent("EquipWeapon"), 0, "attacks never ask anything from the client")
 end)
@@ -585,6 +587,64 @@ test("creature decorations animate near the camera and stop with Low effects", f
 	setAttributes({ Pref_quality = "auto" })
 	model:Destroy()
 	advance(0.1)
+end)
+
+test("creature attacks: dust and sounds for chargers, shooters, blinkers and slams", function()
+	local Sounds = H.loadModule("src/shared/Sounds.luau")
+	local here = H.read(hero.Character.HumanoidRootPart, "Position")
+	local function sounds(key: string): number
+		local count = 0
+		for _, descendant in workspace.ClientFx:GetDescendants() do
+			if descendant:IsA("Sound") and descendant.SoundId == Sounds[key].id and math.abs(descendant.PlaybackSpeed - (Sounds[key].pitch or 1)) < 0.01 then
+				count += 1
+			end
+		end
+		return count
+	end
+	local function dustCount(): number
+		local count = 0
+		for _, child in workspace.ClientFx:GetChildren() do
+			if child:IsA("Part") and child.Shape == Enum.PartType.Ball and child.Color == roblox.Color3.fromRGB(190, 170, 140) then
+				count += 1
+			end
+		end
+		return count
+	end
+	-- A charger paws the ground, then kicks up a dust trail and lands.
+	local rock = addEnemy("Rockling", here + Vector3.new(8, 0, 0))
+	remotes.Fx.OnClientEvent:Fire("windup", rock, 0.5)
+	advance(0.2)
+	eq(sounds("creatureCharge"), 1, "charge sound at the creature")
+	assert(dustCount() > 0, "pawing dust")
+	advance(0.5)
+	eq(sounds("creatureDash"), 1, "dash sound")
+	advance(0.9)
+	eq(sounds("creatureLand"), 1, "landing sound")
+	-- A shooter pops when the shot leaves.
+	local spore = addEnemy("Sporeling", here + Vector3.new(-8, 0, 0))
+	remotes.Fx.OnClientEvent:Fire("windup", spore, 0.3)
+	advance(0.4)
+	eq(sounds("creatureShoot"), 1, "shot pop")
+	-- Boss slams thump where they land.
+	remotes.Fx.OnClientEvent:Fire("slam", here + Vector3.new(0, 0, 6), 6)
+	advance(0.05)
+	eq(sounds("slam"), 1, "slam thump")
+	-- Far away nothing plays; with sound off nothing plays either.
+	local far = addEnemy("Rockling", here + Vector3.new(400, 0, 0))
+	advance(0.5)
+	local charges = sounds("creatureCharge")
+	remotes.Fx.OnClientEvent:Fire("windup", far, 0.3)
+	advance(0.1)
+	eq(sounds("creatureCharge"), charges, "no sound for creatures far away")
+	setAttributes({ Pref_sound = false })
+	remotes.Fx.OnClientEvent:Fire("windup", rock, 0.3)
+	advance(0.1)
+	eq(sounds("creatureCharge"), charges, "sound off: silent")
+	setAttributes({ Pref_sound = true })
+	for _, model in { rock, spore, far } do
+		model:Destroy()
+	end
+	advance(1)
 end)
 
 test("light wave is locked until level 3", function()
@@ -939,6 +999,7 @@ test("shadow rift: portal while open, wave banner nearby, cleaned up on close", 
 	remotes.Fx.OnClientEvent:Fire("riftClosed", "glade", center, true)
 	advance(2)
 	eq(#workspace.ClientFx:GetChildren(), 0, "portal removed")
+	for _, message in H.threadErrors do print("THREADERR " .. message) end
 	eq(#H.threadErrors, 0, "thread errors")
 end)
 
@@ -1098,6 +1159,7 @@ test("story scenes: typewriter caption, tap to continue, Skip, soft captions, qu
 	assert(shownText(Strings.get("cinematic_skip")), "the first queued scene is playing")
 	advance(20)
 	assert(not shownText(Strings.get("cinematic_skip")), "queue finished")
+	for _, message in H.threadErrors do print("THREADERR " .. message) end
 	eq(#H.threadErrors, 0, "thread errors")
 end)
 
@@ -1404,6 +1466,7 @@ test("settings apply: look, effects, damage numbers, creature bars, camera scene
 	end
 	assert(perf, "the performance overlay follows the saved setting")
 	setAttributes({ Pref_perf = false, Pref_quality = "auto" })
+	for _, message in H.threadErrors do print("THREADERR " .. message) end
 	eq(#H.threadErrors, 0, "thread errors")
 end)
 
@@ -2064,6 +2127,7 @@ test("no client thread errors or warnings", function()
 	for _, message in H.warnings do
 		print("warn: " .. message)
 	end
+	for _, message in H.threadErrors do print("THREADERR " .. message) end
 	eq(#H.threadErrors, 0, "thread errors")
 	eq(#H.warnings, 0, "warnings")
 end)
