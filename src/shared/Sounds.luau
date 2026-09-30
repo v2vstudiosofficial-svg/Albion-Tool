@@ -3,10 +3,10 @@
 -- The rbxasset:// entries are files that ship with the Roblox client (content/sounds). `pitch`
 -- (PlaybackSpeed, default 1) lets one file serve several events.
 return {
-	attack = { id = "rbxasset://sounds/swordslash.wav", volume = 0.35 },
+	attack = { id = "rbxasset://sounds/action_swim.mp3", volume = 0.35, pitch = 2.2 },
 	hit = { id = "", volume = 0.4 },
-	purify = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.5 },
-	pickup = { id = "rbxasset://sounds/electronicpingshort.wav", volume = 0.45 },
+	purify = { id = "rbxasset://sounds/impact_water.mp3", volume = 0.45, pitch = 1.8 },
+	pickup = { id = "rbxasset://sounds/volume_slider.ogg", volume = 0.5, pitch = 1.4 },
 	wave = { id = "", volume = 0.6 },
 	levelUp = { id = "", volume = 0.7 },
 	questComplete = { id = "", volume = 0.7 },

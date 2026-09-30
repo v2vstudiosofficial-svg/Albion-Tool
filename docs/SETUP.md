@@ -177,7 +177,7 @@ Oyun içi tüm metinler İngilizce.
 sesler seçip `rbxassetid://<id>` biçiminde doldur (kimlik uydurma; yanlış kimlik sessiz kalır).
 Hangi anahtar ne zaman çalar ve neye benzemeli (Creator Store'da arama önerisi):
 - `ui`: her düğme/pencere (27 yer): kısa, yumuşak "tık" — "ui click soft".
-- `hit`: vuruş: kısa tok bir çarpma — "hit soft impact". `attack`: silah savurma (var: swordslash).
+- `hit`: vuruş: kısa tok bir çarpma — "hit soft impact". `attack`: silah savurma (şimdilik: action_swim, yüksek perde).
 - `purify`/`pickup`: arındırma ve kristal toplama: parlak çıngırak — "magic chime short".
 - `levelUp`/`questComplete`: 1–2 sn zafer melodisi — "level up fanfare".
 - `wave`: Light Wave: geniş "vuu" — "magic whoosh". `slamWarn`/`slam`: boss uyarısı ve yere vuruş —
