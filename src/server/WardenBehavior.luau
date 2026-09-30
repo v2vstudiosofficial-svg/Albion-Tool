@@ -91,6 +91,7 @@ local function startSlam(enemy, ctx, list, now: number)
 	enemy.memory.slamPoints = points
 	enemy.state = "slamWarn"
 	enemy.stateUntil = now + warn
+	ctx.windup(enemy, warn, "slam")
 end
 
 local function resolveSlam(enemy, ctx)
@@ -153,6 +154,7 @@ function WardenBehavior.update(enemy, ctx, dt: number, now: number)
 				enemy.stateUntil = now + stats.restTime
 				memory.slamPoints = nil
 				memory.secondRing = nil
+				memory.poseUntil = nil
 				ctx.fx("attackCancel", enemy.model)
 			end
 			memory.lostAt = memory.lostAt or now
@@ -191,6 +193,7 @@ function WardenBehavior.update(enemy, ctx, dt: number, now: number)
 			else
 				enemy.state = "orbWindup"
 				enemy.stateUntil = now + stats.orbWindup
+				ctx.windup(enemy, stats.orbWindup, "orbs")
 				ctx.fx("windup", enemy.model, stats.orbWindup)
 			end
 		end

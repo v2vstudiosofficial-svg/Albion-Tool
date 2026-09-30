@@ -344,6 +344,47 @@ test("creatures move their own way: Gloomlings hop upright, each at its own temp
 	toVillage(alice)
 end)
 
+test("attack tells: a Rockling rears back while winding up and leans into its dash", function()
+	local rock = nearestEnemy("Rockling", vec(WorldData.areas.hollow.center))
+	assert(rock, "a Rockling")
+	local stats = Balance.enemies.Rockling
+	local function windups(): number
+		return logCount("Fx", function(e)
+			return e.args[1] == "windup" and e.args[2] == rock
+		end)
+	end
+	local before = windups()
+	local reared, leaned = false, false
+	for _ = 1, 120 do
+		if not isAlive(rock) then
+			break
+		end
+		-- Stay in its charge range (our weapons hit it too, so keep healed and stop if it is purified).
+		teleport(alice, positionOf(rock.Body) + Vector3.new(stats.chargeRange - 3, 1, 0))
+		advance(0.05)
+		heal(alice)
+		if not isAlive(rock) then
+			break
+		end
+		if windups() > before then
+			local look = rock.Body.CFrame.LookVector
+			if look.Y > 0.1 then
+				reared = true
+			elseif look.Y < -0.1 then
+				leaned = true
+			end
+		end
+		if reared and leaned then
+			break
+		end
+	end
+	assert(windups() > before, "the Rockling wound up")
+	assert(reared, "it rears back before charging")
+	assert(leaned, "and leans forward in the dash")
+	toVillage(alice)
+	advance(1)
+end)
+
 test("purified enemies respawn", function()
 	toVillage(alice)
 	toVillage(bob)

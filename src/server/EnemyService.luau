@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage.Shared
 local Balance = require(Shared.Balance)
 local Progression = require(Shared.Progression)
 local WorldData = require(Shared.WorldData)
+local CreatureMotion = require(Shared.CreatureMotion)
 local EnemyLogic = require(script.Parent.EnemyLogic)
 local EnemyModels = require(script.Parent.EnemyModels)
 local Projectiles = require(script.Parent.Projectiles)
@@ -124,6 +125,12 @@ function ctx.contact(enemy: Enemy, now: number, damage: number?)
 	end
 end
 
+-- Starts a wind-up pose (CreatureMotion): `pose` for `duration` seconds from now.
+function ctx.windup(enemy: Enemy, duration: number, pose: string)
+	local memory = enemy.memory
+	memory.pose, memory.poseFrom, memory.poseUntil = pose, os.clock(), os.clock() + duration
+end
+
 function ctx.fx(...)
 	fx:FireAllClients(...)
 end
@@ -183,6 +190,7 @@ local function tryBlink(enemy: Enemy, target: Target?, now: number): boolean
 	end
 	if target and now >= (memory.nextBlink or 0) and flatDistance(target.root.Position, enemy.position) > blink.range then
 		memory.blinkAt = now + blink.windup
+		ctx.windup(enemy, blink.windup, "blink")
 		ctx.fx("windup", enemy.model, blink.windup)
 		return true
 	end
@@ -199,6 +207,7 @@ function behaviors.chaser(enemy: Enemy, dt: number, now: number)
 		return
 	end
 	local goal = if target then target.root.Position else enemy.home
+	enemy.memory.close = target ~= nil and flatDistance(goal, enemy.position) <= stats.contactRange * 2
 	ctx.moveToward(enemy, goal, stats.speed, dt, if target then stats.contactRange * 0.6 else 0.2)
 	ctx.face(enemy, goal)
 	ctx.contact(enemy, now)
@@ -259,6 +268,7 @@ function behaviors.shooter(enemy: Enemy, dt: number, now: number)
 	if now >= (memory.nextShot or 0) and distance <= stats.aggroRadius then
 		enemy.state = "windup"
 		enemy.stateUntil = now + stats.windup
+		ctx.windup(enemy, stats.windup, "shoot")
 		ctx.fx("windup", enemy.model, stats.windup)
 	end
 	ctx.contact(enemy, now)
@@ -310,6 +320,7 @@ function behaviors.charger(enemy: Enemy, dt: number, now: number)
 	else
 		enemy.state = "windup"
 		enemy.stateUntil = now + stats.windup
+		ctx.windup(enemy, stats.windup, "charge")
 		ctx.fx("windup", enemy.model, stats.windup)
 	end
 	ctx.contact(enemy, now)
@@ -334,33 +345,26 @@ local function updateAggro(enemy: Enemy)
 	end
 end
 
--- Each creature kind moves its own way (EnemyModels.motions); every individual has its own tempo.
+-- Each creature kind moves its own way (EnemyModels.motions, CreatureMotion) with its own tempo,
+-- and takes a telling pose before and during its attacks.
 local function place(enemy: Enemy, now: number)
+	local memory = enemy.memory
 	local motion = EnemyModels.motions[enemy.kind] or EnemyModels.motions[enemy.stats.model or ""] or "hop"
 	local t = now * (0.85 + ((enemy.id * 0.137) % 1) * 0.3) + enemy.id
-	local height, roll, pitch = 0, 0, 0
-	if motion == "hop" then
-		local hop = math.abs(math.sin(t * 4))
-		height, pitch = hop * 1.2, (hop - 0.5) * 0.15
-	elseif motion == "waddle" then
-		height, roll = math.abs(math.sin(t * 6)) * 0.25, math.sin(t * 6) * 0.2
-	elseif motion == "float" then
-		height, roll = 0.6 + math.sin(t * 1.8) * 0.7, math.sin(t * 1.1) * 0.12
-	elseif motion == "wobble" then
-		height, roll, pitch = math.abs(math.sin(t * 3)) * 0.5, math.sin(t * 3) * 0.1, math.cos(t * 3) * 0.1
-	elseif motion == "bounce" then
-		height = math.abs(math.sin(t * 4.5)) * 1.1
-	elseif motion == "stomp" then
-		height, roll = math.abs(math.sin(t * 2.5)) * 0.35, math.sin(t * 2.5) * 0.07
-	else -- hover
-		height, roll = math.sin(t * 3) * 0.7, math.sin(t * 1.5) * 0.05
+	local action, progress = nil, 0
+	if memory.poseUntil and now < memory.poseUntil then
+		action = memory.pose
+		progress = (now - memory.poseFrom) / math.max(0.01, memory.poseUntil - memory.poseFrom)
+	elseif enemy.state == "dash" then
+		action = "dash"
+	elseif enemy.state == "recover" then
+		action = "dizzy"
+	elseif memory.close then
+		action = "lunge"
 	end
-	local bob = Vector3.new(0, height, 0)
-	if enemy.state == "windup" then
-		bob += Vector3.new(math.sin(now * 60) * 0.12, 0, 0)
-	end
-	local position = enemy.position + bob
-	enemy.body.CFrame = CFrame.lookAt(position, position + enemy.facing) * CFrame.Angles(pitch, 0, roll)
+	local pose = CreatureMotion.pose(motion, t, action, progress)
+	local position = enemy.position + Vector3.new(math.sin(now * 60) * pose.shake, pose.height, 0)
+	enemy.body.CFrame = CFrame.lookAt(position, position + enemy.facing) * CFrame.Angles(pose.pitch, pose.yaw, pose.roll)
 end
 
 export type SpawnOptions = {

@@ -9,6 +9,7 @@ local Balance = require("../src/shared/Balance")
 local Strings = require("../src/shared/Strings")
 local WorldData = require("../src/shared/WorldData")
 local Progression = require("../src/shared/Progression")
+local CreatureMotion = require("../src/shared/CreatureMotion")
 local Sounds = require("../src/shared/Sounds")
 local Goals = require("../src/shared/Goals")
 local WeaponData = require("../src/shared/WeaponData")
@@ -167,6 +168,43 @@ test("charms: grant once, auto-equip first, equip only owned", function()
 end)
 
 -- Progression -----------------------------------------------------------------------------------
+
+test("creature poses: each attack has its own tell, idle styles differ", function()
+	local P = CreatureMotion.pose
+	-- Idle styles move differently.
+	local hops, waddles = {}, {}
+	for i = 0, 20 do
+		table.insert(hops, P("hop", i * 0.05).height)
+		table.insert(waddles, P("waddle", i * 0.05).roll)
+	end
+	assert(math.max(table.unpack(hops)) > 1, "hop leaves the ground")
+	assert(math.max(table.unpack(waddles)) > 0.15, "waddle rolls side to side")
+	eq(P("stomp", 1, nil, 0).shake, 0, "no tremble at rest")
+	-- Charge: crouches, rears back and trembles more as it builds; then leans forward in the dash.
+	local early, late = P("stomp", 1, "charge", 0.1), P("stomp", 1, "charge", 1)
+	assert(late.height < early.height and late.pitch > early.pitch and late.shake > early.shake, "charge builds up")
+	assert(P("stomp", 1, "dash").pitch < 0, "leans forward while dashing")
+	-- Shoot: puffs up and tips back, then snaps forward at the very end.
+	assert(P("bounce", 1, "shoot", 0.7).height > 0.6 and P("bounce", 1, "shoot", 0.7).pitch > 0, "shooter puffs up")
+	assert(P("bounce", 1, "shoot", 0.95).pitch < 0, "and snaps forward")
+	-- Blink: sinks and spins faster.
+	assert(P("float", 1, "blink", 1).yaw > P("float", 1, "blink", 0.5).yaw * 2, "spin speeds up")
+	assert(P("float", 1, "blink", 1).height < 0, "sinks before blinking")
+	-- Slam: a boss rises, then drops as the slam lands.
+	local top, landed = P("hover", 0, "slam", 0.8), P("hover", 0, "slam", 1)
+	assert(top.height > 2.5 and landed.height < 1, "rises then drops")
+	assert(landed.pitch < 0, "leans into the slam")
+	assert(P("hover", 0, "orbs", 1).yaw > 6, "spins while gathering orbs")
+	-- Lunge and dizzy.
+	assert(P("hop", 1, "lunge").pitch < -0.2, "leans in when close")
+	local dizzy = 0
+	for i = 0, 10 do
+		dizzy = math.max(dizzy, math.abs(P("hop", i * 0.1, "dizzy").roll))
+	end
+	assert(dizzy > 0.1 and P("hop", 1, "dizzy").height == 0, "wobbles on the spot when knocked back")
+	-- Progress is clamped.
+	eq(P("stomp", 1, "charge", 5).pitch, P("stomp", 1, "charge", 1).pitch)
+end)
 
 test("levels follow the thresholds and cap at max", function()
 	local thresholds = Progression.thresholds
