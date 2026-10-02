@@ -22,6 +22,7 @@ local LOW_HEALTH = 0.3
 local HP_HIGH = Color3.fromRGB(110, 220, 120)
 local HP_LOW = Color3.fromRGB(255, 90, 90)
 local MAX_TOASTS = 4
+local RAY_COUNT = 8 -- bars through the center, so twice as many rays
 -- The streak counter appears from this many purifications in a row.
 local STREAK_SHOWN_FROM = 3
 local STREAK_COLORS = { { 50, Color3.fromRGB(255, 120, 200) }, { 25, Color3.fromRGB(255, 140, 70) }, { 10, Color3.fromRGB(255, 200, 80) } }
@@ -220,7 +221,7 @@ function Hud.start()
 	local quest = UiKit.panel({
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.fromOffset(340, 64),
+		Size = UDim2.fromOffset(340, 72),
 	}, topCenter)
 	local questTitle = UiKit.label({
 		Position = UDim2.fromOffset(12, 6),
@@ -234,15 +235,37 @@ function Hud.start()
 		TextSize = 20,
 		TextWrapped = true,
 	}, quest)
+	-- Counting quests ("purify 5 Gloomlings") fill a thin bar under the objective.
+	local questBar = UiKit.create("Frame", {
+		Name = "QuestBar",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -7),
+		Size = UDim2.new(1, -48, 0, 5),
+		BackgroundColor3 = Color3.fromRGB(30, 26, 48),
+		BorderSizePixel = 0,
+		Visible = false,
+	}, quest)
+	UiKit.corner(questBar, 3)
+	local questFill = UiKit.create("Frame", { Name = "Fill", Size = UDim2.fromScale(0, 1), BackgroundColor3 = colors.accent, BorderSizePixel = 0 }, questBar)
+	UiKit.corner(questFill, 3)
 
 	-- Boss bar ------------------------------------------------------------------------------
 	local bossPanel = UiKit.panel({
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 72),
+		Position = UDim2.new(0.5, 0, 0, 80),
 		Size = UDim2.fromOffset(420, 46),
 		Visible = false,
 	}, topCenter)
 	local bossName = UiKit.label({ Position = UDim2.fromOffset(12, 2), Size = UDim2.new(1, -24, 0, 20), TextSize = 17, TextColor3 = colors.boss }, bossPanel)
+	local bossPercent = UiKit.label({
+		Name = "BossPercent",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, 2),
+		Size = UDim2.fromOffset(60, 20),
+		TextSize = 15,
+		TextColor3 = colors.muted,
+		TextXAlignment = Enum.TextXAlignment.Right,
+	}, bossPanel)
 	local bossBack = UiKit.create("Frame", {
 		Position = UDim2.fromOffset(12, 24),
 		Size = UDim2.new(1, -24, 0, 14),
@@ -250,13 +273,15 @@ function Hud.start()
 		BorderSizePixel = 0,
 	}, bossPanel)
 	UiKit.corner(bossBack, 7)
+	local bossTrail = UiKit.create("Frame", { Name = "Trail", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(255, 235, 255), BorderSizePixel = 0 }, bossBack)
+	UiKit.corner(bossTrail, 7)
 	local bossFill = UiKit.create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = colors.boss, BorderSizePixel = 0 }, bossBack)
 	UiKit.corner(bossFill, 7)
 
 	-- Toasts, banner, dialog ----------------------------------------------------------------
 	local toasts = UiKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 126),
+		Position = UDim2.new(0.5, 0, 0, 134),
 		Size = UDim2.fromOffset(440, 170),
 		BackgroundTransparency = 1,
 	}, topCenter)
@@ -267,6 +292,51 @@ function Hud.start()
 		BackgroundTransparency = 1,
 		Visible = false,
 	}, middle)
+	-- Behind the words: a dark ribbon that fades out at both ends, and for happy moments a slowly
+	-- turning fan of light rays; danger banners tint the ribbon purple instead.
+	local rays = UiKit.create("Frame", {
+		Name = "Rays",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, 46),
+		Size = UDim2.fromOffset(1, 1),
+		BackgroundTransparency = 1,
+		Visible = false,
+	}, banner)
+	for index = 1, RAY_COUNT do
+		-- GUI objects turn around their own middle, so each bar is centered and fades toward both tips.
+		local ray = UiKit.create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromOffset(if index % 2 == 0 then 16 else 28, 420),
+			Rotation = (index - 1) * 180 / RAY_COUNT,
+			BackgroundColor3 = colors.accent,
+			BorderSizePixel = 0,
+		}, rays)
+		UiKit.create("UIGradient", {
+			Rotation = 90,
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.5, 0.5),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+		}, ray)
+	end
+	local ribbon = UiKit.create("Frame", {
+		Name = "Ribbon",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 0),
+		Size = UDim2.new(1, 120, 0, 96),
+		BackgroundColor3 = Color3.fromRGB(25, 20, 45),
+		BackgroundTransparency = 0.25,
+		BorderSizePixel = 0,
+	}, banner)
+	UiKit.create("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.2, 0),
+			NumberSequenceKeypoint.new(0.8, 0),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+	}, ribbon)
 	local bannerTitle = UiKit.label({
 		Size = UDim2.new(1, 0, 0, 58),
 		TextSize = 46,
@@ -364,6 +434,14 @@ function Hud.start()
 		end
 		questTitle.Text = title
 		questLabel.Text = text
+		local goal = player:GetAttribute("QuestGoal") or 0
+		local counting = state == "active" and typeof(goal) == "number" and goal > 1
+		questBar.Visible = counting
+		if counting then
+			local done = math.clamp((player:GetAttribute("QuestCount") or 0) / goal, 0, 1)
+			UiKit.tween(questFill, 0.25, { Size = UDim2.fromScale(done, 1) })
+			questFill.BackgroundColor3 = if done >= 1 then colors.good else colors.accent
+		end
 		-- Post-story goal numbers tick with every kill; only quest changes deserve the pop.
 		if text ~= lastQuestText and lastQuestText ~= "" and state ~= "done" then
 			UiKit.pop(quest)
@@ -474,11 +552,15 @@ function Hud.start()
 	toastFunction = showToast
 
 	local bannerToken = 0
-	local function showBanner(title: string, subtitle: string?)
+	-- style: "celebrate" (gold rays), "danger" (purple ribbon) or nil (plain ribbon).
+	local function showBanner(title: string, subtitle: string?, style: string?)
 		bannerToken += 1
 		local token = bannerToken
 		bannerTitle.Text = title
 		bannerSub.Text = subtitle or ""
+		rays.Visible = style == "celebrate"
+		ribbon.BackgroundColor3 = if style == "danger" then Color3.fromRGB(60, 20, 70) else Color3.fromRGB(25, 20, 45)
+		bannerTitle.TextColor3 = if style == "danger" then Color3.fromRGB(230, 170, 255) else colors.accent
 		banner.Visible = true
 		UiKit.pop(banner)
 		task.delay(2.2, function()
@@ -520,7 +602,7 @@ function Hud.start()
 					subtitle = Strings.get(key)
 				end
 			end
-			showBanner(Strings.get("hud_level", level) .. "!", subtitle)
+			showBanner(Strings.get("hud_level", level) .. "!", subtitle, "celebrate")
 		end
 		knownLevel = level
 	end
@@ -651,22 +733,22 @@ function Hud.start()
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if root and (root.Position - first).Magnitude <= purified.leashRadius + 30 then
-				showBanner(Strings.get("banner_boss_down", Strings.get(purified.nameKey)), Strings.get("banner_boss_down_sub"))
+				showBanner(Strings.get("banner_boss_down", Strings.get(purified.nameKey)), Strings.get("banner_boss_down_sub"), "celebrate")
 			end
 		elseif kind == "towerFloor" and typeof(first) == "number" and typeof(second) == "number" then
 			local bossKey = select(1, ...)
 			local subtitle = if typeof(bossKey) == "string" then Strings.get("tower_floor_boss", Strings.get(bossKey)) else Strings.get("tower_floor_sub", second)
-			showBanner(Strings.get("tower_floor", first), subtitle)
+			showBanner(Strings.get("tower_floor", first), subtitle, if typeof(bossKey) == "string" then "danger" else nil)
 		elseif kind == "riftWave" then
 			-- first = zone id, second = rift center; wave numbers follow.
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if root and typeof(second) == "Vector3" and (root.Position - second).Magnitude <= 90 then
-				showBanner(Strings.get("banner_rift"), Strings.get("banner_rift_wave", select(1, ...), select(2, ...)))
+				showBanner(Strings.get("banner_rift"), Strings.get("banner_rift_wave", select(1, ...), select(2, ...)), "danger")
 			end
 		elseif kind == "questComplete" then
 			local def = QuestData.quests[first]
-			showBanner(Strings.get("banner_quest_complete"), if def then Strings.get(def.titleKey) else nil)
+			showBanner(Strings.get("banner_quest_complete"), if def then Strings.get(def.titleKey) else nil, "celebrate")
 			Audio.play("questComplete")
 		end
 	end)
@@ -695,6 +777,9 @@ function Hud.start()
 	local clock = 0
 	RunService.Heartbeat:Connect(function(dt)
 		clock += dt
+		if rays.Visible and banner.Visible then
+			rays.Rotation = (rays.Rotation + dt * 25) % 360
+		end
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if not humanoid then
@@ -753,7 +838,7 @@ function Hud.start()
 			if boss and bossStats then
 				bossName.Text = Strings.get("enemy_label", boss:GetAttribute("Level") or 1, Strings.get(bossStats.nameKey))
 				if not bossPanel.Visible or shownBoss ~= boss then
-					showBanner(Strings.get("banner_boss", Strings.get(bossStats.nameKey)), Strings.get("banner_boss_sub"))
+					showBanner(Strings.get("banner_boss", Strings.get(bossStats.nameKey)), Strings.get("banner_boss_sub"), "danger")
 				end
 			end
 			shownBoss = boss
@@ -761,7 +846,17 @@ function Hud.start()
 			if show and boss then
 				local hp = boss:GetAttribute("Hp") or 0
 				local maxHp = boss:GetAttribute("MaxHp") or 1
-				UiKit.tween(bossFill, 0.2, { Size = UDim2.fromScale(math.clamp(hp / maxHp, 0, 1), 1) })
+				local ratio = math.clamp(hp / maxHp, 0, 1)
+				UiKit.tween(bossFill, 0.2, { Size = UDim2.fromScale(ratio, 1) })
+				bossPercent.Text = Strings.get("hud_percent", math.ceil(ratio * 100))
+				-- The trail waits a moment at the old value before draining, so big hits read.
+				if ratio >= bossTrail.Size.X.Scale then
+					bossTrail.Size = UDim2.fromScale(ratio, 1)
+				else
+					task.delay(0.35, function()
+						UiKit.tween(bossTrail, 0.4, { Size = UDim2.fromScale(ratio, 1) })
+					end)
+				end
 			end
 		end
 	end)

@@ -242,6 +242,7 @@ local texts = {
 	hud_xp_max = "MAX LEVEL",
 	hud_hp = "%s / %s",
 	hud_streak = "x%d",
+	hud_percent = "%d%%",
 	hud_streak_label = "Purify streak",
 	notice_streak = "%d purified in a row!",
 	loading_title = "Lantern Valley",

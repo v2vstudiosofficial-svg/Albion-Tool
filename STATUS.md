@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M33 (dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M34 (başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -52,10 +52,13 @@
   ölümcül kırmızı; elit altın kalır, oyuncu seviyesi değişince güncellenir); düşman barında hasar izi; hasar sayıları büyük
   "pat" diye çıkıp yerine oturur, yana kayarak yükselir (kritikler eğik); arındırma serisi sayacı (3'ten itibaren altta "x12",
   10/25/50'de renk ısınır, 10/25/50/100/250/500'de bildirim; zincir 4 sn kopunca kaybolur, ödül vermez).
+  M34: ekran ortası başlıklar kenarları solan koyu bir şeritte; sevinç anlarında (seviye, görev, boss arındırma) arkada dönen
+  altın ışın yelpazesi, tehlike anlarında (boss geldi, rift dalgası, kule boss katı) mor şerit; sayaçlı görevlerde görev panelinde
+  ilerleme çubuğu (bitince yeşil); boss barında yüzde ve hasar izi.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 72, balance, api, scene 18, sim 62, client 62/63/63/1, place; hepsi geçti (sinematik akış,
+- logic 72, balance, api, scene 18, sim 62, client 63/64/64/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.
