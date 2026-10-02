@@ -75,6 +75,25 @@ function MapLogic.clamp(size: number, px: number, py: number, margin: number): (
 	return half + dx * scale, half + dy * scale, true
 end
 
+-- An arrow on the screen edge toward a point that is off screen. `px, py` is the point's screen
+-- position, `inFront` false when it is behind the camera (its projection is then mirrored).
+-- Returns where the arrow sits (inside the edge by `margin`) and its angle in degrees (0 = right,
+-- 90 = down), or nil when the point is on screen anyway.
+function MapLogic.edgeArrow(px: number, py: number, inFront: boolean, width: number, height: number, margin: number): (number?, number?, number?)
+	local cx, cy = width / 2, height / 2
+	if not inFront then
+		px, py = width - px, height - py
+	elseif px >= margin and px <= width - margin and py >= margin and py <= height - margin then
+		return nil, nil, nil
+	end
+	local dx, dy = px - cx, py - cy
+	if dx == 0 and dy == 0 then
+		dy = 1
+	end
+	local scale = math.min((cx - margin) / math.max(math.abs(dx), 1e-6), (cy - margin) / math.max(math.abs(dy), 1e-6))
+	return cx + dx * scale, cy + dy * scale, math.deg(math.atan2(dy, dx))
+end
+
 -- Compass heading of a look direction, in degrees clockwise from north (0 = -Z, 90 = +X).
 function MapLogic.heading(lookX: number, lookZ: number): number
 	return math.deg(math.atan2(lookX, -lookZ)) % 360

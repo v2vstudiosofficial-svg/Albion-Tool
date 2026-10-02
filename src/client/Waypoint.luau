@@ -2,11 +2,13 @@
 -- long text to know where to go next.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local QuestData = require(Shared:WaitForChild("QuestData"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
 local Goals = require(Shared:WaitForChild("Goals"))
+local MapLogic = require(Shared:WaitForChild("MapLogic"))
 local Attrs = require(script.Parent.Attrs)
 local Cinematic = require(script.Parent.Cinematic)
 local UiKit = require(script.Parent.UiKit)
@@ -15,6 +17,7 @@ local player = Players.LocalPlayer
 
 local UPDATE_INTERVAL = 0.2
 local HIDE_DISTANCE = 9
+local EDGE_MARGIN = 60 -- pixels between the edge arrow and the screen border
 
 local Waypoint = {}
 
@@ -149,6 +152,54 @@ function Waypoint.start()
 		TextSize = 22,
 		TextStrokeTransparency = 0.2,
 	}, gui)
+
+	-- When the goal is off screen, an arrow on the screen edge points at it, with the distance.
+	local edgeGui = UiKit.create("ScreenGui", { Name = "WaypointEdge", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 2 }, player:WaitForChild("PlayerGui"))
+	local edge = UiKit.create("Frame", {
+		Name = "EdgeArrow",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Size = UDim2.fromOffset(46, 46),
+		BackgroundColor3 = UiKit.colors.accent,
+		BorderSizePixel = 0,
+		Visible = false,
+	}, edgeGui)
+	UiKit.corner(edge, 23)
+	UiKit.create("UIStroke", { Color = Color3.fromRGB(120, 70, 20), Thickness = 3 }, edge)
+	local pointer = UiKit.create("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, edge)
+	UiKit.label({
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(1, -4, 0.5, 0),
+		Size = UDim2.fromOffset(18, 22),
+		Text = "▶",
+		TextSize = 18,
+		TextColor3 = UiKit.colors.accent,
+		TextStrokeTransparency = 0.3,
+	}, pointer)
+	local edgeDistance = UiKit.label({ Size = UDim2.fromScale(1, 1), TextSize = 15, TextColor3 = UiKit.colors.panel }, edge)
+	RunService.RenderStepped:Connect(function()
+		local camera = workspace.CurrentCamera
+		local goal = shownGoal
+		if not goal or not camera then
+			edge.Visible = false
+			return
+		end
+		local ok, point, inFront = pcall(function()
+			local screen, visible = camera:WorldToViewportPoint(goal + Vector3.new(0, 4, 0))
+			return screen, visible and screen.Z > 0
+		end)
+		if not ok then
+			edge.Visible = false
+			return
+		end
+		local viewport = camera.ViewportSize
+		local x, y, angle = MapLogic.edgeArrow(point.X, point.Y, inFront, viewport.X, viewport.Y, EDGE_MARGIN)
+		edge.Visible = x ~= nil
+		if x and y and angle then
+			edge.Position = UDim2.fromOffset(x, y)
+			pointer.Rotation = angle
+			edgeDistance.Text = distanceLabel.Text
+		end
+	end)
 
 	task.spawn(function()
 		while true do

@@ -1764,6 +1764,23 @@ test("titles: earned by progress, chosen only when earned, saved choice is clean
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).equippedTitle, "", "missing value")
 end)
 
+test("edge arrow: points from the screen edge toward an off-screen goal", function()
+	local MapLogic = require("../src/shared/MapLogic")
+	local x, y, angle = MapLogic.edgeArrow(500, 300, true, 1000, 600, 40)
+	eq(x, nil, "on screen: no arrow")
+	x, y, angle = MapLogic.edgeArrow(2000, 300, true, 1000, 600, 40)
+	eq(x, 960, "far right: on the right edge")
+	eq(y, 300)
+	eq(angle, 0, "pointing right")
+	x, y, angle = MapLogic.edgeArrow(500, -900, true, 1000, 600, 40)
+	eq(y, 40, "above: on the top edge")
+	eq(angle, -90, "pointing up")
+	x, y, angle = MapLogic.edgeArrow(100, 300, false, 1000, 600, 40)
+	assert(x > 500, "behind the camera on the left: mirrored to the right")
+	x, y = MapLogic.edgeArrow(3000, 3000, true, 1000, 600, 40)
+	assert(x >= 40 and x <= 960 and y >= 40 and y <= 560, "always inside the margin")
+end)
+
 test("day cycle: a long day, golden dusk, a short night, shared by everyone through server time", function()
 	local DayCycle = require("../src/shared/DayCycle")
 	local L = DayCycle.LENGTH
