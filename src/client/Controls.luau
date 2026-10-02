@@ -111,17 +111,19 @@ function Controls.heal()
 	requestAbility:FireServer("heal")
 end
 
-type Ability = { id: string, action: string, keys: { Enum.KeyCode }, key: string, nameKey: string, icon: string, color: Color3, cast: () -> () }
+type Ability = { id: string, action: string, keys: { Enum.KeyCode }, key: string, nameKey: string, descKey: string, icon: string, color: Color3, cast: () -> () }
 
 local ABILITIES: { Ability } = {
-	{ id = "wave", action = "LvLightWave", keys = { Enum.KeyCode.Q, Enum.KeyCode.ButtonL2, Enum.KeyCode.ButtonR2 }, key = "Q", nameKey = "wave_button", icon = "✨", color = colors.xp, cast = Controls.wave },
-	{ id = "star", action = "LvStarFall", keys = { Enum.KeyCode.R, Enum.KeyCode.ButtonR1 }, key = "R", nameKey = "ability_star", icon = "⭐", color = Color3.fromRGB(255, 205, 90), cast = Controls.star },
-	{ id = "heal", action = "LvLanternGlow", keys = { Enum.KeyCode.F, Enum.KeyCode.ButtonL1 }, key = "F", nameKey = "ability_heal", icon = "💚", color = Color3.fromRGB(120, 230, 150), cast = Controls.heal },
+	{ id = "wave", action = "LvLightWave", keys = { Enum.KeyCode.Q, Enum.KeyCode.ButtonL2, Enum.KeyCode.ButtonR2 }, key = "Q", nameKey = "wave_button", descKey = "ability_wave_desc", icon = "✨", color = colors.xp, cast = Controls.wave },
+	{ id = "star", action = "LvStarFall", keys = { Enum.KeyCode.R, Enum.KeyCode.ButtonR1 }, key = "R", nameKey = "ability_star", descKey = "ability_star_desc", icon = "⭐", color = Color3.fromRGB(255, 205, 90), cast = Controls.star },
+	{ id = "heal", action = "LvLanternGlow", keys = { Enum.KeyCode.F, Enum.KeyCode.ButtonL1 }, key = "F", nameKey = "ability_heal", descKey = "ability_heal_desc", icon = "💚", color = Color3.fromRGB(120, 230, 150), cast = Controls.heal },
 }
 
 -- Ability visuals ---------------------------------------------------------------------------
 
-type AbilityView = { root: GuiObject, cooldown: Frame, timer: TextLabel, lock: TextLabel, wasReady: boolean }
+local readyRing: (view: any) -> ()
+
+type AbilityView = { root: GuiObject, cooldown: Frame, timer: TextLabel, lock: TextLabel, wasReady: boolean, color: Color3 }
 
 -- A round ability button: dark rim in the ability's colour, glowing inner disc with an icon,
 -- a key badge (desktop), the name underneath (desktop), a dimmed countdown and a lock.
@@ -202,7 +204,50 @@ local function decorate(button: GuiObject, ability: Ability, showKey: boolean): 
 	}, face)
 	UiKit.corner(lock, 999)
 	UiKit.create("UIPadding", { PaddingTop = UDim.new(0.28, 0), PaddingBottom = UDim.new(0.28, 0) }, lock)
-	return { root = face, cooldown = cooldown, timer = timer, lock = lock, wasReady = true }
+	return { root = face, cooldown = cooldown, timer = timer, lock = lock, wasReady = true, color = ability.color }
+end
+
+-- A ring in the ability's colour swells out of the button and fades when it is ready again.
+readyRing = function(view: AbilityView)
+	local ring = UiKit.create("Frame", {
+		Name = "ReadyRing",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = view.root.ZIndex + 6,
+	}, view.root)
+	UiKit.corner(ring, 999)
+	local stroke = UiKit.create("UIStroke", { Color = view.color, Thickness = 4 }, ring)
+	UiKit.tween(ring, 0.45, { Size = UDim2.fromScale(1.6, 1.6) })
+	UiKit.tween(stroke, 0.45, { Transparency = 1, Thickness = 1 }).Completed:Connect(function()
+		ring:Destroy()
+	end)
+end
+
+-- Desktop: hovering an ability shows what it does, its recharge and when it unlocks.
+local function attachTooltip(button: GuiButton, ability: Ability, bar: GuiObject)
+	local tip = UiKit.panel({
+		Name = "AbilityTip",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, 0, 0, -34),
+		Size = UDim2.fromOffset(260, 84),
+		Visible = false,
+		Corner = 10,
+	}, bar)
+	local title = UiKit.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 22), TextSize = 18, TextColor3 = ability.color, TextXAlignment = Enum.TextXAlignment.Left }, tip)
+	local desc = UiKit.label({ Position = UDim2.fromOffset(12, 28), Size = UDim2.new(1, -24, 0, 34), TextSize = 14, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, tip)
+	local footer = UiKit.label({ Position = UDim2.fromOffset(12, 62), Size = UDim2.new(1, -24, 0, 16), TextSize = 13, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Left }, tip)
+	button.MouseEnter:Connect(function()
+		title.Text = Strings.get(ability.nameKey) .. "  [" .. ability.key .. "]"
+		desc.Text = Strings.get(ability.descKey)
+		local need = unlockLevel(ability.id)
+		footer.Text = if Attrs.get("Level", 1) < need then Strings.get("ability_unlocks", need) else Strings.get("ability_cooldown", math.ceil(cooldownOf(ability.id)))
+		tip.Visible = true
+	end)
+	button.MouseLeave:Connect(function()
+		tip.Visible = false
+	end)
 end
 
 local function styleTouchButton(ability: Ability): AbilityView?
@@ -304,6 +349,7 @@ local function buildDesktopButtons(gui: ScreenGui): { [string]: AbilityView }
 		}, bar)
 		button.Activated:Connect(ability.cast)
 		views[ability.id] = decorate(button, ability, true)
+		attachTooltip(button, ability, bar)
 	end
 	return views
 end
@@ -438,6 +484,7 @@ function Controls.start()
 				local isReady = unlocked and remaining == 0
 				if isReady and not view.wasReady then
 					UiKit.pop(view.root)
+					readyRing(view)
 				end
 				view.wasReady = isReady
 			end

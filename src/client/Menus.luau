@@ -558,6 +558,10 @@ function Menus.start()
 			if Attrs.set("Weapons")[weaponId] then
 				equipWeapon:FireServer(editingSlot, weaponId)
 				Audio.play("ui")
+			else
+				-- Not found yet: say what it is, so there is something to hope for in the next chest.
+				weaponInfo.Text = Strings.get("weapon_locked_info", Strings.get(WeaponData.rarities[weapon.rarity].nameKey), Strings.get(weapon.descKey))
+				Audio.play("ui")
 			end
 		end)
 		-- The stripe shows the weapon's rarity.
@@ -611,12 +615,12 @@ function Menus.start()
 			local unlocked = owned[weaponId] == true
 			local weaponStars = stars[weaponId] or 0
 			tile.button.Text = if not unlocked
-				then Strings.get("weapon_find")
+				then Strings.get("weapon_find_named", Strings.get(WeaponData.weapons[weaponId].nameKey))
 				elseif weaponStars > 0 then Strings.get(WeaponData.weapons[weaponId].nameKey) .. "\n" .. Strings.get("weapon_stars", weaponStars, WeaponData.maxStars)
 				else Strings.get(WeaponData.weapons[weaponId].nameKey)
 			tile.button.BackgroundColor3 = if weaponId == current then colors.good elseif unlocked then colors.panelLight else colors.panel
 			tile.button.TextColor3 = if weaponId == current then colors.panel elseif unlocked then colors.text else colors.muted
-			tile.stripe.BackgroundTransparency = if unlocked then 0 else 0.7
+			tile.stripe.BackgroundTransparency = if unlocked then 0 else 0.45
 		end
 		local weapon = current and WeaponData.weapons[current]
 		weaponInfo.Text = if weapon

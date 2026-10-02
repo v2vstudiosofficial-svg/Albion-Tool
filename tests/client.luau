@@ -839,8 +839,10 @@ test("weapons menu: main weapon, floating slots, locked ones do nothing", functi
 	click(findButton(Strings.get("menu_weapons")))
 	assert(shownText(Strings.get("bag_main_hint")), "weapons menu open")
 	assert(findButton(Strings.get("slot_level", Strings.get("bag_main"), 2)), "main slot shows its level")
-	click(findButton(Strings.get("weapon_find")))
-	eq(sent("EquipWeapon"), 0, "a weapon not found yet does nothing")
+	local bow = WeaponData.weapons.bow
+	click(findButton(Strings.get("weapon_find_named", Strings.get(bow.nameKey))))
+	eq(sent("EquipWeapon"), 0, "a weapon not found yet is not equipped")
+	assert(shownText(Strings.get("weapon_locked_info", Strings.get(WeaponData.rarities[bow.rarity].nameKey), Strings.get(bow.descKey))), "but it says what it is")
 	click(findButton(Strings.get("weapon_locked", 25)))
 	assert(shownText(Strings.get("bag_main_hint")), "closed slot does not open")
 	setAttributes({ Level = 25, Companions = "spear", Weapons = "bow,spear,staff,sword" })
@@ -1865,6 +1867,28 @@ test("creature labels: tinted by the level gap, bars keep a trail of the last hi
 	enemy:Destroy()
 	setAttributes({ Level = heroLevel })
 end)
+
+if not touchMode then
+	test("ability tooltips on hover say what it does and when it is ready", function()
+		local bar = playerGui.Controls:FindFirstChild("AbilityBar")
+		local star = bar:FindFirstChild("star")
+		local heroLevel = hero:GetAttribute("Level")
+		setAttributes({ Level = 1 })
+		star.MouseEnter:Fire()
+		advance(0.1)
+		assert(shownText(Strings.get("ability_star_desc")), "description")
+		assert(shownText(Strings.get("ability_unlocks", Balance.abilities.star.unlockLevel)), "locked: says when it unlocks")
+		star.MouseLeave:Fire()
+		advance(0.1)
+		assert(not shownText(Strings.get("ability_star_desc")), "hidden again")
+		setAttributes({ Level = 20 })
+		star.MouseEnter:Fire()
+		advance(0.1)
+		assert(shownText(Strings.get("ability_cooldown", Balance.abilities.star.cooldown)), "unlocked: recharge time")
+		star.MouseLeave:Fire()
+		setAttributes({ Level = heroLevel })
+	end)
+end
 
 test("menu windows: hotkeys, key caps, a dim backdrop that closes them, blur except in Settings", function()
 	local backdrop = playerGui.Menus.Backdrop

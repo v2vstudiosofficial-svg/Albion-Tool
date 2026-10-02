@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M36 (menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M37 (yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -62,10 +62,13 @@
   M36: menü düğmelerinde emoji simgeler (üstte simge, altta ad; Strings `icon_*`): Weapons ⚔️, Chests 🧰, Legends 👑, Bag 🎒,
   Settings ⚙️, Log 📖, Shop 💰, Pass ⭐, Daily gift 🎁; Emotes/Players düğmelerinde soldan simge; her emote kendi simgesiyle.
   (🪙 Studio'da çizilmedi, 💰 kullanıldı.)
+  M37: masaüstünde yetenek düğmesinin üzerine gelince bilgi kutusu (ad + tuş, ne yaptığı, dolum süresi ya da açıldığı seviye);
+  yetenek yeniden hazır olunca düğmeden renkli halka yayılır; Weapons menüsünde bulunmamış silahlar "🔒 Ad" ve daha belirgin
+  nadirlik şeridiyle görünür, tıklayınca nadirliğini, ne yaptığını ve sandıklarda aranacağını söyler.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 72, balance, api, scene 18, sim 62, client 63/64/64/1, place; hepsi geçti (sinematik akış,
+- logic 72, balance, api, scene 18, sim 62, client 64/64/64/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.
