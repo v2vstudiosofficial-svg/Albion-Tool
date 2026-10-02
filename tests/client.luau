@@ -1815,6 +1815,25 @@ test("day and night: the sky follows the server clock; the setting keeps it afte
 	advance(0.5)
 end)
 
+test("ambience: particles match the place (pollen, leaves, snow...) and stop on Low effects", function()
+	local holder = workspace:FindFirstChild("LvAmbience")
+	assert(holder and holder:FindFirstChild("Ambience"), "ambience emitter exists")
+	local emitter = holder.Ambience
+	teleport(vec(WorldData.spawn, 3))
+	advance(0.6)
+	assert(emitter.Rate > 0, "village pollen")
+	local villageColor = emitter.Color.Keypoints[1].Value
+	teleport(vec(WorldData.areas.peaks.center, 3))
+	advance(0.6)
+	assert(emitter.Rate > 0 and emitter.Color.Keypoints[1].Value ~= villageColor, "snow on the peaks looks different")
+	setAttributes({ Pref_quality = "custom", Pref_effects = "low" })
+	advance(0.6)
+	eq(emitter.Rate, 0, "nothing with Low effects")
+	setAttributes({ Pref_quality = "auto", Pref_effects = "high" })
+	teleport(vec(WorldData.spawn, 3))
+	advance(0.6)
+end)
+
 test("purify streak: counts chained purifications, celebrates milestones, leaves when the chain breaks", function()
 	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
 	advance(CombatFeel.WINDOW + 1)
