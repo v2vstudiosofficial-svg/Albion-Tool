@@ -120,7 +120,7 @@ function ChestReveal.close()
 	end
 end
 
--- reward = { chest, coins, weapon?, duplicate?, star?, slots = { {slot, gained, newLevel} } }
+-- reward = { chest, coins, weapon?, duplicate?, star?, slots = { {slot, gained, newLevel} }, titleKey?, color? }
 function ChestReveal.show(reward: { [string]: any })
 	if not gui then
 		build()
@@ -128,7 +128,9 @@ function ChestReveal.show(reward: { [string]: any })
 	playToken += 1
 	local token = playToken
 	local data = ChestData.chests[reward.chest]
-	local color = if data then UiKit.rgb(data.color) else colors.accent
+	-- Not only chests: a reward may bring its own name and colour (the daily gift).
+	local nameKey = reward.titleKey or (data and data.nameKey) or "chests_title"
+	local color = if reward.color then reward.color elseif data then UiKit.rgb(data.color) else colors.accent
 	for _, child in parts.list:GetChildren() do
 		if child:IsA("TextLabel") then
 			child:Destroy()
@@ -204,7 +206,7 @@ function ChestReveal.show(reward: { [string]: any })
 		Audio.play("levelUp")
 		task.wait(0.35)
 		-- 4. The rewards, one by one.
-		line(Strings.get("chest_reward_title", Strings.get(if data then data.nameKey else "chests_title")), colors.accent, 26)
+		line(Strings.get("chest_reward_title", Strings.get(nameKey)), colors.accent, 26)
 		task.wait(LINE_GAP)
 		if not alive() then
 			return

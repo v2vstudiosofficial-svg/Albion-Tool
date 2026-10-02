@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Strings = require(Shared:WaitForChild("Strings"))
 local Audio = require(script.Parent.Audio)
+local ChestReveal = require(script.Parent.ChestReveal)
 local Cinematic = require(script.Parent.Cinematic)
 local Hud = require(script.Parent.Hud)
 local Minimap = require(script.Parent.Minimap)
@@ -22,6 +23,7 @@ function DailyGift.start()
 	if not region then
 		return
 	end
+	local coinsBefore: number? = nil
 	local button = UiKit.button({
 		Position = UDim2.fromOffset(0, 0),
 		Size = UDim2.fromOffset(Minimap.giftWidth, 56),
@@ -30,6 +32,7 @@ function DailyGift.start()
 		TextWrapped = true,
 		BackgroundColor3 = UiKit.colors.coin,
 	}, region, function()
+		coinsBefore = player:GetAttribute("Coins") or 0
 		claimDaily:FireServer()
 		Audio.play("ui")
 	end)
@@ -46,6 +49,17 @@ function DailyGift.start()
 			announced = false
 		end
 	end
+	-- Taking the gift opens it like a chest: a golden box, coins counting up.
+	ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notice").OnClientEvent:Connect(function(key)
+		if key ~= "notice_daily_gift" or not coinsBefore then
+			return
+		end
+		local before = coinsBefore
+		coinsBefore = nil
+		task.wait(0.15) -- the coins attribute lands with the notice
+		local gained = math.max(0, (player:GetAttribute("Coins") or 0) - before)
+		ChestReveal.show({ chest = "gift", coins = gained, titleKey = "daily_gift_title", color = UiKit.colors.coin, slots = {} })
+	end)
 	for _, name in { "DataState", "DailyReady" } do
 		player:GetAttributeChangedSignal(name):Connect(refresh)
 	end
