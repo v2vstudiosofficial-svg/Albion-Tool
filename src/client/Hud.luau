@@ -19,6 +19,8 @@ local CombatFeel = require(Shared:WaitForChild("CombatFeel"))
 local PURIFY_TOAST_WINDOW = 1.2
 -- Below this share of health the screen edges pulse red.
 local LOW_HEALTH = 0.3
+-- A hit must take at least this share of health to flash the screen edges.
+local HIT_FLASH_FROM = 0.06
 local HP_HIGH = Color3.fromRGB(110, 220, 120)
 local HP_LOW = Color3.fromRGB(255, 90, 90)
 local MAX_TOASTS = 4
@@ -788,13 +790,18 @@ function Hud.start()
 		local hp, maxHp = math.max(0, humanoid.Health), math.max(1, humanoid.MaxHealth)
 		local ratio = math.clamp(hp / maxHp, 0, 1)
 		if hp ~= shownHp or maxHp ~= shownMax then
-			local hurt = shownHp >= 0 and maxHp == shownMax and hp < shownHp - maxHp * 0.02
+			local lost = if shownHp >= 0 and maxHp == shownMax then (shownHp - hp) / maxHp else 0
+			local hurt = lost > 0.02
 			hpLabel.Text = Strings.get("hud_hp", Format.short(math.ceil(hp)), Format.short(math.ceil(maxHp)))
 			hpFill.BackgroundColor3 = HP_LOW:Lerp(HP_HIGH, math.clamp((ratio - 0.15) / 0.6, 0, 1))
 			UiKit.tween(hpFill, 0.12, { Size = UDim2.fromScale(ratio, 1) })
 			trailToken += 1
 			if hurt then
-				flash = math.max(flash, 0.75)
+				-- Only real hits flash the edges, and in proportion: chip damage in a long fight must
+				-- not keep the whole screen red.
+				if lost >= HIT_FLASH_FROM then
+					flash = math.max(flash, math.min(0.55, lost * 4))
+				end
 				local token = trailToken
 				task.delay(0.35, function()
 					if trailToken == token then
@@ -807,7 +814,7 @@ function Hud.start()
 			shownHp, shownMax = hp, maxHp
 		end
 		flash = math.max(0, flash - dt * 1.6)
-		local pulse = if ratio < LOW_HEALTH and hp > 0 then 0.5 + 0.2 * math.sin(clock * 5) else 0
+		local pulse = if ratio < LOW_HEALTH and hp > 0 then 0.4 + 0.15 * math.sin(clock * 5) else 0
 		local strength = math.max(flash, pulse)
 		for _, edge in edges do
 			edge.BackgroundTransparency = 1 - strength

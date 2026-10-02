@@ -79,7 +79,8 @@
   inince toz halkası; yalnızca kendi karakterin, Effects: Low'da yok. (Lune `FloorMaterial` okuyamadığı için otomatik test yok;
   Studio'da ölçüldü: koşarken aynı anda 6 bulut.)
   M42: sinematik sahnelerde NPC/pano/kule "!" işaretleri de gizlenir (`World.setMarkersHidden`); Bag'deki tılsım/pet satır
-  düğmelerinde uzun yazı ("Earned from a quest") artık sığıyor.
+  düğmelerinde uzun yazı ("Earned from a quest") artık sığıyor; ekran kenarı kırmızı parlaması yalnızca canın en az %6'sını
+  alan vuruşlarda ve vuruşla orantılı (sürekli küçük hasarda ekran kırmızıya boğulmuyordu, Studio'da görüldü).
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

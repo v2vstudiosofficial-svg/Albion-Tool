@@ -1745,10 +1745,13 @@ test("player card: health bar, red screen edges on a hit and at low health, toas
 		return 1 - edges:GetChildren()[1].BackgroundTransparency
 	end
 	eq(edgeStrength(), 0, "no red edges at full health")
+	humanoid.Health = 194
+	advance(0.05)
+	assert(shownText(Strings.get("hud_hp", Format.short(194), Format.short(200))), "the bar follows a hit")
+	eq(edgeStrength(), 0, "chip damage does not flash the screen")
 	humanoid.Health = 150
 	advance(0.05)
-	assert(shownText(Strings.get("hud_hp", Format.short(150), Format.short(200))), "the bar follows a hit")
-	assert(edgeStrength() > 0.3, "a hit flashes the edges")
+	assert(edgeStrength() > 0.3, "a real hit flashes the edges")
 	advance(1)
 	eq(edgeStrength(), 0, "the flash fades")
 	humanoid.Health = 40
