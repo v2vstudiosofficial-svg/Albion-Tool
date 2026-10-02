@@ -83,7 +83,7 @@
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 72, balance, api, scene 18, sim 62, client 67/67/67/1, place; hepsi geçti (sinematik akış,
+- logic 75, balance, api, scene 18, sim 62, client 67/67/67/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.
