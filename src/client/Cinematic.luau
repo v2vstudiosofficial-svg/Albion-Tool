@@ -179,6 +179,7 @@ function Cinematic.start()
 	end
 
 	local function setHud(on: boolean)
+		World.setMarkersHidden(not on)
 		local playerGui = player:FindFirstChild("PlayerGui")
 		for _, name in HIDDEN_IN_SCENES do
 			local screen = playerGui and playerGui:FindFirstChild(name)

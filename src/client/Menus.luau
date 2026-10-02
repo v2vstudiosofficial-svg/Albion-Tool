@@ -282,7 +282,7 @@ function Menus.start()
 		UiKit.corner(swatch, 16)
 		local name = UiKit.label({ Position = UDim2.fromOffset(52, 4), Size = UDim2.new(1, -170, 0, 26), Text = Strings.get(pet.nameKey), TextSize = 19, TextXAlignment = Enum.TextXAlignment.Left }, row)
 		local info = UiKit.label({ Position = UDim2.fromOffset(52, 30), Size = UDim2.new(1, -170, 0, 28), TextSize = 13, TextWrapped = true, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Left }, row)
-		local button = UiKit.button({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(104, 44), TextSize = 16 }, row, function()
+		local button = UiKit.button({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(104, 44), TextSize = 15, TextWrapped = true }, row, function()
 			local progress = Attrs.pairs("PetProgress")[petId] or 0
 			if progress >= pet.unlock.goal then
 				equipPet:FireServer(if Attrs.get("Pet", "") == petId then "" else petId)
@@ -351,7 +351,7 @@ function Menus.start()
 		UiKit.corner(row, 12)
 		local name = UiKit.label({ Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -140, 0, 26), Text = Strings.get(title.nameKey), TextSize = 19, TextXAlignment = Enum.TextXAlignment.Left }, row)
 		local info = UiKit.label({ Position = UDim2.fromOffset(12, 30), Size = UDim2.new(1, -140, 0, 22), TextSize = 13, TextWrapped = true, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Left }, row)
-		local button = UiKit.button({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(104, 44), TextSize = 16 }, row, function()
+		local button = UiKit.button({ AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(104, 44), TextSize = 15, TextWrapped = true }, row, function()
 			local progress = Attrs.pairs("TitleProgress")[titleId] or 0
 			if progress >= title.unlock.goal then
 				equipTitle:FireServer(if Attrs.get("Title", "") == titleId then "" else titleId)

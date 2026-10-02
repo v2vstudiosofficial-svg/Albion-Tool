@@ -1164,6 +1164,7 @@ test("story scenes: typewriter caption, tap to continue, Skip, soft captions, qu
 	for _, name in { "Hud", "Menus", "Minimap" } do
 		eq(playerGui[name].Enabled, false, name .. " hidden during a full scene")
 	end
+	assert(not shownText("!"), "no quest marker over heads in a scene")
 	local first = Strings.get(scene.lines[1].key)
 	assert(not shownText(first), "the caption is still being typed")
 	advance(0.6)

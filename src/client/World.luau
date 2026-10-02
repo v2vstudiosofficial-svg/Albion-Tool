@@ -385,6 +385,9 @@ local function refreshKael()
 	end
 end
 
+-- Story scenes hide every "!" (Cinematic sets this) so close-ups stay clean.
+local markersHidden = false
+
 local function refreshMarkers()
 	refreshKael()
 	-- The "!" shows over whoever gives the next quest.
@@ -419,12 +422,24 @@ local function refreshMarkers()
 	if smith then
 		smith.Enabled = isActive("first_upgrade") or affordable
 	end
+	if markersHidden then
+		for _, marker in markers do
+			if marker then
+				marker.Enabled = false
+			end
+		end
+	end
 	local tier = player:GetAttribute("StaffTier") or 0
 	-- Only the first few power levels get a toast; later the "!" marker is enough.
 	if affordable and nudgedTier ~= tier and tier < NUDGE_LEVELS then
 		nudgedTier = tier
 		Hud.toast(Strings.get("notice_can_upgrade"), Color3.fromRGB(255, 200, 70))
 	end
+end
+
+function World.setMarkersHidden(hidden: boolean)
+	markersHidden = hidden
+	refreshMarkers()
 end
 
 -- NPC idle life: a gentle breathing bob and turning toward a nearby local player (local only).
