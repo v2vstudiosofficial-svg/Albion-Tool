@@ -1,5 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Strings = require(Shared:WaitForChild("Strings"))
@@ -14,6 +16,11 @@ local Attrs = require(script.Parent.Attrs)
 local Format = require(Shared:WaitForChild("Format"))
 
 local PURIFY_TOAST_WINDOW = 1.2
+-- Below this share of health the screen edges pulse red.
+local LOW_HEALTH = 0.3
+local HP_HIGH = Color3.fromRGB(110, 220, 120)
+local HP_LOW = Color3.fromRGB(255, 90, 90)
+local MAX_TOASTS = 4
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -46,12 +53,17 @@ function Hud.start()
 
 	-- Player card ---------------------------------------------------------------------------
 	local isTouch = UiKit.isTouch()
-	local topLeft = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 132))
+	local topLeft = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 142))
 	local topCenter = UiKit.region(gui, Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 12), Vector2.new(440, 300))
 	local middle = UiKit.region(gui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.36), Vector2.new(460, 110))
 	local bottom = UiKit.region(gui, Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, if isTouch then -130 else -24), Vector2.new(460, 86))
 
-	local card = UiKit.panel({ Size = UDim2.fromOffset(232, 104) }, topLeft)
+	-- Roblox's own small health bar is replaced by the one on the player card.
+	pcall(function()
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+	end)
+
+	local card = UiKit.panel({ Size = UDim2.fromOffset(232, 112) }, topLeft)
 	local badge = UiKit.create("Frame", {
 		Position = UDim2.fromOffset(10, 10),
 		Size = UDim2.fromOffset(60, 60),
@@ -75,32 +87,47 @@ function Hud.start()
 	end
 	player:GetAttributeChangedSignal("Rebirths"):Connect(refreshRebirth)
 	refreshRebirth()
-	local xpBack = UiKit.create("Frame", {
-		Position = UDim2.fromOffset(80, 14),
-		Size = UDim2.fromOffset(140, 14),
+	-- Health: the main bar, green to red, with the numbers inside it.
+	local hpBack = UiKit.create("Frame", {
+		Name = "HealthBar",
+		Position = UDim2.fromOffset(80, 10),
+		Size = UDim2.fromOffset(140, 20),
 		BackgroundColor3 = Color3.fromRGB(30, 26, 48),
 		BorderSizePixel = 0,
 	}, card)
-	UiKit.corner(xpBack, 7)
+	UiKit.corner(hpBack, 8)
+	-- A pale trail shows the last hit before it drains away.
+	local hpTrail = UiKit.create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(255, 235, 200), BorderSizePixel = 0 }, hpBack)
+	UiKit.corner(hpTrail, 8)
+	local hpFill = UiKit.create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = HP_HIGH, BorderSizePixel = 0 }, hpBack)
+	UiKit.corner(hpFill, 8)
+	local hpLabel = UiKit.label({ Size = UDim2.fromScale(1, 1), TextSize = 14, TextStrokeTransparency = 0.4, ZIndex = 2 }, hpBack)
+	local xpBack = UiKit.create("Frame", {
+		Position = UDim2.fromOffset(80, 35),
+		Size = UDim2.fromOffset(140, 8),
+		BackgroundColor3 = Color3.fromRGB(30, 26, 48),
+		BorderSizePixel = 0,
+	}, card)
+	UiKit.corner(xpBack, 4)
 	local xpFill = UiKit.create("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = colors.xp, BorderSizePixel = 0 }, xpBack)
-	UiKit.corner(xpFill, 7)
+	UiKit.corner(xpFill, 4)
 	local xpLabel = UiKit.label({
-		Position = UDim2.fromOffset(80, 29),
-		Size = UDim2.fromOffset(140, 18),
-		TextSize = 15,
+		Position = UDim2.fromOffset(80, 44),
+		Size = UDim2.fromOffset(140, 16),
+		TextSize = 13,
 		TextColor3 = colors.muted,
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, card)
 	local coinIcon = UiKit.create("Frame", {
-		Position = UDim2.fromOffset(80, 50),
-		Size = UDim2.fromOffset(20, 20),
+		Position = UDim2.fromOffset(80, 64),
+		Size = UDim2.fromOffset(18, 18),
 		BackgroundColor3 = colors.coin,
 		BorderSizePixel = 0,
 	}, card)
-	UiKit.corner(coinIcon, 10)
+	UiKit.corner(coinIcon, 9)
 	UiKit.create("UIStroke", { Color = Color3.fromRGB(170, 110, 20), Thickness = 2 }, coinIcon)
 	local coinsLabel = UiKit.label({
-		Position = UDim2.fromOffset(106, 47),
+		Position = UDim2.fromOffset(104, 60),
 		Size = UDim2.fromOffset(110, 26),
 		TextColor3 = colors.coin,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -108,7 +135,7 @@ function Hud.start()
 
 	-- Light Crystal pouch: carried / capacity; turns into coins at the Great Lantern.
 	local crystalIcon = UiKit.create("Frame", {
-		Position = UDim2.fromOffset(82, 80),
+		Position = UDim2.fromOffset(82, 91),
 		Size = UDim2.fromOffset(15, 15),
 		Rotation = 45,
 		BackgroundColor3 = Color3.fromRGB(150, 210, 255),
@@ -116,7 +143,7 @@ function Hud.start()
 	}, card)
 	UiKit.corner(crystalIcon, 3)
 	local crystalsLabel = UiKit.label({
-		Position = UDim2.fromOffset(106, 75),
+		Position = UDim2.fromOffset(104, 86),
 		Size = UDim2.fromOffset(110, 24),
 		TextColor3 = Color3.fromRGB(150, 210, 255),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -142,7 +169,7 @@ function Hud.start()
 
 	-- Team bonus: shown while other players are close by (the server applies the same rule).
 	local teamLabel = UiKit.label({
-		Position = UDim2.fromOffset(4, 108),
+		Position = UDim2.fromOffset(4, 118),
 		Size = UDim2.fromOffset(120, 20),
 		TextSize = 16,
 		TextColor3 = colors.good,
@@ -152,7 +179,7 @@ function Hud.start()
 	}, topLeft)
 	-- Double XP time left (store boost), next to the team bonus.
 	local boostLabel = UiKit.label({
-		Position = UDim2.fromOffset(126, 108),
+		Position = UDim2.fromOffset(126, 118),
 		Size = UDim2.fromOffset(106, 20),
 		TextSize = 16,
 		TextColor3 = colors.xp,
@@ -229,7 +256,7 @@ function Hud.start()
 		Size = UDim2.fromOffset(440, 170),
 		BackgroundTransparency = 1,
 	}, topCenter)
-	UiKit.create("UIListLayout", { HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 6) }, toasts)
+	UiKit.create("UIListLayout", { HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, toasts)
 
 	local banner = UiKit.create("Frame", {
 		Size = UDim2.fromScale(1, 1),
@@ -340,20 +367,76 @@ function Hud.start()
 		lastQuestText = text
 	end
 
-	local function showToast(text: string, color: Color3?)
-		local toast = UiKit.label({
-			Size = UDim2.fromOffset(440, 34),
-			Text = text,
-			TextSize = 24,
-			TextColor3 = color or colors.accent,
-			TextStrokeTransparency = 0.25,
-		}, toasts)
-		UiKit.pop(toast)
-		task.delay(2.6, function()
-			UiKit.tween(toast, 0.5, { TextTransparency = 1, TextStrokeTransparency = 1 }).Completed:Connect(function()
-				toast:Destroy()
-			end)
+	-- Toasts are small pills under the quest panel: the newest at the bottom, at most MAX_TOASTS at
+	-- once, and the same text again bumps a counter instead of stacking a copy.
+	local toastOrder = 0
+	local liveToasts: { { text: string, pill: Frame, label: TextLabel, count: number, token: number } } = {}
+	local function dropToast(entry)
+		local index = table.find(liveToasts, entry)
+		if index then
+			table.remove(liveToasts, index)
+		end
+		entry.pill.Name = "ToastLeaving"
+		UiKit.tween(entry.pill, 0.3, { BackgroundTransparency = 1 })
+		UiKit.tween(entry.label, 0.3, { TextTransparency = 1, TextStrokeTransparency = 1 }).Completed:Connect(function()
+			entry.pill:Destroy()
 		end)
+	end
+	local function scheduleDrop(entry)
+		entry.token += 1
+		local token = entry.token
+		task.delay(2.6, function()
+			if entry.token == token and table.find(liveToasts, entry) then
+				dropToast(entry)
+			end
+		end)
+	end
+	local function showToast(text: string, color: Color3?)
+		for _, entry in liveToasts do
+			if entry.text == text then
+				entry.count += 1
+				entry.label.Text = text .. "  x" .. entry.count
+				UiKit.pop(entry.pill)
+				scheduleDrop(entry)
+				return
+			end
+		end
+		toastOrder += 1
+		local pill = UiKit.create("Frame", {
+			Name = "Toast",
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, 34),
+			BackgroundColor3 = colors.panel,
+			BackgroundTransparency = 0.2,
+			BorderSizePixel = 0,
+			LayoutOrder = toastOrder,
+		}, toasts)
+		UiKit.corner(pill, 17)
+		UiKit.create("UIPadding", { PaddingLeft = UDim.new(0, 26), PaddingRight = UDim.new(0, 14) }, pill)
+		-- A colored dot on the left says what kind of news it is.
+		local dot = UiKit.create("Frame", {
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, -16, 0.5, 0),
+			Size = UDim2.fromOffset(10, 10),
+			BackgroundColor3 = color or colors.accent,
+			BorderSizePixel = 0,
+		}, pill)
+		UiKit.corner(dot, 5)
+		local label = UiKit.label({
+			AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, 34),
+			Text = text,
+			TextSize = 20,
+			TextColor3 = color or colors.accent,
+			TextStrokeTransparency = 0.6,
+		}, pill)
+		local entry = { text = text, pill = pill, label = label, count = 1, token = 0 }
+		table.insert(liveToasts, entry)
+		while #liveToasts > MAX_TOASTS do
+			dropToast(liveToasts[1])
+		end
+		UiKit.pop(pill)
+		scheduleDrop(entry)
 	end
 
 	-- Small coins fly from the middle of the screen into the coin counter.
@@ -528,6 +611,64 @@ function Hud.start()
 			local def = QuestData.quests[first]
 			showBanner(Strings.get("banner_quest_complete"), if def then Strings.get(def.titleKey) else nil)
 			Audio.play("questComplete")
+		end
+	end)
+
+	-- Health ------------------------------------------------------------------------------------
+	-- The card's bar follows the character every frame (cheap: it only redraws on a change). A hit
+	-- flashes the screen edges red and leaves a pale trail on the bar; below LOW_HEALTH the edges
+	-- keep pulsing until the player heals.
+	local edgesGui = UiKit.create("ScreenGui", { Name = "HealthEdges", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = -1 }, gui.Parent)
+	local edges: { Frame } = {}
+	for _, side in { { 0.5, 0, 1, 0.16, 90 }, { 0.5, 1, 1, 0.16, -90 }, { 0, 0.5, 0.1, 1, 0 }, { 1, 0.5, 0.1, 1, 180 } } do
+		local edge = UiKit.create("Frame", {
+			AnchorPoint = Vector2.new(side[1], side[2]),
+			Position = UDim2.fromScale(side[1], side[2]),
+			Size = UDim2.fromScale(side[3], side[4]),
+			BackgroundColor3 = Color3.fromRGB(200, 20, 30),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+		}, edgesGui)
+		UiKit.create("UIGradient", { Rotation = side[5], Transparency = NumberSequence.new(0, 1) }, edge)
+		table.insert(edges, edge)
+	end
+	local shownHp, shownMax = -1, -1
+	local flash = 0
+	local trailToken = 0
+	local clock = 0
+	RunService.Heartbeat:Connect(function(dt)
+		clock += dt
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if not humanoid then
+			return
+		end
+		local hp, maxHp = math.max(0, humanoid.Health), math.max(1, humanoid.MaxHealth)
+		local ratio = math.clamp(hp / maxHp, 0, 1)
+		if hp ~= shownHp or maxHp ~= shownMax then
+			local hurt = shownHp >= 0 and maxHp == shownMax and hp < shownHp - maxHp * 0.02
+			hpLabel.Text = Strings.get("hud_hp", Format.short(math.ceil(hp)), Format.short(math.ceil(maxHp)))
+			hpFill.BackgroundColor3 = HP_LOW:Lerp(HP_HIGH, math.clamp((ratio - 0.15) / 0.6, 0, 1))
+			UiKit.tween(hpFill, 0.12, { Size = UDim2.fromScale(ratio, 1) })
+			trailToken += 1
+			if hurt then
+				flash = math.max(flash, 0.55)
+				local token = trailToken
+				task.delay(0.35, function()
+					if trailToken == token then
+						UiKit.tween(hpTrail, 0.4, { Size = UDim2.fromScale(ratio, 1) })
+					end
+				end)
+			else
+				hpTrail.Size = UDim2.fromScale(ratio, 1)
+			end
+			shownHp, shownMax = hp, maxHp
+		end
+		flash = math.max(0, flash - dt * 1.6)
+		local pulse = if ratio < LOW_HEALTH and hp > 0 then 0.3 + 0.15 * math.sin(clock * 5) else 0
+		local strength = math.max(flash, pulse)
+		for _, edge in edges do
+			edge.BackgroundTransparency = 1 - strength
 		end
 	end)
 

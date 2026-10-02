@@ -8,6 +8,7 @@ local QuestData = require(Shared:WaitForChild("QuestData"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
 local Goals = require(Shared:WaitForChild("Goals"))
 local Attrs = require(script.Parent.Attrs)
+local Cinematic = require(script.Parent.Cinematic)
 local UiKit = require(script.Parent.UiKit)
 
 local player = Players.LocalPlayer
@@ -158,7 +159,7 @@ function Waypoint.start()
 			if root then
 				goal, arriveDistance = currentGoal(root.Position)
 			end
-			if goal and root then
+			if goal and root and not Cinematic.blocking() then
 				local distance = Vector3.new(goal.X - root.Position.X, 0, goal.Z - root.Position.Z).Magnitude
 				anchor.Position = goal
 				gui.Enabled = distance > math.max(arriveDistance, 4)

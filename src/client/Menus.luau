@@ -4,6 +4,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Balance = require(Shared:WaitForChild("Balance"))
@@ -53,11 +54,41 @@ local Menus = {}
 function Menus.start()
 	local gui = UiKit.create("ScreenGui", { Name = "Menus", ResetOnSpawn = false, DisplayOrder = 5 }, player:WaitForChild("PlayerGui"))
 
+	-- An open window dims the screen behind it (a click there closes the window) and softly blurs
+	-- the world, so the window reads clearly over a busy fight. Settings keeps the world sharp, so
+	-- graphics changes can be judged while the window is open.
+	local backdrop = UiKit.create("TextButton", {
+		Name = "Backdrop",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.fromRGB(10, 8, 24),
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		Visible = false,
+	}, gui)
+	local blur = UiKit.create("BlurEffect", { Name = "LvMenuBlur", Size = 0 }, workspace.CurrentCamera)
+	local sharpModals: { [Frame]: boolean } = {}
+
 	local openModal: Frame? = nil
+	local function setBackdrop(on: boolean, blurred: boolean)
+		if on then
+			backdrop.Visible = true
+		end
+		UiKit.tween(backdrop, 0.2, { BackgroundTransparency = if on then 0.55 else 1 })
+		UiKit.tween(blur, 0.25, { Size = if on and blurred then 10 else 0 })
+		if not on then
+			task.delay(0.21, function()
+				if not openModal then
+					backdrop.Visible = false
+				end
+			end)
+		end
+	end
 	local function closeModal()
 		if openModal then
 			openModal.Visible = false
 			openModal = nil
+			setBackdrop(false, false)
 		end
 	end
 	local function showModal(modal: Frame)
@@ -65,12 +96,16 @@ function Menus.start()
 			closeModal()
 			return
 		end
-		closeModal()
+		if openModal then
+			openModal.Visible = false
+		end
 		openModal = modal
 		modal.Visible = true
+		setBackdrop(true, not sharpModals[modal])
 		UiKit.pop(modal)
 		Audio.play("ui")
 	end
+	backdrop.Activated:Connect(closeModal)
 
 	local center = UiKit.region(gui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), Vector2.new(460, 400))
 
@@ -109,6 +144,38 @@ function Menus.start()
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, topRight)
+
+	-- On a keyboard every menu button has a hotkey, shown as a small key cap on its corner (Settings
+	-- has none: I/O zoom the camera and Esc is Roblox's own menu).
+	local hotkeys: { [string]: () -> () } = {} -- by key name
+	local function menuButton(props: { [string]: any }, hotkey: Enum.KeyCode?, onClick: () -> ()): TextButton
+		props.Size = UDim2.fromOffset(100, 48)
+		local button = UiKit.button(props, topRight, onClick)
+		if hotkey then
+			hotkeys[hotkey.Name] = onClick
+			if not UiKit.isTouch() then
+				local cap = UiKit.label({
+					Name = "KeyCap",
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Position = UDim2.fromOffset(6, 6),
+					Size = UDim2.fromOffset(20, 20),
+					BackgroundColor3 = colors.panel,
+					BackgroundTransparency = 0.1,
+					Text = hotkey.Name,
+					TextSize = 13,
+					TextColor3 = colors.text,
+				}, button)
+				UiKit.corner(cap, 6)
+			end
+		end
+		return button
+	end
+	UserInputService.InputBegan:Connect(function(input, processed)
+		local action = input.KeyCode and hotkeys[input.KeyCode.Name]
+		if action and not processed and not UserInputService:GetFocusedTextBox() and not Cinematic.blocking() and topRight.Visible then
+			action()
+		end
+	end)
 
 	-- Bag -----------------------------------------------------------------------------------
 	local bag, bagBody = modal("bag_title", 440)
@@ -1498,6 +1565,7 @@ function Menus.start()
 	-- The window itself is client/SettingsMenu; every change goes to the server (validated and
 	-- saved with the profile) and comes back as Pref_<key> attributes (client/Settings).
 	local settings, settingsBody = modal("settings_title", 460, 640)
+	sharpModals[settings] = true
 	SettingsMenu.build(settingsBody, function(changes)
 		setSetting:FireServer(changes)
 	end)
@@ -1534,11 +1602,11 @@ function Menus.start()
 		end
 	end)
 
-	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_weapons"), LayoutOrder = 0 }, topRight, function()
+	menuButton({ Text = Strings.get("menu_weapons"), LayoutOrder = 0 }, Enum.KeyCode.G, function()
 		refreshWeapons()
 		showModal(weapons)
 	end)
-	local chestsButton = UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_chests"), LayoutOrder = 1, BackgroundColor3 = colors.coin }, topRight, function()
+	local chestsButton = menuButton({ Text = Strings.get("menu_chests"), LayoutOrder = 1, BackgroundColor3 = colors.coin }, Enum.KeyCode.C, function()
 		refreshChests()
 		showModal(chestsModal)
 	end)
@@ -1555,15 +1623,15 @@ function Menus.start()
 		Visible = false,
 	}, chestsButton)
 	UiKit.corner(chestBadge, 12)
-	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_legends"), LayoutOrder = 2, BackgroundColor3 = colors.boss }, topRight, function()
+	menuButton({ Text = Strings.get("menu_legends"), LayoutOrder = 2, BackgroundColor3 = colors.boss }, Enum.KeyCode.L, function()
 		refreshLegends()
 		showModal(legends)
 	end)
-	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_shop"), LayoutOrder = 6, BackgroundColor3 = colors.accent }, topRight, function()
+	menuButton({ Text = Strings.get("menu_shop"), LayoutOrder = 6, BackgroundColor3 = colors.accent }, Enum.KeyCode.H, function()
 		refreshStore()
 		showModal(store)
 	end)
-	local passButton = UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_pass"), LayoutOrder = 7, BackgroundColor3 = colors.boss }, topRight, function()
+	local passButton = menuButton({ Text = Strings.get("menu_pass"), LayoutOrder = 7, BackgroundColor3 = colors.boss }, Enum.KeyCode.P, function()
 		refreshPass()
 		showModal(pass)
 	end)
@@ -1589,7 +1657,7 @@ function Menus.start()
 			end
 		end)
 	end
-	local logButton = UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_log"), LayoutOrder = 5, BackgroundColor3 = colors.good }, topRight, function()
+	local logButton = menuButton({ Text = Strings.get("menu_log"), LayoutOrder = 5, BackgroundColor3 = colors.good }, Enum.KeyCode.J, function()
 		refreshLog()
 		showModal(log)
 	end)
@@ -1618,17 +1686,16 @@ function Menus.start()
 		end
 	end)
 	refreshLogBadge()
-	UiKit.button({ Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_bag"), LayoutOrder = 3 }, topRight, function()
+	menuButton({ Text = Strings.get("menu_bag"), LayoutOrder = 3 }, Enum.KeyCode.B, function()
 		refreshBag()
 		showModal(bag)
 	end)
-	UiKit.button({
-		Size = UDim2.fromOffset(100, 48),
+	menuButton({
 		Text = Strings.get("menu_settings"),
 		LayoutOrder = 4,
 		BackgroundColor3 = colors.panelLight,
 		TextColor3 = colors.text,
-	}, topRight, function()
+	}, nil, function()
 		showModal(settings)
 	end)
 

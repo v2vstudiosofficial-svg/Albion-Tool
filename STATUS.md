@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M30 (saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M31 (arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -40,10 +40,15 @@
   M30: saldırı sesleri ve toz (istemci, yalnızca 90 birim yakındakiler): şarj edenler eşeler/atılır/iner, atıcılar "pop",
   Shade mor duman, bosslar uğultu + yer çarpmasında gümbürtü ve toz halkası; sesler 3B (`Audio.playAt`), `pitch` alanı.
   Yalnızca kurulumdaki `content/sounds` dosyaları kullanıldı; sonra tüm sesler Creator Store kimlikleriyle değiştirildi (ProSoundEffects + Roblox; 16/16 Studio'da yüklendi); müzik bölgeye göre (`shared/MusicLogic`, 7 APM parçası; eski parça tamamen susunca yenisi başlar).
+  M31: arayüz cilası: tam sinematik sahnelerde HUD/menü/mini harita/emote/oyuncu paneli ve görev işareti gizlenir; açık pencerenin
+  arkasında karartma (tıklayınca kapanır) ve dünya bulanıklığı (Settings hariç, grafik ayarı görülsün diye); masaüstünde menü
+  kısayolları (G Weapons, C Chests, L Legends, B Bag, J Log, H Shop, P Pass) ve düğme köşesinde tuş rozeti; oyuncu kartında can
+  barı (Roblox'un küçük barı kapalı; renk yeşilden kırmızıya, vuruşta soluk iz), vuruşta ekran kenarı kırmızı parlar, %30 altında
+  nabız gibi atar; bildirimler hap biçiminde, aynı metin "x2" diye birleşir, en çok 4 tane; dünya isim etiketleri sabit piksel boyutu.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 72, balance, api, scene 18, sim 62, client 56/57/57/1, place; hepsi geçti (sinematik akış,
+- logic 72, balance, api, scene 18, sim 62, client 59/60/60/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.

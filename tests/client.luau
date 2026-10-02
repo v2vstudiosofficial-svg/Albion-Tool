@@ -126,6 +126,9 @@ H.services.UserInputService = {
 	GetMouseLocation = function()
 		return Vector2.new(500, 280)
 	end,
+	GetFocusedTextBox = function()
+		return nil
+	end,
 	InputChanged = H.Signal.new(),
 	InputBegan = H.Signal.new(),
 	InputEnded = H.Signal.new(),
@@ -222,7 +225,7 @@ local function isShown(object): boolean
 		if current:IsA("GuiObject") and not current.Visible then
 			return false
 		end
-		if current:IsA("LayerCollector") and current:IsA("BillboardGui") and not current.Enabled then
+		if current:IsA("LayerCollector") and not current.Enabled then
 			return false
 		end
 		current = current.Parent
@@ -1148,6 +1151,9 @@ test("story scenes: typewriter caption, tap to continue, Skip, soft captions, qu
 	if abilityBar then
 		eq(abilityBar.Visible, false, "the ability bar hides during a full scene (it would sit under Skip)")
 	end
+	for _, name in { "Hud", "Menus", "Minimap" } do
+		eq(playerGui[name].Enabled, false, name .. " hidden during a full scene")
+	end
 	local first = Strings.get(scene.lines[1].key)
 	assert(not shownText(first), "the caption is still being typed")
 	advance(0.6)
@@ -1172,6 +1178,9 @@ test("story scenes: typewriter caption, tap to continue, Skip, soft captions, qu
 	assert(not barsVisible(), "bars away")
 	if abilityBar then
 		eq(abilityBar.Visible, true, "the ability bar comes back after the scene")
+	end
+	for _, name in { "Hud", "Menus", "Minimap" } do
+		eq(playerGui[name].Enabled, true, name .. " back after the scene")
 	end
 	-- Skip ends a scene at once.
 	remotes.Cinematic.OnClientEvent:Fire("shadow_king")
@@ -1678,6 +1687,91 @@ test("players board: everyone on the server, highest level first, opened by butt
 	friend:SetAttribute("Title", nil)
 	friend:SetAttribute("Rebirths", nil)
 	friend:SetAttribute("TowerBest", nil)
+end)
+
+test("player card: health bar, red screen edges on a hit and at low health, toasts merge and cap", function()
+	local humanoid = hero.Character:FindFirstChildOfClass("Humanoid")
+	local Format = H.loadModule("src/shared/Format.luau")
+	humanoid.MaxHealth, humanoid.Health = 200, 200
+	advance(0.2)
+	assert(shownText(Strings.get("hud_hp", Format.short(200), Format.short(200))), "full health shown")
+	local edges = playerGui.HealthEdges
+	local function edgeStrength(): number
+		return 1 - edges:GetChildren()[1].BackgroundTransparency
+	end
+	eq(edgeStrength(), 0, "no red edges at full health")
+	humanoid.Health = 150
+	advance(0.05)
+	assert(shownText(Strings.get("hud_hp", Format.short(150), Format.short(200))), "the bar follows a hit")
+	assert(edgeStrength() > 0.3, "a hit flashes the edges")
+	advance(1)
+	eq(edgeStrength(), 0, "the flash fades")
+	humanoid.Health = 40
+	advance(0.5)
+	assert(edgeStrength() > 0.1, "low health keeps the edges red")
+	humanoid.Health = 200
+	advance(1)
+	eq(edgeStrength(), 0, "healed: edges clear")
+	-- Toasts: the same news twice is one pill with a counter, and only a few show at once.
+	local notice = remotes.Notice
+	notice.OnClientEvent:Fire("notice_respawn")
+	notice.OnClientEvent:Fire("notice_respawn")
+	advance(0.1)
+	assert(shownText(Strings.get("notice_respawn") .. "  x2"), "repeated toast counts up")
+	for _ = 1, 6 do
+		notice.OnClientEvent:Fire("data_loading")
+		notice.OnClientEvent:Fire("players_title")
+		notice.OnClientEvent:Fire("menu_bag")
+		notice.OnClientEvent:Fire("menu_pass")
+		notice.OnClientEvent:Fire("menu_log")
+	end
+	advance(0.1)
+	local pills = 0
+	for _, descendant in playerGui.Hud:GetDescendants() do
+		if descendant.Name == "Toast" and descendant.Parent and isShown(descendant) then
+			pills += 1
+		end
+	end
+	assert(pills <= 4, "at most four toasts at once, got " .. pills)
+	advance(4)
+end)
+
+test("menu windows: hotkeys, key caps, a dim backdrop that closes them, blur except in Settings", function()
+	local backdrop = playerGui.Menus.Backdrop
+	-- Window titles are labels (the menu buttons with the same words are buttons).
+	local function windowOpen(key: string): boolean
+		for _, descendant in playerGui.Menus:GetDescendants() do
+			if descendant:IsA("TextLabel") and descendant.Text == Strings.get(key) and isShown(descendant) then
+				return true
+			end
+		end
+		return false
+	end
+	local blur = workspace.CurrentCamera:FindFirstChild("LvMenuBlur")
+	assert(blur, "blur effect exists")
+	local bagButton = findButton(Strings.get("menu_bag"))
+	eq(bagButton:FindFirstChild("KeyCap") ~= nil, not touchMode, "key cap only on a keyboard")
+	eq(findButton(Strings.get("menu_settings")):FindFirstChild("KeyCap"), nil, "Settings has no hotkey")
+	H.services.UserInputService.InputBegan:Fire({ KeyCode = Enum.KeyCode.B }, false)
+	advance(0.4)
+	assert(windowOpen("bag_title"), "B opens the bag")
+	assert(isShown(backdrop) and backdrop.BackgroundTransparency < 0.7, "the screen dims")
+	assert(blur.Size > 5, "the world blurs")
+	H.services.UserInputService.InputBegan:Fire({ KeyCode = Enum.KeyCode.B }, true)
+	advance(0.1)
+	assert(windowOpen("bag_title"), "a key the game already used does nothing")
+	H.services.UserInputService.InputBegan:Fire({ KeyCode = Enum.KeyCode.G }, false)
+	advance(0.4)
+	assert(windowOpen("menu_weapons") and not windowOpen("bag_title"), "G switches to weapons")
+	click(backdrop)
+	advance(0.4)
+	assert(not windowOpen("menu_weapons"), "a click on the dim backdrop closes the window")
+	assert(not isShown(backdrop) and blur.Size < 0.5, "backdrop and blur gone")
+	click(findButton(Strings.get("menu_settings")))
+	advance(0.4)
+	assert(isShown(backdrop) and blur.Size < 0.5, "Settings dims but keeps the world sharp")
+	click(findButton(Strings.get("menu_settings")))
+	advance(0.4)
 end)
 
 test("bag: equip an owned charm, locked ones do nothing", function()

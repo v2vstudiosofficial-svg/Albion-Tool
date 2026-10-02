@@ -245,7 +245,7 @@ local function buildBoard(parent: Instance)
 		RequiresLineOfSight = false,
 	})
 	local tag = ensure(body, "NameTag", "BillboardGui", {
-		Size = UDim2.fromScale(6, 1),
+		Size = UDim2.fromOffset(220, 30),
 		StudsOffset = Vector3.new(0, 4.2, 0),
 		MaxDistance = 70,
 	})
@@ -253,7 +253,7 @@ local function buildBoard(parent: Instance)
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		Text = Strings.get(spec.nameKey),
-		TextScaled = true,
+		TextSize = 20,
 		Font = Enum.Font.FredokaOne,
 		TextColor3 = Color3.new(1, 1, 1),
 		TextStrokeTransparency = 0.4,
@@ -299,7 +299,7 @@ local function buildTowerGate(parent: Instance)
 		RequiresLineOfSight = false,
 	})
 	local tag = ensure(body, "NameTag", "BillboardGui", {
-		Size = UDim2.fromScale(7, 1),
+		Size = UDim2.fromOffset(240, 32),
 		StudsOffset = Vector3.new(0, 7, 0),
 		MaxDistance = 80,
 	})
@@ -307,7 +307,7 @@ local function buildTowerGate(parent: Instance)
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		Text = Strings.get(spec.nameKey),
-		TextScaled = true,
+		TextSize = 20,
 		Font = Enum.Font.FredokaOne,
 		TextColor3 = Color3.new(1, 1, 1),
 		TextStrokeTransparency = 0.4,
@@ -353,7 +353,7 @@ local function buildNpc(parent: Instance, name: string, robe: Color3, hat: Color
 		RequiresLineOfSight = false,
 	})
 	local tag = ensure(body, "NameTag", "BillboardGui", {
-		Size = UDim2.fromScale(6, 1),
+		Size = UDim2.fromOffset(220, 30),
 		StudsOffset = Vector3.new(0, 4.4, 0),
 		MaxDistance = 70,
 	})
@@ -361,7 +361,7 @@ local function buildNpc(parent: Instance, name: string, robe: Color3, hat: Color
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		Text = Strings.get(spec.nameKey),
-		TextScaled = true,
+		TextSize = 20,
 		Font = Enum.Font.FredokaOne,
 		TextColor3 = Color3.new(1, 1, 1),
 		TextStrokeTransparency = 0.4,

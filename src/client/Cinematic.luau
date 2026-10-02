@@ -26,6 +26,8 @@ local BAR_HEIGHT = 0.11 -- letterbox bar, as a fraction of the screen
 local SOFT_MIN_SECONDS = 3.2
 local SOFT_SECONDS_PER_CHAR = 0.045
 local FOV = 38
+-- Screens hidden while a full scene plays, so only the letterbox, caption and Skip are left.
+local HIDDEN_IN_SCENES = { "Hud", "Menus", "Minimap", "Emotes", "PlayerBoard" }
 
 local Cinematic = {}
 
@@ -176,6 +178,16 @@ function Cinematic.start()
 		end
 	end
 
+	local function setHud(on: boolean)
+		local playerGui = player:FindFirstChild("PlayerGui")
+		for _, name in HIDDEN_IN_SCENES do
+			local screen = playerGui and playerGui:FindFirstChild(name)
+			if screen and screen:IsA("ScreenGui") then
+				screen.Enabled = on
+			end
+		end
+	end
+
 	local function playScene(sceneId: string)
 		local scene = StoryData.scenes[sceneId]
 		if not scene then
@@ -190,6 +202,7 @@ function Cinematic.start()
 			blockingControls = true
 			setControls(false)
 			setBars(true)
+			setHud(false)
 			-- Full scenes keep the caption above the letterbox bar.
 			region.Position = UDim2.new(0.5, 0, 1 - BAR_HEIGHT, -14)
 		else
@@ -270,6 +283,7 @@ function Cinematic.start()
 		if full then
 			CameraRig.setShot(nil)
 			setBars(false)
+			setHud(true)
 			blockingControls = false
 			setControls(true)
 		end

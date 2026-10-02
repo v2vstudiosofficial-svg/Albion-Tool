@@ -240,6 +240,7 @@ local texts = {
 	hud_coins = "%s",
 	hud_xp = "%s / %s XP",
 	hud_xp_max = "MAX LEVEL",
+	hud_hp = "%s / %s",
 	reward_purify = "Friend made! +%s XP",
 	reward_purify_many = "%d friends made! +%s XP",
 	reward_quest = "Quest complete! +%d XP  +%d Coins",
