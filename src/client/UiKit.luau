@@ -1,4 +1,5 @@
 -- Small UI toolkit so every panel and button shares the same rounded, warm look.
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -173,6 +174,35 @@ function UiKit.withSideIcon(button: TextButton, icon: string)
 		Text = icon,
 		TextSize = 18,
 	}, button)
+end
+
+-- A soft glowing outline that beats like a pulse, for buttons that have something waiting
+-- ("Claim!", "Open!"). One loop animates every pulsing button.
+local pulsing: { [GuiObject]: UIStroke } = {}
+local pulseLoop: RBXScriptConnection? = nil
+
+function UiKit.setPulse(button: GuiObject, on: boolean)
+	local stroke = pulsing[button]
+	if on and not stroke then
+		stroke = UiKit.create("UIStroke", { Name = "Pulse", Color = Color3.fromRGB(255, 240, 160), Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, button)
+		pulsing[button] = stroke
+		if not pulseLoop then
+			pulseLoop = RunService.Heartbeat:Connect(function()
+				local beat = (math.sin(os.clock() * 5) + 1) / 2
+				for target, outline in pulsing do
+					if target.Parent then
+						outline.Transparency = 0.15 + 0.6 * beat
+						outline.Thickness = 2 + 2 * beat
+					else
+						pulsing[target] = nil
+					end
+				end
+			end)
+		end
+	elseif not on and stroke then
+		pulsing[button] = nil
+		stroke:Destroy()
+	end
 end
 
 function UiKit.pop(instance: GuiObject)

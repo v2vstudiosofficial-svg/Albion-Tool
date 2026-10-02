@@ -918,6 +918,7 @@ test("chests menu: slots by level, one unlock at a time, timers, open and reward
 	click(findButton(Strings.get("chest_wait")))
 	eq(sent("ChestAction"), 1, "waiting chest sends nothing")
 	advance(ChestData.chests.wood.unlockSeconds)
+	assert(findButton(Strings.get("chest_open")):FindFirstChild("Pulse"), "a chest ready to open glows")
 	click(findButton(Strings.get("chest_open")))
 	eq(sent("ChestAction", function(args)
 		return args[1] == "open" and args[2] == 1
@@ -1969,8 +1970,10 @@ test("creature labels: tinted by the level gap, bars keep a trail of the last hi
 	assert(name.TextColor3.G > 0.9, "a fair fight: plain cream")
 	setAttributes({ Level = 26 })
 	assert(name.TextColor3.R < 0.7, "far below the player: grey")
+	eq(gui.MaxDistance, 40, "a calm creature's label shows only up close")
 	H.setAttribute(enemy, "Hp", 40)
 	advance(0.1)
+	eq(gui.MaxDistance, 90, "a hurt one shows from further away")
 	local fill, trail = gui:FindFirstChild("Fill", true), gui:FindFirstChild("Trail", true)
 	assert(fill.Size.X.Scale < 0.45 and trail.Size.X.Scale > 0.9, "the trail lingers after a hit")
 	advance(1)

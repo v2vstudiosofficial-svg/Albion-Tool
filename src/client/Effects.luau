@@ -26,6 +26,10 @@ local SPORE_COLOR = Color3.fromRGB(255, 130, 200)
 local SHADOW_COLOR = Color3.fromRGB(150, 80, 230)
 local WARN_COLOR = Color3.fromRGB(255, 120, 90)
 local GOLD = Color3.fromRGB(255, 220, 120)
+-- Creature labels: calm, unhurt creatures show theirs only this close, so a busy forest is not a
+-- wall of names; once a creature is hurt or chasing someone it shows from further away.
+local LABEL_DISTANCE_CALM = 40
+local LABEL_DISTANCE_FIGHT = 90
 -- Creature names are tinted by how their level compares with the player's (CombatFeel.threat).
 local THREAT_COLORS = {
 	trivial = Color3.fromRGB(165, 165, 180),
@@ -972,7 +976,7 @@ local function attachEnemyUi(model: Instance)
 	local gui = UiKit.create("BillboardGui", {
 		Size = UDim2.fromOffset(140, 34),
 		StudsOffset = Vector3.new(0, body.Size.Y * 0.5 + 1.6, 0),
-		MaxDistance = 90,
+		MaxDistance = LABEL_DISTANCE_CALM,
 		Adornee = body,
 		Enabled = Settings.get("enemyBars"),
 	}, billboards)
@@ -1025,6 +1029,8 @@ local function attachEnemyUi(model: Instance)
 		local hp = model:GetAttribute("Hp") or 0
 		local maxHp = model:GetAttribute("MaxHp") or 1
 		local ratio = math.clamp(hp / maxHp, 0, 1)
+		-- Calm, unhurt creatures only show their label up close; fighting ones from further away.
+		gui.MaxDistance = if ratio < 1 or model:GetAttribute("Aggro") then LABEL_DISTANCE_FIGHT else LABEL_DISTANCE_CALM
 		UiKit.tween(fill, 0.12, { Size = UDim2.fromScale(ratio, 1) })
 		trailToken += 1
 		local token = trailToken
@@ -1041,6 +1047,7 @@ local function attachEnemyUi(model: Instance)
 	model:GetAttributeChangedSignal("Hp"):Connect(refresh)
 	refresh()
 	model:GetAttributeChangedSignal("Aggro"):Connect(function()
+		refresh()
 		if model:GetAttribute("Aggro") and model:GetAttribute("Alive") then
 			Effects.popup(body.Position + Vector3.new(0, stats.size * 0.5 + 1, 0), "!", Color3.fromRGB(255, 150, 80), 34)
 		end

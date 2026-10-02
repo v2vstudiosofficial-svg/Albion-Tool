@@ -800,6 +800,7 @@ function Menus.start()
 			view.stroke.Transparency = 1
 			view.ready = false
 			view.lid.Position = UDim2.fromOffset(12, 10)
+			UiKit.setPulse(view.button, false)
 			local function showChest(color: Color3?)
 				view.lid.Visible, view.chestBody.Visible, view.clasp.Visible = color ~= nil, color ~= nil, color ~= nil
 				if color then
@@ -839,6 +840,7 @@ function Menus.start()
 					view.button.BackgroundColor3 = colors.good
 					view.button.TextColor3 = colors.panel
 					view.ready = true
+					UiKit.setPulse(view.button, true)
 				end
 			end
 		end
@@ -1088,6 +1090,7 @@ function Menus.start()
 				view.button.Text = Strings.get("log_done")
 				view.button.BackgroundColor3 = colors.panel
 				view.button.TextColor3 = colors.muted
+				UiKit.setPulse(view.button, false)
 			else
 				view.progress.Text = Strings.get("log_progress", Format.short(math.min(entry.progress, tier.goal)), Format.short(tier.goal))
 				view.barFill.Size = UDim2.fromScale(math.clamp(entry.progress / tier.goal, 0, 1), 1)
@@ -1095,6 +1098,7 @@ function Menus.start()
 				view.button.Text = if ready then Strings.get("log_claim") else Strings.get("hud_coins", Format.short(tier.coins))
 				view.button.BackgroundColor3 = if ready then colors.good else colors.panel
 				view.button.TextColor3 = if ready then colors.panel else colors.coin
+				UiKit.setPulse(view.button, ready)
 			end
 		end
 	end
@@ -1153,6 +1157,7 @@ function Menus.start()
 				view.button.Text = if done then Strings.get("bounty_claim") else Strings.get("bounty_progress", entry.progress, entry.goal)
 				view.button.BackgroundColor3 = if done then colors.good else colors.panel
 				view.button.TextColor3 = if done then colors.panel else colors.muted
+				UiKit.setPulse(view.button, done)
 			end
 		end
 	end
@@ -1521,6 +1526,7 @@ function Menus.start()
 			setButton(premiumButton, Strings.get("pass_get_premium") .. "  " .. Strings.get("shop_soon"), false)
 		end
 		setButton(claimAllButton, Strings.get("pass_claim_all"), passClaimable() > 0, colors.good)
+		UiKit.setPulse(claimAllButton, passClaimable() > 0)
 		for t, cells in passCells do
 			for trackName, cell in cells do
 				local claimed = if trackName == "free" then free[tostring(t)] else premiumClaimed[tostring(t)]
