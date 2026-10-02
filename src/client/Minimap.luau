@@ -7,9 +7,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MapLogic = require(Shared:WaitForChild("MapLogic"))
+local MusicLogic = require(Shared:WaitForChild("MusicLogic"))
+local Strings = require(Shared:WaitForChild("Strings"))
 local WorldData = require(Shared:WaitForChild("WorldData"))
 local Audio = require(script.Parent.Audio)
 local Cinematic = require(script.Parent.Cinematic)
+local Effects = require(script.Parent.Effects)
+local Hud = require(script.Parent.Hud)
 local Settings = require(script.Parent.Settings)
 local UiKit = require(script.Parent.UiKit)
 local Waypoint = require(script.Parent.Waypoint)
@@ -24,6 +28,17 @@ local GIFT_GAP = 8
 local GIFT_WIDTH = 96
 local REFRESH_SECONDS = 0.1
 local MAX_OTHERS = 12
+local MAX_RIFTS = 4
+-- Place names by MusicLogic theme.
+local PLACE_KEYS = {
+	village = "place_village",
+	wilds = "place_wilds",
+	marsh = "place_marsh",
+	peaks = "place_peaks",
+	citadel = "place_citadel",
+	boss = "place_boss",
+	tower = "place_tower",
+}
 local EDGE_MARGIN = 7
 
 -- Zone tint by the first level of the zone's range (the same bands the story follows).
@@ -66,7 +81,7 @@ function Minimap.start()
 	local gui = UiKit.create("ScreenGui", { Name = "Minimap", ResetOnSpawn = false, DisplayOrder = 3 }, player:WaitForChild("PlayerGui"))
 	-- One region for the map and the daily gift button beside it, so they scale together and never
 	-- overlap; it starts below the top-right button grid even at the largest interface size.
-	local region = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -12, 0, TOP_OFFSET), Vector2.new(SIZE + GIFT_GAP + GIFT_WIDTH, SIZE))
+	local region = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -12, 0, TOP_OFFSET), Vector2.new(SIZE + GIFT_GAP + GIFT_WIDTH, SIZE + 22))
 	Minimap.region = region
 	local mode = "near"
 	local map = UiKit.button({
@@ -104,6 +119,46 @@ function Minimap.start()
 		{ dot = dot(map, 9, colors.accent, 2), point = WorldData.plaza },
 		{ dot = dot(map, 8, Color3.fromRGB(180, 120, 230), 2), point = WorldData.areas.tower.center },
 	}
+	-- North is always up; a small N on the top edge says so.
+	UiKit.label({
+		Name = "North",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 2),
+		Size = UDim2.fromOffset(16, 14),
+		Text = Strings.get("map_north"),
+		TextSize = 12,
+		TextColor3 = colors.accent,
+		TextStrokeTransparency = 0.3,
+		ZIndex = 6,
+	}, map)
+	-- Open Shadow Rifts: purple dots that pulse.
+	local rifts = {}
+	for index = 1, MAX_RIFTS do
+		rifts[index] = dot(map, 9, Color3.fromRGB(170, 90, 255), 3)
+		rifts[index].Name = "Rift"
+		UiKit.create("UIStroke", { Color = Color3.fromRGB(240, 210, 255), Thickness = 1.5 }, rifts[index])
+	end
+	-- Where you are, under the map.
+	local placeLabel = UiKit.label({
+		Name = "Place",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, SIZE + 2),
+		Size = UDim2.fromOffset(SIZE, 18),
+		TextSize = 14,
+		TextColor3 = colors.text,
+		TextStrokeTransparency = 0.4,
+	}, region)
+	-- Walking into a new place shows its name in the middle banner for a moment.
+	local shownPlace: string? = nil
+	local function enterPlace(theme: string)
+		local name = Strings.get(PLACE_KEYS[theme] or "place_village")
+		placeLabel.Text = name
+		-- Boss arenas announce their boss instead.
+		if shownPlace ~= nil and shownPlace ~= theme and theme ~= "boss" and not Cinematic.playing() then
+			Hud.banner(name, nil, "place")
+		end
+		shownPlace = theme
+	end
 	local others = {}
 	for index = 1, MAX_OTHERS do
 		others[index] = dot(map, 5, Color3.fromRGB(240, 240, 240), 3)
@@ -138,12 +193,16 @@ function Minimap.start()
 
 	local function refresh()
 		map.Visible = Settings.get("minimap") == true and player:GetAttribute("DataState") == "ready" and not Cinematic.playing()
-		if not map.Visible then
-			return
-		end
+		placeLabel.Visible = map.Visible
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if not root then
+		if root and player:GetAttribute("DataState") == "ready" then
+			local theme = MusicLogic.theme(root.Position.X, root.Position.Z)
+			if theme ~= shownPlace then
+				enterPlace(theme)
+			end
+		end
+		if not map.Visible or not root then
 			return
 		end
 		local position = root.Position
@@ -169,6 +228,17 @@ function Minimap.start()
 		end
 		for index = used + 1, MAX_OTHERS do
 			others[index].Visible = false
+		end
+		local riftCenters = Effects.activeRifts()
+		local beat = 9 + 3 * math.sin(os.clock() * 5)
+		for index, rift in rifts do
+			local center = riftCenters[index]
+			if center then
+				place(rift, view, center.X, center.Z, true)
+				rift.Size = UDim2.fromOffset(beat, beat)
+			else
+				rift.Visible = false
+			end
 		end
 		local goal = Waypoint.goal()
 		if goal then

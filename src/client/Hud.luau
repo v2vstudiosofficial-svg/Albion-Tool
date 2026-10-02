@@ -40,11 +40,19 @@ local colors = UiKit.colors
 local Hud = {}
 
 local toastFunction: ((string, Color3?) -> ())? = nil
+local bannerFunction: ((string, string?, string?) -> ())? = nil
 
 -- Lets other client modules show a short toast once the HUD exists.
 function Hud.toast(text: string, color: Color3?)
 	if toastFunction then
 		toastFunction(text, color)
+	end
+end
+
+-- Lets other client modules show the middle banner (style "celebrate", "danger", "place" or nil).
+function Hud.banner(title: string, subtitle: string?, style: string?)
+	if bannerFunction then
+		bannerFunction(title, subtitle, style)
 	end
 end
 
@@ -637,7 +645,7 @@ function Hud.start()
 		bannerSub.Text = subtitle or ""
 		rays.Visible = style == "celebrate"
 		ribbon.BackgroundColor3 = if style == "danger" then Color3.fromRGB(60, 20, 70) else Color3.fromRGB(25, 20, 45)
-		bannerTitle.TextColor3 = if style == "danger" then Color3.fromRGB(230, 170, 255) else colors.accent
+		bannerTitle.TextColor3 = if style == "danger" then Color3.fromRGB(230, 170, 255) elseif style == "place" then Color3.fromRGB(255, 240, 210) else colors.accent
 		banner.Visible = true
 		-- Toasts sit right under the quest panel, where the banner's ribbon would cross them.
 		toasts.Visible = false
@@ -669,6 +677,8 @@ function Hud.start()
 			end
 		end)
 	end
+
+	bannerFunction = showBanner
 
 	local knownLevel: number? = nil
 	local function onLevelChanged()

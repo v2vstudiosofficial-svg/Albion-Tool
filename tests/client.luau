@@ -1958,6 +1958,39 @@ test("defeat: the screen says what happened, counts down and gives a tip, then c
 	assert(not shownText(Strings.get("defeat_title")), "gone once alive again")
 end)
 
+test("mini map: north mark, the place you are in, a title when you enter a new place, open rifts", function()
+	teleport(vec(WorldData.spawn, 3))
+	advance(0.5)
+	assert(shownText(Strings.get("map_north")), "N on the map")
+	assert(shownText(Strings.get("place_village")), "the village named under the map")
+	teleport(vec(WorldData.areas.peaks.center, 3))
+	advance(0.3)
+	local function bannerSays(text: string): boolean
+		for _, label in playerGui.Hud:GetDescendants() do
+			if label:IsA("TextLabel") and label.Text == text and isShown(label) then
+				return true
+			end
+		end
+		return false
+	end
+	assert(bannerSays(Strings.get("place_peaks")), "entering the peaks shows their name in the banner")
+	advance(3.5)
+	assert(not bannerSays(Strings.get("place_peaks")), "then it goes")
+	local center = vec(WorldData.areas.marsh.center, 0)
+	remotes.Fx.OnClientEvent:Fire("riftOpened", "marsh", center)
+	advance(0.3)
+	local riftShown = false
+	for _, child in playerGui.Minimap:GetDescendants() do
+		if child.Name == "Rift" and isShown(child) then
+			riftShown = true
+		end
+	end
+	assert(riftShown, "the open rift is on the map")
+	remotes.Fx.OnClientEvent:Fire("riftClosed", "marsh", center, true)
+	teleport(vec(WorldData.spawn, 3))
+	advance(3.5)
+end)
+
 test("purify streak: counts chained purifications, celebrates milestones, leaves when the chain breaks", function()
 	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
 	advance(CombatFeel.WINDOW + 1)

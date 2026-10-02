@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M54 (günlük hediye açılışı; M53: silah güç farkı; M52: boss öfkesi, görev tiki, kapanış sesi; M51: Screen flashes ayarı; M50: yenilgi ekranı; M49: silah kartı simgeleri; M48: sade etiketler, parlayan ödül düğmeleri; M47: oyuna özel etkileşim istemi; M46: sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M55 (mini harita ve yer adları; M54: günlük hediye açılışı; M53: silah güç farkı; M52: boss öfkesi, görev tiki, kapanış sesi; M51: Screen flashes ayarı; M50: yenilgi ekranı; M49: silah kartı simgeleri; M48: sade etiketler, parlayan ödül düğmeleri; M47: oyuna özel etkileşim istemi; M46: sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -112,6 +112,9 @@
   yuva seviyesi ve yıldızlar hesaba katılır).
   M54: günlük hediye alınınca sandık açılış anı altın "Daily Gift" olarak oynar, sikkeler sayarak artar (miktar sikke
   değişiminden; ChestReveal artık kendi başlık/renk alabiliyor).
+  M55: mini haritada üst kenarda N, açık Shadow Rift'ler için nabız gibi atan mor noktalar (`Effects.activeRifts`), haritanın
+  altında bulunduğun yerin adı; yeni bir yere girince ortadaki şeritte yer adı (Lantern Village, Whisperwood, Misty Marsh,
+  Frostpeak Heights, Shadow Citadel, Shadow Tower; boss arenaları boss'u duyurur). `Hud.banner` başka modüllere açıldı.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

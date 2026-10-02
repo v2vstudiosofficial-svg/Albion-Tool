@@ -477,6 +477,15 @@ end
 local RIFT_COLOR = Color3.fromRGB(170, 90, 255)
 local portals: { [string]: { parts: { BasePart }, center: Vector3 } } = {}
 
+-- Centers of the Shadow Rifts open right now (the mini map marks them).
+function Effects.activeRifts(): { Vector3 }
+	local centers = {}
+	for _, portal in portals do
+		table.insert(centers, portal.center)
+	end
+	return centers
+end
+
 local function onRiftOpened(areaId: string, center: Vector3)
 	if portals[areaId] then
 		return
