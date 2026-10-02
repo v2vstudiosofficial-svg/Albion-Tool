@@ -34,6 +34,7 @@ function DailyGift.start()
 		Audio.play("ui")
 	end)
 	button.Name = "DailyGiftButton"
+	UiKit.withIcon(button, Strings.get("icon_gift"), 24)
 	local announced = false
 	local function refresh()
 		local ready = player:GetAttribute("DataState") == "ready" and player:GetAttribute("DailyReady") == true

@@ -56,12 +56,13 @@ function Emotes.start()
 		Visible = false,
 	}, corner)
 	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, panel)
-	UiKit.button({ Size = UDim2.fromOffset(100, 40), Text = Strings.get("emote_button"), TextSize = 18, BackgroundColor3 = colors.panelLight, TextColor3 = colors.text }, corner, function()
+	local emoteButton = UiKit.button({ Size = UDim2.fromOffset(100, 40), Text = Strings.get("emote_button"), TextSize = 18, BackgroundColor3 = colors.panelLight, TextColor3 = colors.text }, corner, function()
 		panel.Visible = not panel.Visible
 		Audio.play("ui")
 	end)
+	UiKit.withSideIcon(emoteButton, Strings.get("icon_emotes"))
 	for order, id in EmoteData.order do
-		UiKit.button({
+		local emote = UiKit.button({
 			LayoutOrder = order,
 			Size = UDim2.fromOffset(46, 46),
 			Text = Strings.get(EmoteData.emotes[id].nameKey),
@@ -74,6 +75,8 @@ function Emotes.start()
 			panel.Visible = false
 			Audio.play("ui")
 		end)
+		UiKit.withIcon(emote, Strings.get(EmoteData.emotes[id].iconKey), 18)
+		emote.TextSize = 11
 	end
 
 	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, other, id)

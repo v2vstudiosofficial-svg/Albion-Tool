@@ -149,9 +149,12 @@ function Menus.start()
 	-- On a keyboard every menu button has a hotkey, shown as a small key cap on its corner (Settings
 	-- has none: I/O zoom the camera and Esc is Roblox's own menu).
 	local hotkeys: { [string]: () -> () } = {} -- by key name
-	local function menuButton(props: { [string]: any }, hotkey: Enum.KeyCode?, onClick: () -> ()): TextButton
+	local function menuButton(props: { [string]: any }, hotkey: Enum.KeyCode?, onClick: () -> (), iconKey: string?): TextButton
 		props.Size = UDim2.fromOffset(100, 48)
 		local button = UiKit.button(props, topRight, onClick)
+		if iconKey then
+			UiKit.withIcon(button, Strings.get(iconKey))
+		end
 		if hotkey then
 			hotkeys[hotkey.Name] = onClick
 			if not UiKit.isTouch() then
@@ -1608,11 +1611,11 @@ function Menus.start()
 	menuButton({ Text = Strings.get("menu_weapons"), LayoutOrder = 0 }, Enum.KeyCode.G, function()
 		refreshWeapons()
 		showModal(weapons)
-	end)
+	end, "icon_weapons")
 	local chestsButton = menuButton({ Text = Strings.get("menu_chests"), LayoutOrder = 1, BackgroundColor3 = colors.coin }, Enum.KeyCode.C, function()
 		refreshChests()
 		showModal(chestsModal)
-	end)
+	end, "icon_chests")
 	-- A "!" badge when a chest can be opened, or chests wait and none is unlocking.
 	local chestBadge = UiKit.label({
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -1629,15 +1632,15 @@ function Menus.start()
 	menuButton({ Text = Strings.get("menu_legends"), LayoutOrder = 2, BackgroundColor3 = colors.boss }, Enum.KeyCode.L, function()
 		refreshLegends()
 		showModal(legends)
-	end)
+	end, "icon_legends")
 	menuButton({ Text = Strings.get("menu_shop"), LayoutOrder = 6, BackgroundColor3 = colors.accent }, Enum.KeyCode.H, function()
 		refreshStore()
 		showModal(store)
-	end)
+	end, "icon_shop")
 	local passButton = menuButton({ Text = Strings.get("menu_pass"), LayoutOrder = 7, BackgroundColor3 = colors.boss }, Enum.KeyCode.P, function()
 		refreshPass()
 		showModal(pass)
-	end)
+	end, "icon_pass")
 	local passBadge = UiKit.label({
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(1, -4, 0, 4),
@@ -1663,7 +1666,7 @@ function Menus.start()
 	local logButton = menuButton({ Text = Strings.get("menu_log"), LayoutOrder = 5, BackgroundColor3 = colors.good }, Enum.KeyCode.J, function()
 		refreshLog()
 		showModal(log)
-	end)
+	end, "icon_log")
 	local logBadge = UiKit.label({
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(1, -4, 0, 4),
@@ -1692,7 +1695,7 @@ function Menus.start()
 	menuButton({ Text = Strings.get("menu_bag"), LayoutOrder = 3 }, Enum.KeyCode.B, function()
 		refreshBag()
 		showModal(bag)
-	end)
+	end, "icon_bag")
 	menuButton({
 		Text = Strings.get("menu_settings"),
 		LayoutOrder = 4,
@@ -1700,7 +1703,7 @@ function Menus.start()
 		TextColor3 = colors.text,
 	}, nil, function()
 		showModal(settings)
-	end)
+	end, "icon_settings")
 
 	Remotes:WaitForChild("OpenShop").OnClientEvent:Connect(function()
 		refreshShop()

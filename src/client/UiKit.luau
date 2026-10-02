@@ -147,6 +147,34 @@ function UiKit.region(parent: Instance, anchor: Vector2, position: UDim2, size: 
 	return frame
 end
 
+-- Puts an emoji icon at the top of a button and moves its own text to the bottom edge.
+function UiKit.withIcon(button: TextButton, icon: string, iconSize: number?)
+	button.TextYAlignment = Enum.TextYAlignment.Bottom
+	button.TextSize = math.min(button.TextSize, 16)
+	UiKit.create("UIPadding", { PaddingBottom = UDim.new(0, 4) }, button)
+	UiKit.label({
+		Name = "Icon",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 1),
+		Size = UDim2.new(1, 0, 0, (iconSize or 22) + 2),
+		Text = icon,
+		TextSize = iconSize or 22,
+	}, button)
+end
+
+-- Puts an emoji icon on the left of a wide button, its text shifted right to make room.
+function UiKit.withSideIcon(button: TextButton, icon: string)
+	UiKit.create("UIPadding", { PaddingLeft = UDim.new(0, 26) }, button)
+	UiKit.label({
+		Name = "Icon",
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, -20, 0.5, 0),
+		Size = UDim2.fromOffset(22, 22),
+		Text = icon,
+		TextSize = 18,
+	}, button)
+end
+
 function UiKit.pop(instance: GuiObject)
 	local scale = instance:FindFirstChildOfClass("UIScale") or UiKit.create("UIScale", nil, instance)
 	scale.Scale = 0.6

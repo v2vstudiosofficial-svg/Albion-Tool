@@ -79,7 +79,8 @@ function PlayerBoard.start()
 		end
 		Audio.play("ui")
 	end
-	UiKit.button({ Size = UDim2.fromScale(1, 1), Text = Strings.get("players_button"), TextSize = 18, BackgroundColor3 = colors.panelLight, TextColor3 = colors.text }, buttonRegion, toggle)
+	local playersButton = UiKit.button({ Size = UDim2.fromScale(1, 1), Text = Strings.get("players_button"), TextSize = 18, BackgroundColor3 = colors.panelLight, TextColor3 = colors.text }, buttonRegion, toggle)
+	UiKit.withSideIcon(playersButton, Strings.get("icon_players"))
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if not processed and input.KeyCode == Enum.KeyCode.Tab then
 			toggle()
