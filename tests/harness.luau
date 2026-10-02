@@ -319,6 +319,9 @@ Harness.fakeGame = {
 		return Harness.services[name] or Harness.game:GetService(name)
 	end,
 	BindToClose = function() end,
+	IsLoaded = function()
+		return true
+	end,
 }
 
 -- Loader ----------------------------------------------------------------------------------------
@@ -424,6 +427,10 @@ local function scriptPathFor(file: string): string
 	local server = string.match(file, "^src/server/(.+)%.luau$")
 	if server then
 		return "SSS/Server/" .. server
+	end
+	local first = string.match(file, "^src/first/(.+)%.client%.luau$")
+	if first then
+		return "RF/" .. first
 	end
 	return "SPS/Client/" .. string.match(file, "^src/client/(.+)%.luau$")
 end

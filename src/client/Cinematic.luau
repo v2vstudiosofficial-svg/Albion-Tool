@@ -194,6 +194,11 @@ function Cinematic.start()
 			return
 		end
 		busy, skipRequested, advanceRequested = true, false, false
+		-- The first story scene waits for the loading screen to fade, so it is not missed under it.
+		local playerGui = player:FindFirstChild("PlayerGui")
+		while playerGui and playerGui:FindFirstChild("LoadingScreen") do
+			task.wait(0.1)
+		end
 		currentScene = sceneId
 		-- With "camera scenes" turned off in Settings every scene is just captions.
 		local full = scene.mode == "full" and Settings.get("cinematics")

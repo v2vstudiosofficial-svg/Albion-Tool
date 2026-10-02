@@ -109,6 +109,7 @@ for _, name in { "UiKit", "Attrs", "Audio", "Effects", "World", "Hud", "Controls
 	expectClass(client and client:FindFirstChild(name), "ModuleScript", "Client." .. name)
 end
 
+expectClass(game:GetService("ReplicatedFirst"):FindFirstChild("LoadingScreen"), "LocalScript", "ReplicatedFirst.LoadingScreen")
 check(game:GetService("Workspace").StreamingEnabled == false, "Workspace.StreamingEnabled should be false (small map, simpler client code)")
 check(game:GetService("Lighting"):FindFirstChildOfClass("Atmosphere") ~= nil, "Lighting has an Atmosphere")
 
