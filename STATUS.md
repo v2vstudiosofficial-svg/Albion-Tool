@@ -100,6 +100,7 @@
   "Claim", Pass "Claim all", sandık "Open!".
   M49: Weapons menüsünde her silah kartında kendi simgesi (WeaponData `iconKey`: 🔮 🏹 🗡️ ⚔️ 🔱 🎯 🌀 🔨; bulunmamışlarda soluk),
   ad ve yıldızlar altta, nadirlik şeridi yazının altında (önce yazının üstünden geçiyordu, Studio'da görüldü ve düzeltildi).
+  Yeni Light Pass kademesinde Pass düğmesi (dokunmatikte Menu) zıplar ve 3 sn parlar.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

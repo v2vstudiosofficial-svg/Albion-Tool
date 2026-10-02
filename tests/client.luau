@@ -1909,6 +1909,15 @@ test("prompts: drawn in the game's look with the key, action and target", functi
 	part:Destroy()
 end)
 
+test("a new Light Pass tier makes the Pass button glow for a moment", function()
+	local target = findButton(Strings.get(if touchMode then "menu_hub" else "menu_pass"))
+	remotes.Notice.OnClientEvent:Fire("notice_pass_tier", 3)
+	advance(0.2)
+	assert(target:FindFirstChild("Pulse"), "glowing")
+	advance(3.2)
+	assert(not target:FindFirstChild("Pulse"), "then calm again")
+end)
+
 test("purify streak: counts chained purifications, celebrates milestones, leaves when the chain breaks", function()
 	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
 	advance(CombatFeel.WINDOW + 1)

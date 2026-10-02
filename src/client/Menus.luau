@@ -1692,6 +1692,18 @@ function Menus.start()
 		refreshPass()
 		showModal(pass)
 	end, "icon_pass")
+	-- A new Light Pass tier makes the Pass button (or the touch Menu button) jump and glow a moment.
+	Remotes:WaitForChild("Notice").OnClientEvent:Connect(function(key)
+		if key ~= "notice_pass_tier" then
+			return
+		end
+		local target = hubButton or passButton
+		UiKit.pop(target)
+		UiKit.setPulse(target, true)
+		task.delay(3, function()
+			UiKit.setPulse(target, false)
+		end)
+	end)
 	local passBadge = UiKit.label({
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(1, -4, 0, 4),
