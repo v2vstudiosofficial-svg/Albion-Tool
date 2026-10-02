@@ -12,6 +12,7 @@ local Format = require(Shared:WaitForChild("Format"))
 local Strings = require(Shared:WaitForChild("Strings"))
 local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local Audio = require(script.Parent.Audio)
+local Settings = require(script.Parent.Settings)
 local UiKit = require(script.Parent.UiKit)
 
 local player = Players.LocalPlayer
@@ -194,8 +195,10 @@ function ChestReveal.show(reward: { [string]: any })
 		-- 3. The lid bursts open in a flash, light rays fan out behind.
 		parts.clasp.Visible = false
 		UiKit.tween(parts.lid, 0.35, { Position = UDim2.new(0.5, -30, 1, -160), Rotation = -28 })
-		parts.flash.BackgroundTransparency = 0.25
-		UiKit.tween(parts.flash, 0.45, { BackgroundTransparency = 1 })
+		if Settings.get("flashes") then
+			parts.flash.BackgroundTransparency = 0.25
+			UiKit.tween(parts.flash, 0.45, { BackgroundTransparency = 1 })
+		end
 		parts.rays.Visible = true
 		UiKit.pop(parts.chest)
 		Audio.play("levelUp")

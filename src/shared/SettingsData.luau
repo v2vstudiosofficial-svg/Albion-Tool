@@ -12,7 +12,7 @@ SettingsData.categories = { "graphics", "audio", "gameplay", "interface" }
 SettingsData.order = {
 	"quality", "detail", "shadows", "effects", "bloom", "atmosphere", "dayNight", "fov",
 	"sound", "master", "sfx",
-	"shake", "cinematics", "damageNumbers", "rangeRing",
+	"shake", "flashes", "cinematics", "damageNumbers", "rangeRing",
 	"uiScale", "minimap", "playerTags", "enemyBars", "perf",
 }
 
@@ -29,6 +29,7 @@ SettingsData.settings = {
 	master = { category = "audio", kind = "range", min = 0, max = 100, step = 10, default = 100, nameKey = "set_master" },
 	sfx = { category = "audio", kind = "range", min = 0, max = 100, step = 10, default = 100, nameKey = "set_sfx" },
 	shake = { category = "gameplay", kind = "bool", default = true, nameKey = "set_shake" },
+	flashes = { category = "gameplay", kind = "bool", default = true, nameKey = "set_flashes" },
 	cinematics = { category = "gameplay", kind = "bool", default = true, nameKey = "set_cinematics" },
 	damageNumbers = { category = "gameplay", kind = "bool", default = true, nameKey = "set_damage_numbers" },
 	rangeRing = { category = "gameplay", kind = "bool", default = true, nameKey = "set_range_ring" },

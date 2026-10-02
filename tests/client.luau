@@ -1762,6 +1762,18 @@ test("player card: health bar, red screen edges on a hit and at low health, toas
 	humanoid.Health = 200
 	advance(1)
 	eq(edgeStrength(), 0, "healed: edges clear")
+	setAttributes({ Pref_flashes = false })
+	humanoid.Health = 150
+	advance(0.05)
+	eq(edgeStrength(), 0, "flashes off: a hit does not flash")
+	humanoid.Health = 40
+	local first = (advance(0.13) or 0) and edgeStrength()
+	advance(0.21)
+	eq(edgeStrength(), first, "flashes off: low health is steady, not pulsing")
+	assert(first > 0, "but still shown")
+	humanoid.Health = 200
+	setAttributes({ Pref_flashes = true })
+	advance(1)
 	-- Toasts: the same news twice is one pill with a counter, and only a few show at once.
 	local notice = remotes.Notice
 	notice.OnClientEvent:Fire("notice_respawn")

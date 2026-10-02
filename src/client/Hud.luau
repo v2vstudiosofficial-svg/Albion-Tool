@@ -889,8 +889,14 @@ function Hud.start()
 			shownHp, shownMax = hp, maxHp
 		end
 		flash = math.max(0, flash - dt * 1.6)
-		local pulse = if ratio < LOW_HEALTH and hp > 0 then 0.4 + 0.15 * math.sin(clock * 5) else 0
-		local strength = math.max(flash, pulse)
+		local low = ratio < LOW_HEALTH and hp > 0
+		local strength
+		if Settings.get("flashes") then
+			strength = math.max(flash, if low then 0.4 + 0.15 * math.sin(clock * 5) else 0)
+		else
+			-- No flashing at all: low health is a calm, steady edge.
+			strength = if low then 0.3 else 0
+		end
 		for _, edge in edges do
 			edge.BackgroundTransparency = 1 - strength
 		end
