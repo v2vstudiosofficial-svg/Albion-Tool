@@ -40,6 +40,7 @@ return {
 	weapons = {
 		staff = {
 			nameKey = "weapon_staff_name",
+			iconKey = "icon_weapon_staff",
 			descKey = "weapon_staff_desc",
 			rarity = "common",
 			style = "bolt",
@@ -51,6 +52,7 @@ return {
 		},
 		bow = {
 			nameKey = "weapon_bow_name",
+			iconKey = "icon_weapon_bow",
 			descKey = "weapon_bow_desc",
 			rarity = "common",
 			style = "arrow",
@@ -62,6 +64,7 @@ return {
 		},
 		daggers = {
 			nameKey = "weapon_daggers_name",
+			iconKey = "icon_weapon_daggers",
 			descKey = "weapon_daggers_desc",
 			rarity = "rare",
 			style = "fan",
@@ -76,6 +79,7 @@ return {
 		},
 		sword = {
 			nameKey = "weapon_sword_name",
+			iconKey = "icon_weapon_sword",
 			descKey = "weapon_sword_desc",
 			rarity = "rare",
 			style = "arc",
@@ -87,6 +91,7 @@ return {
 		},
 		spear = {
 			nameKey = "weapon_spear_name",
+			iconKey = "icon_weapon_spear",
 			descKey = "weapon_spear_desc",
 			rarity = "epic",
 			style = "thrust",
@@ -99,6 +104,7 @@ return {
 		},
 		crossbow = {
 			nameKey = "weapon_crossbow_name",
+			iconKey = "icon_weapon_crossbow",
 			descKey = "weapon_crossbow_desc",
 			rarity = "epic",
 			style = "pierce",
@@ -112,6 +118,7 @@ return {
 		},
 		axe = {
 			nameKey = "weapon_axe_name",
+			iconKey = "icon_weapon_axe",
 			descKey = "weapon_axe_desc",
 			rarity = "legendary",
 			style = "spin",
@@ -122,6 +129,7 @@ return {
 		},
 		hammer = {
 			nameKey = "weapon_hammer_name",
+			iconKey = "icon_weapon_hammer",
 			descKey = "weapon_hammer_desc",
 			rarity = "legendary",
 			style = "slam",

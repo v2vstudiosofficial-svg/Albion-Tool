@@ -580,7 +580,7 @@ function Menus.start()
 			end
 		end)
 	end
-	local tiles: { [string]: { button: TextButton, stripe: Frame } } = {}
+	local tiles: { [string]: { button: TextButton, stripe: Frame, icon: TextLabel } } = {}
 	for order, weaponId in WeaponData.order do
 		local weapon = WeaponData.weapons[weaponId]
 		local button = UiKit.button({
@@ -600,15 +600,19 @@ function Menus.start()
 				Audio.play("ui")
 			end
 		end)
+		UiKit.withIcon(button, Strings.get(weapon.iconKey), 24)
+		button.TextSize = 13
+		button:FindFirstChildOfClass("UIPadding").PaddingBottom = UDim.new(0, 13) -- clear of the rarity stripe
 		-- The stripe shows the weapon's rarity.
+		-- (The button's bottom padding moves children too, so the stripe sits just below it.)
 		local stripe = UiKit.create("Frame", {
-			Position = UDim2.new(0, 8, 1, -10),
+			Position = UDim2.new(0, 8, 1, 3),
 			Size = UDim2.new(1, -16, 0, 5),
 			BackgroundColor3 = UiKit.rgb(WeaponData.rarities[weapon.rarity].color),
 			BorderSizePixel = 0,
 		}, button)
 		UiKit.corner(stripe, 3)
-		tiles[weaponId] = { button = button, stripe = stripe }
+		tiles[weaponId] = { button = button, stripe = stripe, icon = button:FindFirstChild("Icon") :: TextLabel }
 	end
 	local autoButton = UiKit.button({
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -657,6 +661,7 @@ function Menus.start()
 			tile.button.BackgroundColor3 = if weaponId == current then colors.good elseif unlocked then colors.panelLight else colors.panel
 			tile.button.TextColor3 = if weaponId == current then colors.panel elseif unlocked then colors.text else colors.muted
 			tile.stripe.BackgroundTransparency = if unlocked then 0 else 0.45
+			tile.icon.TextTransparency = if unlocked then 0 else 0.6
 		end
 		local weapon = current and WeaponData.weapons[current]
 		weaponInfo.Text = if weapon
