@@ -848,6 +848,11 @@ test("weapons menu: main weapon, floating slots, locked ones do nothing", functi
 	click(findButton(Strings.get("weapon_locked", 25)))
 	assert(shownText(Strings.get("bag_main_hint")), "closed slot does not open")
 	setAttributes({ Level = 25, Companions = "spear", Weapons = "bow,spear,staff,sword" })
+	local Progression = H.loadModule("src/shared/Progression.luau")
+	local swordGap = Progression.weaponDamage("sword", 0, 25, false, 2, nil) - Progression.weaponDamage("staff", 0, 25, false, 2, nil)
+	if swordGap > 0 then
+		assert(shownText(Strings.get("weapon_better", swordGap)), "a stronger owned weapon shows how much stronger")
+	end
 	click(findButton(Strings.get(WeaponData.weapons.bow.nameKey)))
 	eq(sent("EquipWeapon", function(args)
 		return args[1] == 0 and args[2] == "bow"

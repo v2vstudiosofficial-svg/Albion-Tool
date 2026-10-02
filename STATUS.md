@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M52 (boss öfkesi, görev tiki, kapanış sesi; M51: Screen flashes ayarı; M50: yenilgi ekranı; M49: silah kartı simgeleri; M48: sade etiketler, parlayan ödül düğmeleri; M47: oyuna özel etkileşim istemi; M46: sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M53 (silah güç farkı; M52: boss öfkesi, görev tiki, kapanış sesi; M51: Screen flashes ayarı; M50: yenilgi ekranı; M49: silah kartı simgeleri; M48: sade etiketler, parlayan ödül düğmeleri; M47: oyuna özel etkileşim istemi; M46: sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -108,6 +108,8 @@
   M52: boss ikinci faza geçince yakındakilere "<Boss> is enraged!" tehlike başlığı ve boss barı kızıla döner (Studio'da
   doğrulandı); görev bitince görev panelinde yeşil ✓ ve 2 sn yeşil çerçeve; pencere kapanırken daha pes, yumuşak bir tık
   (`uiClose`, aynı ses perde 0,8).
+  M53: Weapons menüsünde sahip olunan her silah kartının köşesinde, seçili yuvadaki silaha göre güç farkı (yeşil ▲, kırmızı ▼;
+  yuva seviyesi ve yıldızlar hesaba katılır).
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

@@ -581,7 +581,7 @@ function Menus.start()
 			end
 		end)
 	end
-	local tiles: { [string]: { button: TextButton, stripe: Frame, icon: TextLabel } } = {}
+	local tiles: { [string]: { button: TextButton, stripe: Frame, icon: TextLabel, delta: TextLabel } } = {}
 	for order, weaponId in WeaponData.order do
 		local weapon = WeaponData.weapons[weaponId]
 		local button = UiKit.button({
@@ -613,7 +613,18 @@ function Menus.start()
 			BorderSizePixel = 0,
 		}, button)
 		UiKit.corner(stripe, 3)
-		tiles[weaponId] = { button = button, stripe = stripe, icon = button:FindFirstChild("Icon") :: TextLabel }
+		-- Power compared with the weapon now in the chosen slot: green up, red down.
+		local delta = UiKit.label({
+			Name = "Delta",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -4, 0, 2),
+			Size = UDim2.fromOffset(44, 16),
+			TextSize = 12,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextStrokeTransparency = 0.5,
+			Visible = false,
+		}, button)
+		tiles[weaponId] = { button = button, stripe = stripe, icon = button:FindFirstChild("Icon") :: TextLabel, delta = delta }
 	end
 	local autoButton = UiKit.button({
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -663,6 +674,14 @@ function Menus.start()
 			tile.button.TextColor3 = if weaponId == current then colors.panel elseif unlocked then colors.text else colors.muted
 			tile.stripe.BackgroundTransparency = if unlocked then 0 else 0.45
 			tile.icon.TextTransparency = if unlocked then 0 else 0.6
+			local slotLevel = tonumber(slotLevels[editingSlot + 1])
+			local function power(id: string): number
+				return Progression.weaponDamage(id, Attrs.get("StaffTier", 0), level, editingSlot > 0, slotLevel, stars[id])
+			end
+			local gap = if unlocked and current and weaponId ~= current and WeaponData.weapons[current] then power(weaponId) - power(current) else 0
+			tile.delta.Visible = gap ~= 0
+			tile.delta.Text = if gap > 0 then Strings.get("weapon_better", gap) else Strings.get("weapon_worse", -gap)
+			tile.delta.TextColor3 = if gap > 0 then colors.good else colors.bad
 		end
 		local weapon = current and WeaponData.weapons[current]
 		weaponInfo.Text = if weapon
