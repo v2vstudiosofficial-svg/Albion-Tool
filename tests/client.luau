@@ -1770,6 +1770,77 @@ test("player card: health bar, red screen edges on a hit and at low health, toas
 	advance(4)
 end)
 
+test("purify streak: counts chained purifications, celebrates milestones, leaves when the chain breaks", function()
+	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
+	advance(CombatFeel.WINDOW + 1)
+	local reward = remotes.RewardGranted.OnClientEvent
+	reward:Fire("purify", 5, 0)
+	reward:Fire("purify", 5, 0)
+	advance(0.1)
+	assert(not shownText(Strings.get("hud_streak_label")), "two in a row is not a streak yet")
+	reward:Fire("purify", 5, 0)
+	advance(0.1)
+	assert(shownText(Strings.get("hud_streak", 3)), "x3 shows")
+	assert(shownText(Strings.get("hud_streak_label")))
+	reward:Fire("quest", 10, 10)
+	advance(0.1)
+	assert(shownText(Strings.get("hud_streak", 3)), "quest rewards are not purifications")
+	for _ = 1, 7 do
+		reward:Fire("purify", 5, 0)
+		advance(0.5)
+	end
+	assert(shownText(Strings.get("hud_streak", 10)), "x10")
+	assert(shownText(Strings.get("notice_streak", 10)), "milestone toast")
+	advance(CombatFeel.WINDOW + 0.5)
+	assert(not shownText(Strings.get("hud_streak_label")), "the counter leaves when the chain breaks")
+	advance(3)
+end)
+
+test("creature labels: tinted by the level gap, bars keep a trail of the last hit", function()
+	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
+	local heroLevel = hero:GetAttribute("Level")
+	setAttributes({ Level = 10 })
+	local enemy = addEnemy("Rockling", vec(WorldData.spawn, 3) + Vector3.new(20, 0, 0))
+	enemy:SetAttribute("Level", 20)
+	enemy:SetAttribute("MaxHp", 100)
+	enemy:SetAttribute("Hp", 100)
+	advance(0.5)
+	local gui
+	for _, candidate in workspace.ClientFx:GetDescendants() do
+		if candidate:IsA("BillboardGui") and candidate.Adornee == enemy:FindFirstChild("Body") then
+			gui = candidate
+		end
+	end
+	if not gui then
+		for _, folder in { playerGui, workspace } do
+			for _, candidate in folder:GetDescendants() do
+				if candidate:IsA("BillboardGui") and candidate.Adornee == enemy:FindFirstChild("Body") then
+					gui = candidate
+				end
+			end
+		end
+	end
+	assert(gui, "creature label exists")
+	local name = gui:FindFirstChild("NameLabel")
+	setAttributes({ Level = 11 })
+	setAttributes({ Level = 10 })
+	eq(CombatFeel.threat(10, 20), "deadly")
+	assert(name.TextColor3.G < 0.5, "ten levels above the player: red")
+	setAttributes({ Level = 19 })
+	eq(CombatFeel.threat(19, 20), "even")
+	assert(name.TextColor3.G > 0.9, "a fair fight: plain cream")
+	setAttributes({ Level = 26 })
+	assert(name.TextColor3.R < 0.7, "far below the player: grey")
+	H.setAttribute(enemy, "Hp", 40)
+	advance(0.1)
+	local fill, trail = gui:FindFirstChild("Fill", true), gui:FindFirstChild("Trail", true)
+	assert(fill.Size.X.Scale < 0.45 and trail.Size.X.Scale > 0.9, "the trail lingers after a hit")
+	advance(1)
+	assert(trail.Size.X.Scale < 0.45, "then drains")
+	enemy:Destroy()
+	setAttributes({ Level = heroLevel })
+end)
+
 test("menu windows: hotkeys, key caps, a dim backdrop that closes them, blur except in Settings", function()
 	local backdrop = playerGui.Menus.Backdrop
 	-- Window titles are labels (the menu buttons with the same words are buttons).

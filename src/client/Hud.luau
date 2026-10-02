@@ -14,6 +14,7 @@ local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 local Attrs = require(script.Parent.Attrs)
 local Format = require(Shared:WaitForChild("Format"))
+local CombatFeel = require(Shared:WaitForChild("CombatFeel"))
 
 local PURIFY_TOAST_WINDOW = 1.2
 -- Below this share of health the screen edges pulse red.
@@ -21,6 +22,9 @@ local LOW_HEALTH = 0.3
 local HP_HIGH = Color3.fromRGB(110, 220, 120)
 local HP_LOW = Color3.fromRGB(255, 90, 90)
 local MAX_TOASTS = 4
+-- The streak counter appears from this many purifications in a row.
+local STREAK_SHOWN_FROM = 3
+local STREAK_COLORS = { { 50, Color3.fromRGB(255, 120, 200) }, { 25, Color3.fromRGB(255, 140, 70) }, { 10, Color3.fromRGB(255, 200, 80) } }
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local player = Players.LocalPlayer
@@ -540,6 +544,56 @@ function Hud.start()
 	refreshQuest()
 	onLevelChanged()
 
+	-- Purify streak: chained purifications count up under the player, warmer with every milestone;
+	-- the counter leaves once the chain breaks (cosmetic, nothing is rewarded for it).
+	local streakRegion = UiKit.region(gui, Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -120), Vector2.new(220, 70))
+	local streakCount = UiKit.label({
+		Name = "StreakCount",
+		Size = UDim2.new(1, 0, 0, 46),
+		TextSize = 44,
+		TextColor3 = colors.accent,
+		TextStrokeTransparency = 0.1,
+		TextStrokeColor3 = Color3.fromRGB(90, 50, 20),
+		Visible = false,
+	}, streakRegion)
+	local streakLabel = UiKit.label({
+		Position = UDim2.fromOffset(0, 44),
+		Size = UDim2.new(1, 0, 0, 22),
+		TextSize = 16,
+		Text = Strings.get("hud_streak_label"),
+		TextStrokeTransparency = 0.3,
+		Visible = false,
+	}, streakRegion)
+	local streak = CombatFeel.newStreak()
+	local function addToStreak(amount: number)
+		local count, milestone = CombatFeel.add(streak, os.clock(), amount)
+		if count < STREAK_SHOWN_FROM then
+			return
+		end
+		streakCount.Text = Strings.get("hud_streak", count)
+		local color = colors.accent
+		for _, step in STREAK_COLORS do
+			if count >= step[1] then
+				color = step[2]
+				break
+			end
+		end
+		streakCount.TextColor3 = color
+		streakCount.Visible, streakLabel.Visible = true, true
+		UiKit.pop(streakCount)
+		if milestone then
+			showToast(Strings.get("notice_streak", milestone), color)
+		end
+	end
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			if streakCount.Visible and not CombatFeel.alive(streak, os.clock()) then
+				streakCount.Visible, streakLabel.Visible = false, false
+			end
+		end
+	end)
+
 	-- Auto-battle purifies whole packs at once, so purify rewards are summed into one toast.
 	local pendingXp, pendingCount, flushScheduled = 0, 0, false
 	local function flushPurifies()
@@ -557,6 +611,9 @@ function Hud.start()
 		else
 			pendingXp += if typeof(xp) == "number" then xp else 0
 			pendingCount += 1
+			if reason == "purify" then
+				addToStreak(1)
+			end
 			if not flushScheduled then
 				flushScheduled = true
 				task.delay(PURIFY_TOAST_WINDOW, flushPurifies)
@@ -620,7 +677,7 @@ function Hud.start()
 	-- keep pulsing until the player heals.
 	local edgesGui = UiKit.create("ScreenGui", { Name = "HealthEdges", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = -1 }, gui.Parent)
 	local edges: { Frame } = {}
-	for _, side in { { 0.5, 0, 1, 0.16, 90 }, { 0.5, 1, 1, 0.16, -90 }, { 0, 0.5, 0.1, 1, 0 }, { 1, 0.5, 0.1, 1, 180 } } do
+	for _, side in { { 0.5, 0, 1, 0.2, 90 }, { 0.5, 1, 1, 0.2, -90 }, { 0, 0.5, 0.13, 1, 0 }, { 1, 0.5, 0.13, 1, 180 } } do
 		local edge = UiKit.create("Frame", {
 			AnchorPoint = Vector2.new(side[1], side[2]),
 			Position = UDim2.fromScale(side[1], side[2]),
@@ -652,7 +709,7 @@ function Hud.start()
 			UiKit.tween(hpFill, 0.12, { Size = UDim2.fromScale(ratio, 1) })
 			trailToken += 1
 			if hurt then
-				flash = math.max(flash, 0.55)
+				flash = math.max(flash, 0.75)
 				local token = trailToken
 				task.delay(0.35, function()
 					if trailToken == token then
@@ -665,7 +722,7 @@ function Hud.start()
 			shownHp, shownMax = hp, maxHp
 		end
 		flash = math.max(0, flash - dt * 1.6)
-		local pulse = if ratio < LOW_HEALTH and hp > 0 then 0.3 + 0.15 * math.sin(clock * 5) else 0
+		local pulse = if ratio < LOW_HEALTH and hp > 0 then 0.5 + 0.2 * math.sin(clock * 5) else 0
 		local strength = math.max(flash, pulse)
 		for _, edge in edges do
 			edge.BackgroundTransparency = 1 - strength

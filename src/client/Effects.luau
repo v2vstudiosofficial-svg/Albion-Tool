@@ -11,6 +11,7 @@ local Strings = require(Shared:WaitForChild("Strings"))
 local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local Progression = require(Shared:WaitForChild("Progression"))
 local Format = require(Shared:WaitForChild("Format"))
+local CombatFeel = require(Shared:WaitForChild("CombatFeel"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
 local CameraRig = require(script.Parent.CameraRig)
@@ -25,6 +26,13 @@ local SPORE_COLOR = Color3.fromRGB(255, 130, 200)
 local SHADOW_COLOR = Color3.fromRGB(150, 80, 230)
 local WARN_COLOR = Color3.fromRGB(255, 120, 90)
 local GOLD = Color3.fromRGB(255, 220, 120)
+-- Creature names are tinted by how their level compares with the player's (CombatFeel.threat).
+local THREAT_COLORS = {
+	trivial = Color3.fromRGB(165, 165, 180),
+	even = Color3.fromRGB(255, 248, 230),
+	tough = Color3.fromRGB(255, 170, 80),
+	deadly = Color3.fromRGB(255, 90, 90),
+}
 -- Other players' weapon effects farther than this from the local player are skipped.
 local ATTACK_FX_DISTANCE = 160
 
@@ -99,7 +107,14 @@ function Effects.popup(position: Vector3, text: string, color: Color3, textSize:
 		TextSize = textSize or 26,
 		TextStrokeTransparency = 0.2,
 	}, gui)
-	UiKit.tween(gui, 0.9, { StudsOffset = Vector3.new(0, 4.5, 0) })
+	-- Numbers punch in large, settle, and drift a little to one side as they rise.
+	local big = (textSize or 26) >= 30
+	local scale = UiKit.create("UIScale", { Scale = if big then 1.9 else 1.45 }, label)
+	UiKit.tween(scale, if big then 0.25 else 0.18, { Scale = 1 }, Enum.EasingStyle.Back)
+	if big then
+		label.Rotation = math.random(-8, 8)
+	end
+	UiKit.tween(gui, 0.9, { StudsOffset = Vector3.new((math.random() - 0.5) * 2.4, 4.5, 0) })
 	task.delay(0.35, function()
 		UiKit.tween(label, 0.5, { TextTransparency = 1, TextStrokeTransparency = 1 })
 	end)
@@ -889,17 +904,33 @@ local function attachEnemyUi(model: Instance)
 		Adornee = body,
 		Enabled = Settings.get("enemyBars"),
 	}, billboards)
-	UiKit.label({
+	local nameLabel = UiKit.label({
+		Name = "NameLabel",
 		Size = UDim2.new(1, 0, 0, 18),
 		Text = Strings.get(
 			if model:GetAttribute("Elite") then "enemy_label_elite" else "enemy_label",
 			model:GetAttribute("Level") or 1,
 			Strings.get(stats.nameKey)
 		),
-		TextColor3 = if model:GetAttribute("Elite") then Color3.fromRGB(255, 205, 70) else nil,
 		TextSize = 16,
 		TextStrokeTransparency = 0.4,
 	}, gui)
+	-- Elites keep their gold; others say at a glance whether they are a fair fight.
+	local function refreshThreat()
+		if model:GetAttribute("Elite") then
+			nameLabel.TextColor3 = Color3.fromRGB(255, 205, 70)
+		else
+			nameLabel.TextColor3 = THREAT_COLORS[CombatFeel.threat(player:GetAttribute("Level") or 1, model:GetAttribute("Level") or 1)]
+		end
+	end
+	refreshThreat()
+	local levelConnection: RBXScriptConnection
+	levelConnection = player:GetAttributeChangedSignal("Level"):Connect(function()
+		-- The creature may be gone already (respawned packs replace their models).
+		if not pcall(refreshThreat) then
+			levelConnection:Disconnect()
+		end
+	end)
 	local bar = UiKit.create("Frame", {
 		Position = UDim2.fromOffset(10, 21),
 		Size = UDim2.new(1, -20, 0, 9),
@@ -907,16 +938,33 @@ local function attachEnemyUi(model: Instance)
 		BorderSizePixel = 0,
 	}, gui)
 	UiKit.corner(bar, 5)
+	-- A pale trail lingers where the last hit took health, then drains to the new value.
+	local trail = UiKit.create("Frame", { Name = "Trail", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(255, 245, 225), BorderSizePixel = 0 }, bar)
+	UiKit.corner(trail, 5)
 	local fill = UiKit.create("Frame", {
+		Name = "Fill",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = GOLD,
 		BorderSizePixel = 0,
 	}, bar)
 	UiKit.corner(fill, 5)
+	local trailToken = 0
 	local function refresh()
 		local hp = model:GetAttribute("Hp") or 0
 		local maxHp = model:GetAttribute("MaxHp") or 1
-		UiKit.tween(fill, 0.15, { Size = UDim2.fromScale(math.clamp(hp / maxHp, 0, 1), 1) })
+		local ratio = math.clamp(hp / maxHp, 0, 1)
+		UiKit.tween(fill, 0.12, { Size = UDim2.fromScale(ratio, 1) })
+		trailToken += 1
+		local token = trailToken
+		if ratio >= trail.Size.X.Scale then
+			trail.Size = UDim2.fromScale(ratio, 1)
+		else
+			task.delay(0.3, function()
+				if trailToken == token and trail.Parent then
+					UiKit.tween(trail, 0.35, { Size = UDim2.fromScale(ratio, 1) })
+				end
+			end)
+		end
 	end
 	model:GetAttributeChangedSignal("Hp"):Connect(refresh)
 	refresh()
@@ -926,6 +974,8 @@ local function attachEnemyUi(model: Instance)
 		end
 	end)
 	model.Destroying:Connect(function()
+		levelConnection:Disconnect()
+		trailToken += 1
 		gui:Destroy()
 	end)
 end
