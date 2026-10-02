@@ -46,7 +46,7 @@ local function apply()
 	})
 	UiKit.setScaleFactor(SettingsData.uiScaleFactor[Settings.get("uiScale")] or 1)
 	Audio.setEnabled(Settings.get("sound"))
-	Audio.setVolumes(Settings.get("master") / 100, Settings.get("sfx") / 100)
+	Audio.setVolumes(Settings.get("master") / 100, Settings.get("sfx") / 100, Settings.get("music") / 100)
 	for _, listener in listeners do
 		listener()
 	end

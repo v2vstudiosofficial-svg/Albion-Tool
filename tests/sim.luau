@@ -1753,8 +1753,10 @@ test("shadow tower: level gate, floors, rewards once, leaving, defeat and join r
 	assert(insideAt(alice), "teleported into the arena")
 	eq(attr(alice, "TowerFloor"), 1)
 	eq(#towerEnemies(), 0, "creatures wait for the start delay")
+	eq(attr(alice, "TowerLeft"), nil, "nothing to count yet")
 	advance(tower.startDelay + 1.5)
 	local expected = TowerLogic.count(1, 1)
+	eq(attr(alice, "TowerLeft"), #towerEnemies(), "the HUD counts the shadows still standing")
 	-- The floor announces how many creatures it sent; a few may already have fallen to auto attacks.
 	assert(#towerEnemies() > 0 and #towerEnemies() <= expected, "floor 1 creatures: " .. #towerEnemies())
 	local floorLevel = TowerLogic.floorLevel(level, 1)
@@ -1775,6 +1777,7 @@ test("shadow tower: level gate, floors, rewards once, leaving, defeat and join r
 		guard += 1
 	end
 	eq(#towerEnemies(), 0, "floor cleared")
+	eq(attr(alice, "TowerLeft"), 0, "counted down to zero")
 	assert(insideAt(alice), "still in the arena")
 	advance(1.6)
 	eq(attr(alice, "TowerBest"), 1, "best floor recorded")
@@ -1803,6 +1806,7 @@ test("shadow tower: level gate, floors, rewards once, leaving, defeat and join r
 	advance(1.6)
 	eq(insideAt(alice), false, "back in the village")
 	eq(attr(alice, "TowerFloor"), 0)
+	eq(attr(alice, "TowerLeft"), nil, "no count outside")
 	eq(#towerEnemies(), 0, "the empty run's creatures are gone")
 	eq(attr(alice, "TowerBest"), 1, "leaving keeps the best floor")
 

@@ -1641,7 +1641,7 @@ function Menus.start()
 	-- Settings + performance overlay ---------------------------------------------------------
 	-- The window itself is client/SettingsMenu; every change goes to the server (validated and
 	-- saved with the profile) and comes back as Pref_<key> attributes (client/Settings).
-	local settings, settingsBody = modal("settings_title", 460, 640)
+	local settings, settingsBody = modal("settings_title", 460, 700)
 	sharpModals[settings] = true
 	SettingsMenu.build(settingsBody, function(changes)
 		setSetting:FireServer(changes)

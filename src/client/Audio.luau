@@ -14,7 +14,7 @@ local Audio = {}
 
 local enabled = true
 -- Volume sliders from Settings (0-1): `master` scales everything, `sfx` the sound effects.
-local masterVolume, sfxVolume = 1, 1
+local masterVolume, sfxVolume, musicVolume = 1, 1, 1
 local cache: { [string]: Sound } = {}
 
 -- Music: one track per place (MusicLogic). When the place changes, the old track fades out
@@ -94,8 +94,8 @@ function Audio.setEnabled(value: boolean)
 	end
 end
 
-function Audio.setVolumes(master: number, sfx: number)
-	masterVolume, sfxVolume = math.clamp(master, 0, 1), math.clamp(sfx, 0, 1)
+function Audio.setVolumes(master: number, sfx: number, musicShare: number)
+	masterVolume, sfxVolume, musicVolume = math.clamp(master, 0, 1), math.clamp(sfx, 0, 1), math.clamp(musicShare, 0, 1)
 end
 
 local function track(theme: string?): Sound?
@@ -144,7 +144,7 @@ local function stepMusic(dt: number)
 		fade = math.min(fade + dt / MUSIC_FADE, 1)
 	end
 	if music then
-		music.Volume = Sounds.music.volume * masterVolume * fade
+		music.Volume = Sounds.music.volume * masterVolume * musicVolume * fade
 	end
 end
 

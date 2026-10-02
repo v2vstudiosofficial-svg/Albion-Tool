@@ -31,6 +31,9 @@ local BOSS_INTRO_SECONDS = 1.4
 local RAY_COUNT = 8 -- bars through the center, so twice as many rays
 -- The streak counter appears from this many purifications in a row.
 local STREAK_SHOWN_FROM = 3
+-- A new best Shadow Tower floor: the tower card glows this gold for a few seconds.
+local RECORD_GOLD = Color3.fromRGB(255, 236, 140)
+local RECORD_SECONDS = 3.5
 local STREAK_COLORS = { { 50, Color3.fromRGB(255, 120, 200) }, { 25, Color3.fromRGB(255, 140, 70) }, { 10, Color3.fromRGB(255, 200, 80) } }
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -172,24 +175,6 @@ function Hud.start()
 		TextColor3 = Color3.fromRGB(150, 210, 255),
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, card)
-
-	-- Shadow Tower: current floor and best floor, shown while inside the tower.
-	local towerRegion = UiKit.region(gui, Vector2.new(0, 0), UDim2.new(0, 12, 0.5, 34), Vector2.new(280, 24))
-	local towerLabel = UiKit.label({
-		Size = UDim2.fromScale(1, 1),
-		TextSize = 16,
-		TextColor3 = colors.accent,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextStrokeTransparency = 0.4,
-		Visible = false,
-	}, towerRegion)
-	local function refreshTower()
-		local floor = player:GetAttribute("TowerFloor") or 0
-		towerLabel.Visible = floor > 0
-		towerLabel.Text = Strings.get("tower_hud", floor, player:GetAttribute("TowerBest") or 0)
-	end
-	player:GetAttributeChangedSignal("TowerFloor"):Connect(refreshTower)
-	player:GetAttributeChangedSignal("TowerBest"):Connect(refreshTower)
 
 	-- Team bonus: shown while other players are close by (the server applies the same rule).
 	local teamLabel = UiKit.label({
@@ -480,12 +465,89 @@ function Hud.start()
 		crystalsLabel.TextColor3 = if crystals >= capacity then colors.bad else Color3.fromRGB(150, 210, 255)
 	end
 
+	-- Shadow Tower: inside, this card takes the quest panel's place - the floor, the best floor, how
+	-- far the next boss is and how many shadows still stand. A new best floor lights it up gold.
+	local towerCard = UiKit.panel({
+		Name = "TowerCard",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.fromOffset(340, 72),
+		Visible = false,
+	}, topCenter)
+	local towerStroke = towerCard:FindFirstChildOfClass("UIStroke")
+	UiKit.label({ Position = UDim2.fromOffset(6, 0), Size = UDim2.new(0, 46, 1, 0), Text = Strings.get("icon_tower"), TextSize = 32 }, towerCard)
+	local towerFloorLabel = UiKit.label({ Position = UDim2.fromOffset(56, 8), Size = UDim2.new(1, -136, 0, 30), TextSize = 26, TextXAlignment = Enum.TextXAlignment.Left }, towerCard)
+	local towerSub = UiKit.label({ Position = UDim2.fromOffset(56, 42), Size = UDim2.new(1, -136, 0, 20), TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left }, towerCard)
+	local leftBox = UiKit.create("Frame", { Name = "Left", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Size = UDim2.fromOffset(70, 56), BackgroundColor3 = colors.panelLight, BorderSizePixel = 0 }, towerCard)
+	UiKit.corner(leftBox, 12)
+	local leftCount = UiKit.label({ Name = "Count", Position = UDim2.fromOffset(0, 4), Size = UDim2.new(1, 0, 0, 30), TextSize = 26 }, leftBox)
+	local leftCaption = UiKit.label({ Position = UDim2.fromOffset(0, 34), Size = UDim2.new(1, 0, 0, 16), TextSize = 12, TextColor3 = colors.muted }, leftBox)
+	local shownLeft: number? = nil
+	local knownBest = player:GetAttribute("TowerBest") or 0
+	local recordToken = 0
+	local recordShowing = false
+	local function refreshTower()
+		local floor = player:GetAttribute("TowerFloor") or 0
+		towerCard.Visible = floor > 0 and not bossFighting
+		if floor <= 0 then
+			shownLeft = nil
+			return
+		end
+		towerFloorLabel.Text = Strings.get("tower_floor", floor)
+		local untilBoss = (-floor) % Balance.tower.bossEvery
+		if recordShowing then
+			towerSub.Text = Strings.get("tower_card_record")
+			towerSub.TextColor3 = RECORD_GOLD
+		else
+			local bossText = if untilBoss == 0 then Strings.get("tower_card_boss_now") elseif untilBoss == 1 then Strings.get("tower_card_boss_next") else Strings.get("tower_card_boss_in", untilBoss)
+			towerSub.Text = Strings.get("tower_card_best", player:GetAttribute("TowerBest") or 0) .. "   ·   " .. bossText
+			towerSub.TextColor3 = if untilBoss <= 1 then colors.bad else colors.muted
+		end
+		-- Nothing to count before the first floor's shadows arrive.
+		local left = player:GetAttribute("TowerLeft")
+		leftBox.Visible = typeof(left) == "number"
+		if typeof(left) ~= "number" then
+			shownLeft = nil
+			return
+		end
+		leftCount.Text = if left > 0 then tostring(left) else "✓"
+		leftCount.TextColor3 = if left > 0 then colors.text else colors.good
+		leftCaption.Text = if left > 0 then Strings.get("tower_card_left") else Strings.get("tower_card_clear")
+		if shownLeft and left ~= shownLeft then
+			UiKit.pop(leftBox)
+		end
+		shownLeft = left
+	end
+	player:GetAttributeChangedSignal("TowerLeft"):Connect(refreshTower)
+	player:GetAttributeChangedSignal("TowerBest"):Connect(function()
+		local best = player:GetAttribute("TowerBest") or 0
+		if best > knownBest and (player:GetAttribute("TowerFloor") or 0) > 0 then
+			recordToken += 1
+			local token = recordToken
+			recordShowing = true
+			UiKit.pop(towerCard)
+			if towerStroke then
+				towerStroke.Color, towerStroke.Thickness, towerStroke.Transparency = RECORD_GOLD, 5, 0
+				UiKit.tween(towerStroke, RECORD_SECONDS, { Color = colors.accent, Thickness = 2, Transparency = 0.35 })
+			end
+			task.delay(RECORD_SECONDS, function()
+				if recordToken == token then
+					recordShowing = false
+					refreshTower()
+				end
+			end)
+		end
+		knownBest = best
+		refreshTower()
+	end)
+
 	local lastQuestText = ""
 	local function refreshQuest()
 		local ready = player:GetAttribute("DataState") == "ready"
 		-- During a boss fight the boss bar takes the top spot (the camera looks north, so anything
-		-- tall up there would cover the boss itself).
-		quest.Visible = ready and not bossFighting
+		-- tall up there would cover the boss itself); inside the Shadow Tower its card does.
+		quest.Visible = ready and not bossFighting and (player:GetAttribute("TowerFloor") or 0) <= 0
+		refreshTower()
 		card.Visible = ready
 		local state = player:GetAttribute("QuestState")
 		local def = QuestData.quests[player:GetAttribute("QuestId") or ""]
@@ -704,7 +766,7 @@ function Hud.start()
 	for _, name in { "XP", "Coins", "Crystals", "Upgrades" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshStats)
 	end
-	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState" } do
+	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState", "TowerFloor" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshQuest)
 	end
 	-- Progress numbers only matter for the post-story goal line.

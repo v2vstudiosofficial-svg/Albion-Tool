@@ -1,7 +1,8 @@
 -- The Settings window: four pages (Graphics, Audio, Gameplay, Interface) built from SettingsData.
 -- Switches, choices and sliders all work with mouse, touch and gamepad (sliders also have - / +
 -- buttons). Graphics has quality presets; changing any single graphics option switches to
--- "Custom". Values come from Client/Settings; changes go to the server through `send`.
+-- "Custom". Values come from Client/Settings; changes go to the server through `send`. When the
+-- server has kept a change its row lights up and "Saved" shows by the reset button.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
@@ -30,11 +31,28 @@ local OPTION_KEYS = {
 local DESCRIPTION_KEYS = {
 	quality = "set_quality_desc", detail = "set_detail_desc", shadows = "set_shadows_desc", effects = "set_effects_desc",
 	bloom = "set_bloom_desc", atmosphere = "set_atmosphere_desc", fov = "set_fov_desc", sound = "set_sound_desc",
-	master = "set_master_desc", sfx = "set_sfx_desc", shake = "set_shake_desc", cinematics = "set_cinematics_desc", dayNight = "set_day_night_desc", flashes = "set_flashes_desc",
+	master = "set_master_desc", music = "set_music_desc", sfx = "set_sfx_desc", shake = "set_shake_desc", cinematics = "set_cinematics_desc", dayNight = "set_day_night_desc", flashes = "set_flashes_desc",
 	damageNumbers = "set_damage_numbers_desc", rangeRing = "set_range_ring_desc", uiScale = "set_ui_scale_desc",
 	minimap = "set_minimap_desc", playerTags = "set_player_tags_desc", enemyBars = "set_enemy_bars_desc", perf = "set_perf_desc",
 }
+-- An emoji beside each page tab and each option, so the long list is easy to scan.
+local CATEGORY_ICON_KEYS = {
+	graphics = "icon_cat_graphics",
+	audio = "icon_cat_audio",
+	gameplay = "icon_cat_gameplay",
+	interface = "icon_cat_interface",
+}
+local ICON_KEYS = {
+	detail = "icon_set_detail", shadows = "icon_set_shadows", effects = "icon_set_effects", bloom = "icon_set_bloom",
+	atmosphere = "icon_set_atmosphere", dayNight = "icon_set_day_night", fov = "icon_set_fov", sound = "icon_set_sound",
+	master = "icon_set_master", music = "icon_set_music", sfx = "icon_set_sfx", shake = "icon_set_shake", flashes = "icon_set_flashes",
+	cinematics = "icon_set_cinematics", damageNumbers = "icon_set_damage_numbers", rangeRing = "icon_set_range_ring",
+	uiScale = "icon_set_ui_scale", minimap = "icon_set_minimap", playerTags = "icon_set_player_tags", enemyBars = "icon_set_enemy_bars",
+	perf = "icon_set_perf",
+}
 local ROW_HEIGHT = 58
+local SAVED_SECONDS = 1.6 -- how long "Saved" stays after the server keeps a change
+local SAVE_WAIT = 3 -- a change the server has not echoed by then is not confirmed any more
 
 type Row = { key: string, refresh: () -> () }
 
@@ -180,9 +198,16 @@ function SettingsMenu.build(body: Frame, send: (any) -> ()): () -> ()
 	local tabButtons = {}
 	local presetButtons = {}
 	local qualityNote: TextLabel
+	-- The change waiting for the server: which row to light up when it comes back saved.
+	local pendingKey: string? = nil
+	local pendingAt = -math.huge
 
 	-- One change from the menu. A single graphics option switches the preset to "Custom" and keeps
 	-- the rest of the graphics choices as they are on screen right now.
+	local function save(changes: { [string]: any }, key: string?)
+		pendingKey, pendingAt = key or "", os.clock()
+		send(changes)
+	end
 	local function change(key: string, value: any)
 		if SettingsData.settings[key].preset then
 			local changes: { [string]: any } = { quality = "custom" }
@@ -192,9 +217,9 @@ function SettingsMenu.build(body: Frame, send: (any) -> ()): () -> ()
 				end
 			end
 			changes[key] = value
-			send(changes)
+			save(changes, key)
 		else
-			send({ [key] = value })
+			save({ [key] = value }, key)
 		end
 	end
 
@@ -207,7 +232,7 @@ function SettingsMenu.build(body: Frame, send: (any) -> ()): () -> ()
 	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, presetRow)
 	for order, preset in { "auto", "low", "medium", "high", "ultra" } do
 		presetButtons[preset] = UiKit.button({ LayoutOrder = order, Size = UDim2.fromOffset(78, 38), Text = Strings.get(OPTION_KEYS[preset]), TextSize = 16, Corner = 10 }, presetRow, function()
-			send({ quality = preset })
+			save({ quality = preset })
 			Audio.play("ui")
 		end)
 	end
@@ -237,10 +262,11 @@ function SettingsMenu.build(body: Frame, send: (any) -> ()): () -> ()
 			order += 1
 			local row = UiKit.create("Frame", { LayoutOrder = order, Size = UDim2.new(1, -10, 0, ROW_HEIGHT), BackgroundColor3 = colors.panelLight, BorderSizePixel = 0 }, list)
 			UiKit.corner(row, 10)
-			UiKit.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -330, 0, 24), Text = Strings.get(def.nameKey), TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left }, row)
+			UiKit.label({ Name = "Icon", Position = UDim2.fromOffset(8, 0), Size = UDim2.new(0, 32, 1, 0), Text = Strings.get(ICON_KEYS[key]), TextSize = 22 }, row)
+			UiKit.label({ Position = UDim2.fromOffset(46, 6), Size = UDim2.new(1, -364, 0, 24), Text = Strings.get(def.nameKey), TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left }, row)
 			UiKit.label({
-				Position = UDim2.fromOffset(12, 30),
-				Size = UDim2.new(1, -330, 0, 24),
+				Position = UDim2.fromOffset(46, 30),
+				Size = UDim2.new(1, -364, 0, 24),
 				Text = Strings.get(DESCRIPTION_KEYS[key]),
 				TextSize = 12,
 				TextWrapped = true,
@@ -267,9 +293,42 @@ function SettingsMenu.build(body: Frame, send: (any) -> ()): () -> ()
 		BackgroundColor3 = colors.panelLight,
 		TextColor3 = colors.text,
 	}, body, function()
-		send({ reset = page })
+		save({ reset = page })
 		Audio.play("ui")
 	end)
+
+	-- "Saved" beside the reset button once the server has kept the change.
+	local savedLabel = UiKit.label({
+		Name = "Saved",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -202, 1, -22),
+		Size = UDim2.fromOffset(110, 24),
+		Text = Strings.get("settings_saved"),
+		TextSize = 16,
+		TextColor3 = colors.good,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Visible = false,
+	}, body)
+	local savedShown = 0
+	local function confirmSaved()
+		if not pendingKey or os.clock() - pendingAt > SAVE_WAIT then
+			return
+		end
+		local row = containers[pendingKey]
+		pendingKey = nil
+		if row then
+			row.BackgroundColor3 = colors.accent:Lerp(colors.panelLight, 0.55)
+			UiKit.tween(row, 0.5, { BackgroundColor3 = colors.panelLight })
+		end
+		savedShown += 1
+		local shownNow = savedShown
+		savedLabel.Visible = true
+		task.delay(SAVED_SECONDS, function()
+			if savedShown == shownNow then
+				savedLabel.Visible = false
+			end
+		end)
+	end
 
 	local function refresh()
 		for _, category in SettingsData.categories do
@@ -293,13 +352,17 @@ function SettingsMenu.build(body: Frame, send: (any) -> ()): () -> ()
 		resetButton.Text = Strings.get("settings_reset")
 	end
 	for tabOrder, category in SettingsData.categories do
-		tabButtons[category] = UiKit.button({ LayoutOrder = tabOrder, Size = UDim2.new(1, 0, 0, 46), Text = Strings.get(CATEGORY_KEYS[category]), TextSize = 19, Corner = 10 }, tabs, function()
+		tabButtons[category] = UiKit.button({ LayoutOrder = tabOrder, Size = UDim2.new(1, 0, 0, 46), Text = Strings.get(CATEGORY_KEYS[category]), TextSize = 18, Corner = 10 }, tabs, function()
 			page = category
 			refresh()
 			Audio.play("ui")
 		end)
+		UiKit.withSideIcon(tabButtons[category], Strings.get(CATEGORY_ICON_KEYS[category]))
 	end
-	Settings.onChanged(refresh)
+	Settings.onChanged(function()
+		refresh()
+		confirmSaved()
+	end)
 	refresh()
 	return refresh
 end

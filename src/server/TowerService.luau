@@ -61,6 +61,21 @@ end
 
 local function setFloorAttribute(player: Player, floor: number)
 	player:SetAttribute("TowerFloor", floor)
+	if floor == 0 then
+		player:SetAttribute("TowerLeft", nil)
+	end
+end
+
+-- How many of the floor's creatures still stand, for the HUD's countdown (no count is shown
+-- before a run's first creatures arrive).
+local function publishLeft(current: Run)
+	local left = 0
+	for _ in current.enemies do
+		left += 1
+	end
+	for player in current.inside do
+		player:SetAttribute("TowerLeft", left)
+	end
 end
 
 local function spawnFloor(current: Run)
@@ -94,6 +109,7 @@ local function spawnFloor(current: Run)
 		setFloorAttribute(player, current.floor)
 		fx:FireClient(player, "towerFloor", current.floor, count, if bossKind then Balance.enemies[bossKind].nameKey else nil)
 	end
+	publishLeft(current)
 end
 
 local function close(current: Run)
@@ -190,6 +206,7 @@ local function onPurified(_kind, _reward, participants, _position, enemy)
 	for _, player in participants do
 		current.helpers[player] = true
 	end
+	publishLeft(current)
 end
 
 local function nearGate(player: Player): boolean
@@ -231,6 +248,9 @@ function TowerService.enter(player: Player, startFloor: number?): boolean
 	current.inside[player] = true
 	moveTo(target, center + Vector3.new(0, 4, 14))
 	setFloorAttribute(player, current.floor)
+	if next(current.enemies) ~= nil then
+		publishLeft(current)
+	end
 	return true
 end
 

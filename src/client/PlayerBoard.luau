@@ -1,5 +1,6 @@
 -- "Players": who is on this server, with their level, rebirths and best Shadow Tower floor,
--- highest level first. Everything shown comes from attributes the server already replicates to
+-- highest level first. The top three get medals and every level sits in a badge whose colour grows
+-- with it (a gold ring after a rebirth). Everything shown comes from attributes the server already replicates to
 -- everyone (Level, Rebirths, TowerBest, Title), so it needs no saved data. Open it with the button under
 -- Emotes or the Tab key.
 local Players = game:GetService("Players")
@@ -18,8 +19,25 @@ local colors = UiKit.colors
 local ROW_HEIGHT = 40
 local MAX_ROWS = 12
 local REFRESH_SECONDS = 1
+local MEDAL_KEYS = { "players_rank_1", "players_rank_2", "players_rank_3" }
+-- Badge colours: the first tier the level reaches, highest first.
+local LEVEL_TIERS = {
+	{ level = 50, color = Color3.fromRGB(235, 180, 60) },
+	{ level = 25, color = Color3.fromRGB(160, 110, 230) },
+	{ level = 10, color = Color3.fromRGB(80, 150, 230) },
+	{ level = 1, color = Color3.fromRGB(90, 170, 110) },
+}
 
 local PlayerBoard = {}
+
+function PlayerBoard.badgeColor(level: number): Color3
+	for _, tier in LEVEL_TIERS do
+		if level >= tier.level then
+			return tier.color
+		end
+	end
+	return LEVEL_TIERS[#LEVEL_TIERS].color
+end
 
 local function nameOf(other: Player): string
 	local display = (other :: any).DisplayName
@@ -61,12 +79,39 @@ function PlayerBoard.start()
 			end
 			local row = UiKit.create("Frame", { LayoutOrder = index, Size = UDim2.new(1, 0, 0, ROW_HEIGHT - 4), BackgroundColor3 = if other == player then colors.panelLight else colors.panel, BorderSizePixel = 0 }, list)
 			UiKit.corner(row, 10)
-			local title = PlayerBoard.titleOf(other)
-			UiKit.label({ Position = UDim2.fromOffset(12, if title ~= "" then 1 else 0), Size = UDim2.new(0.42, 0, if title ~= "" then 0.6 else 1, 0), Text = nameOf(other), TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
-			if title ~= "" then
-				UiKit.label({ Position = UDim2.new(0, 12, 0.55, 0), Size = UDim2.new(0.42, 0, 0.4, 0), Text = title, TextSize = 12, TextColor3 = colors.accent, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+			if other == player then
+				UiKit.create("UIStroke", { Color = colors.accent, Thickness = 2, Transparency = 0.3 }, row)
 			end
-			UiKit.label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0.55, 0, 1, 0), Text = PlayerBoard.summary(other), TextSize = 15, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Right }, row)
+			local medal = MEDAL_KEYS[index]
+			UiKit.label({
+				Name = "Rank",
+				Position = UDim2.fromOffset(4, 0),
+				Size = UDim2.new(0, 30, 1, 0),
+				Text = if medal then Strings.get(medal) else Strings.get("players_rank", index),
+				TextSize = if medal then 20 else 14,
+				TextColor3 = colors.muted,
+			}, row)
+			local level = other:GetAttribute("Level") or 1
+			local badge = UiKit.label({
+				Name = "LevelBadge",
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.new(0, 38, 0.5, 0),
+				Size = UDim2.fromOffset(30, 30),
+				BackgroundColor3 = PlayerBoard.badgeColor(level),
+				BackgroundTransparency = 0,
+				Text = tostring(level),
+				TextSize = if level >= 100 then 12 else 15,
+			}, row)
+			UiKit.corner(badge, 15)
+			if (other:GetAttribute("Rebirths") or 0) > 0 then
+				UiKit.create("UIStroke", { Color = Color3.fromRGB(255, 220, 110), Thickness = 2 }, badge)
+			end
+			local title = PlayerBoard.titleOf(other)
+			UiKit.label({ Position = UDim2.fromOffset(76, if title ~= "" then 1 else 0), Size = UDim2.new(0.42, 0, if title ~= "" then 0.6 else 1, 0), Text = nameOf(other), TextSize = 18, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+			if title ~= "" then
+				UiKit.label({ Position = UDim2.new(0, 76, 0.55, 0), Size = UDim2.new(0.42, 0, 0.4, 0), Text = title, TextSize = 12, TextColor3 = colors.accent, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+			end
+			UiKit.label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0.4, 0, 1, 0), Text = PlayerBoard.summary(other), TextSize = 15, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Right }, row)
 		end
 		panel.Size = UDim2.fromOffset(480, 56 + math.min(#everyone, MAX_ROWS) * ROW_HEIGHT)
 	end
@@ -79,6 +124,16 @@ function PlayerBoard.start()
 		end
 		Audio.play("ui")
 	end
+	UiKit.button({
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -6, 0, 6),
+		Size = UDim2.fromOffset(36, 36),
+		Text = "X",
+		TextSize = 18,
+		BackgroundColor3 = colors.panelLight,
+		TextColor3 = colors.text,
+		Corner = 18,
+	}, panel, toggle)
 	local playersButton = UiKit.button({ Size = UDim2.fromScale(1, 1), Text = Strings.get("players_button"), TextSize = 18, BackgroundColor3 = colors.panelLight, TextColor3 = colors.text }, buttonRegion, toggle)
 	UiKit.withSideIcon(playersButton, Strings.get("icon_players"))
 	UserInputService.InputBegan:Connect(function(input, processed)
@@ -112,9 +167,9 @@ function PlayerBoard.titleOf(other: Player): string
 	return if title then Strings.get(title.nameKey) else ""
 end
 
--- "Lv 42  Rebirth 2  Tower 17" (parts that are zero are left out).
+-- "Rebirth 2   Tower 17" (parts that are zero are left out; the level is in the badge).
 function PlayerBoard.summary(other: Player): string
-	local parts = { Strings.get("hud_level", other:GetAttribute("Level") or 1) }
+	local parts = {}
 	local rebirths = other:GetAttribute("Rebirths") or 0
 	if rebirths > 0 then
 		table.insert(parts, Strings.get("rebirth_hud", rebirths))
