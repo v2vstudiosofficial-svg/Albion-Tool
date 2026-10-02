@@ -88,7 +88,8 @@
   arkasındaysa yansıtılır); hedef ekrana girince ok kaybolur, sahnelerde görünmez. Studio'da doğrulandı.
   M45: her boss bu oturumda ilk kez savaşa girince kamera 1,4 sn ona yakından döner, sonra oyuncuya geri gelir (Camera in story
   scenes kapalıysa ya da hikâye sahnesi sürerken olmaz); boss savaşı boyunca görev paneli gizlenir ve boss barı en üste çıkar
-  (kamera kuzeye baktığı için paneller boss'un üstünü kapatıyordu). Studio'da doğrulandı.
+  (kamera kuzeye baktığı için paneller boss'un üstünü kapatıyordu). Studio'da doğrulandı. Ekran ortası başlık görünürken
+  bildirimler gizlenir (şerit onların üstünden geçiyordu); başlık bitince geri gelir ve tam süre ekranda kalır.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

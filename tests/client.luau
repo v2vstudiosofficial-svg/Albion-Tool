@@ -460,6 +460,7 @@ test("signposts: a ! over the Bounty Board with a bounty to claim and over the T
 end)
 
 test("server events render: rewards, notices, dialog, effects", function()
+	advance(2.5) -- let an earlier banner finish (banners hide toasts while they show)
 	remotes.RewardGranted.OnClientEvent:Fire("purify", 10, 5)
 	remotes.RewardGranted.OnClientEvent:Fire("quest", 50, 20)
 	remotes.Notice.OnClientEvent:Fire("notice_charm_gained", "charm_swift_name")
@@ -2381,7 +2382,9 @@ test("level up banner and respawn reassurance", function()
 	assert(shownText(Strings.get("hud_level", 4) .. "!"), "level banner")
 	hero.CharacterAdded:Fire(hero.Character)
 	advance(1)
-	assert(shownText(Strings.get("notice_respawn")), "respawn toast")
+	assert(not shownText(Strings.get("notice_respawn")), "toasts wait while the banner shows")
+	advance(3)
+	assert(shownText(Strings.get("notice_respawn")), "then the respawn toast is still there to read")
 end)
 
 test("enemy billboards follow enemies coming and going", function()

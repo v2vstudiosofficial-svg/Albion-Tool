@@ -479,7 +479,12 @@ function Hud.start()
 		local token = entry.token
 		task.delay(2.6, function()
 			if entry.token == token and table.find(liveToasts, entry) then
-				dropToast(entry)
+				-- A banner hides the toasts; keep this one until it has been seen.
+				if banner.Visible then
+					scheduleDrop(entry)
+				else
+					dropToast(entry)
+				end
 			end
 		end)
 	end
@@ -572,10 +577,17 @@ function Hud.start()
 		ribbon.BackgroundColor3 = if style == "danger" then Color3.fromRGB(60, 20, 70) else Color3.fromRGB(25, 20, 45)
 		bannerTitle.TextColor3 = if style == "danger" then Color3.fromRGB(230, 170, 255) else colors.accent
 		banner.Visible = true
+		-- Toasts sit right under the quest panel, where the banner's ribbon would cross them.
+		toasts.Visible = false
 		UiKit.pop(banner)
 		task.delay(2.2, function()
 			if bannerToken == token then
 				banner.Visible = false
+				toasts.Visible = true
+				-- Whatever arrived under the banner gets its full time on screen now.
+				for _, entry in liveToasts do
+					scheduleDrop(entry)
+				end
 			end
 		end)
 	end
