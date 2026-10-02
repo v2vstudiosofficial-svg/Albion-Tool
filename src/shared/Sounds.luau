@@ -20,6 +20,7 @@ return {
 	creatureLand = { id = "rbxassetid://9118598279", volume = 0.5 }, -- Rock Hit Dirt Impact
 	bossCharge = { id = "rbxassetid://9113973128", volume = 0.6 }, -- Creature Growls Lion
 	ui = { id = "rbxassetid://15675059323", volume = 0.4 }, -- Roblox UI Bright Click
+	uiClose = { id = "rbxassetid://15675059323", volume = 0.3, pitch = 0.8 }, -- the same click, lower and softer
 	-- Music by place (MusicLogic.theme), APM tracks, looped; one plays at a time.
 	music = {
 		volume = 0.25,

@@ -90,6 +90,7 @@ function Menus.start()
 			openModal.Visible = false
 			openModal = nil
 			setBackdrop(false, false)
+			Audio.play("uiClose")
 		end
 	end
 	local function showModal(modal: Frame)

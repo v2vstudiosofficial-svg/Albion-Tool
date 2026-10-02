@@ -50,6 +50,9 @@ end
 
 -- Notice arguments that are string keys (e.g. a charm name key) are translated before formatting.
 local bossFighting = false
+-- Bosses that reached their second phase (weak keys: boss models are replaced on respawn).
+local enragedBosses: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+local ENRAGED_COLOR = Color3.fromRGB(255, 80, 110)
 
 local function translateArgs(...: any): { any }
 	local args = { ... }
@@ -266,6 +269,42 @@ function Hud.start()
 		TextSize = 20,
 		TextWrapped = true,
 	}, quest)
+	-- A finished quest: a green tick pops on the panel's right edge and the outline flashes green.
+	local questTick = UiKit.label({
+		Name = "QuestTick",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -24, 0.5, 0),
+		Size = UDim2.fromOffset(40, 40),
+		BackgroundColor3 = colors.good,
+		BackgroundTransparency = 0,
+		Text = "✓",
+		TextSize = 28,
+		TextColor3 = colors.panel,
+		Visible = false,
+		ZIndex = 3,
+	}, quest)
+	UiKit.corner(questTick, 20)
+	local questStroke = quest:FindFirstChildOfClass("UIStroke")
+	local tickToken = 0
+	local function celebrateQuest()
+		tickToken += 1
+		local token = tickToken
+		questTick.Visible = true
+		UiKit.pop(questTick)
+		if questStroke then
+			questStroke.Color = colors.good
+			questStroke.Transparency = 0
+		end
+		task.delay(2, function()
+			if tickToken == token then
+				questTick.Visible = false
+				if questStroke then
+					questStroke.Color = colors.accent
+					questStroke.Transparency = 0.35
+				end
+			end
+		end)
+	end
 	-- Counting quests ("purify 5 Gloomlings") fill a thin bar under the objective.
 	local questBar = UiKit.create("Frame", {
 		Name = "QuestBar",
@@ -823,9 +862,20 @@ function Hud.start()
 			if root and typeof(second) == "Vector3" and (root.Position - second).Magnitude <= 90 then
 				showBanner(Strings.get("banner_rift"), Strings.get("banner_rift_wave", select(1, ...), select(2, ...)), "danger")
 			end
+		elseif kind == "bossPhase" and typeof(first) == "Instance" then
+			-- The boss enters its second phase: warn, and turn its bar an angry red.
+			local stats = Balance.enemies[first:GetAttribute("EnemyType") or ""]
+			local body = first:FindFirstChild("Body") :: BasePart?
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if stats and body and root and (root.Position - body.Position).Magnitude <= stats.leashRadius + 30 then
+				showBanner(Strings.get("banner_boss_enraged", Strings.get(stats.nameKey)), Strings.get("banner_boss_enraged_sub"), "danger")
+				enragedBosses[first] = true
+			end
 		elseif kind == "questComplete" then
 			local def = QuestData.quests[first]
 			showBanner(Strings.get("banner_quest_complete"), if def then Strings.get(def.titleKey) else nil, "celebrate")
+			celebrateQuest()
 			Audio.play("questComplete")
 		end
 	end)
@@ -954,6 +1004,7 @@ function Hud.start()
 				local maxHp = boss:GetAttribute("MaxHp") or 1
 				local ratio = math.clamp(hp / maxHp, 0, 1)
 				UiKit.tween(bossFill, 0.2, { Size = UDim2.fromScale(ratio, 1) })
+				bossFill.BackgroundColor3 = if enragedBosses[boss] then ENRAGED_COLOR else colors.boss
 				bossPercent.Text = Strings.get("hud_percent", math.ceil(ratio * 100))
 				-- The trail waits a moment at the old value before draining, so big hits read.
 				if ratio >= bossTrail.Size.X.Scale then
