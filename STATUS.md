@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M40 (önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M41 (ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -75,6 +75,9 @@
   M40: kamera ile oyuncu arasına giren harita parçaları (ağaç tepesi, çatı, kaya) yalnızca bu ekranda yarı saydamlaşır
   (`client/SeeThrough`, LocalTransparencyModifier, 0,1 sn'de bir ışın), artık engellemeyince yumuşakça geri gelir; yaratıklar
   ve oyuncular etkilenmez. Studio'da doğrulandı (ağacın arkasındaki karakter görünüyor).
+  M41: koşarken ayaklarda zemine göre renkli küçük toz bulutları (çim yeşilimsi, kum bej, kar beyaz, çamur kahve), zıplayıp
+  inince toz halkası; yalnızca kendi karakterin, Effects: Low'da yok. (Lune `FloorMaterial` okuyamadığı için otomatik test yok;
+  Studio'da ölçüldü: koşarken aynı anda 6 bulut.)
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

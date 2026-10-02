@@ -555,6 +555,78 @@ local function dust(position: Vector3, radius: number, count: number, color: Col
 	end
 end
 
+-- Footsteps: little puffs at the player's feet while running, tinted by the ground, and a ring of
+-- dust after a landing. Only the local player, only above Low effects.
+local FOOTSTEP_SECONDS = 0.2
+local GROUND_COLORS = {
+	[Enum.Material.Grass] = Color3.fromRGB(150, 190, 110),
+	[Enum.Material.LeafyGrass] = Color3.fromRGB(150, 190, 110),
+	[Enum.Material.Sand] = Color3.fromRGB(225, 200, 150),
+	[Enum.Material.Sandstone] = Color3.fromRGB(225, 200, 150),
+	[Enum.Material.Snow] = Color3.fromRGB(240, 245, 255),
+	[Enum.Material.Ice] = Color3.fromRGB(220, 240, 255),
+	[Enum.Material.Glacier] = Color3.fromRGB(220, 240, 255),
+	[Enum.Material.Mud] = Color3.fromRGB(140, 110, 80),
+	[Enum.Material.Ground] = Color3.fromRGB(160, 130, 95),
+}
+
+local function groundColor(material: Enum.Material): Color3
+	for key, color in GROUND_COLORS do
+		if key == material then
+			return color
+		end
+	end
+	return DUST_COLOR
+end
+
+local function footPuff(position: Vector3, color: Color3, size: number)
+	local puff = newPart({
+		Name = "Footstep",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * size,
+		Position = position + Vector3.new((math.random() - 0.5) * 0.8, size * 0.3, (math.random() - 0.5) * 0.8),
+		Color = color,
+		Material = Enum.Material.SmoothPlastic,
+		Transparency = 0.45,
+	})
+	fadeOut(puff, 0.45, { Size = Vector3.one * size * 2, Position = puff.Position + Vector3.new(0, 0.6, 0) })
+end
+
+local stepClock, airTime = 0, 0
+local function updateFootsteps(dt: number)
+	stepClock += dt
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not humanoid or not root or Settings.get("effects") == "low" then
+		return
+	end
+	local feet = root.Position - Vector3.new(0, humanoid.HipHeight + root.Size.Y * 0.5, 0)
+	local ok, floor = pcall(function()
+		return humanoid.FloorMaterial
+	end)
+	if not ok then
+		return
+	end
+	if floor == Enum.Material.Air then
+		airTime += dt
+		return
+	end
+	local color = groundColor(floor)
+	if airTime > 0.35 then
+		-- Landing after a jump or a fall: a ring of dust.
+		for index = 1, 6 do
+			local angle = index / 6 * math.pi * 2
+			footPuff(feet + Vector3.new(math.cos(angle) * 1.4, 0, math.sin(angle) * 1.4), color, 0.7)
+		end
+	end
+	airTime = 0
+	if stepClock >= FOOTSTEP_SECONDS and humanoid.MoveDirection.Magnitude > 0.1 then
+		stepClock = 0
+		footPuff(feet, color, 0.45 + math.random() * 0.25)
+	end
+end
+
 -- Plays a creature sound from `position`.
 local function soundAt(key: string, position: Vector3)
 	local emitter = newPart({ Size = Vector3.new(0.2, 0.2, 0.2), Position = position, Transparency = 1 })
@@ -1068,6 +1140,7 @@ function Effects.start()
 	end)
 
 	RunService.RenderStepped:Connect(updateProjectiles)
+	RunService.Heartbeat:Connect(updateFootsteps)
 	RunService.RenderStepped:Connect(spinPortals)
 	RunService.RenderStepped:Connect(animateCreatures)
 	RunService:BindToRenderStep("LvCameraShake", Enum.RenderPriority.Camera.Value + 1, function()
