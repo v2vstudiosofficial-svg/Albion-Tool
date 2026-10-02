@@ -66,7 +66,7 @@ function Hud.start()
 
 	-- Player card ---------------------------------------------------------------------------
 	local isTouch = UiKit.isTouch()
-	local topLeft = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 142))
+	local topLeft = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 12), Vector2.new(240, 164))
 	local topCenter = UiKit.region(gui, Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 12), Vector2.new(440, 300))
 	local middle = UiKit.region(gui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.36), Vector2.new(460, 110))
 	local bottom = UiKit.region(gui, Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, if isTouch then -130 else -24), Vector2.new(460, 86))
@@ -190,6 +190,29 @@ function Hud.start()
 		TextStrokeTransparency = 0.4,
 		Visible = false,
 	}, topLeft)
+	-- What the next level milestone opens, so there is always something just ahead.
+	local nextUnlockLabel = UiKit.label({
+		Name = "NextUnlock",
+		Position = UDim2.fromOffset(4, 140),
+		Size = UDim2.fromOffset(236, 20),
+		TextSize = 14,
+		TextColor3 = colors.accent,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextStrokeTransparency = 0.4,
+		Visible = false,
+	}, topLeft)
+	local function refreshNextUnlock()
+		local level = player:GetAttribute("Level")
+		local nextUnlock = if typeof(level) == "number" and player:GetAttribute("DataState") == "ready" then Progression.nextUnlock(level) else nil
+		nextUnlockLabel.Visible = nextUnlock ~= nil
+		if nextUnlock then
+			local name = if nextUnlock.arg then Strings.get(nextUnlock.key, nextUnlock.arg) else Strings.get(nextUnlock.key)
+			nextUnlockLabel.Text = Strings.get("hud_next_unlock", nextUnlock.level, name)
+		end
+	end
+	player:GetAttributeChangedSignal("Level"):Connect(refreshNextUnlock)
+	player:GetAttributeChangedSignal("DataState"):Connect(refreshNextUnlock)
+	refreshNextUnlock()
 	-- Double XP time left (store boost), next to the team bonus.
 	local boostLabel = UiKit.label({
 		Position = UDim2.fromOffset(126, 118),

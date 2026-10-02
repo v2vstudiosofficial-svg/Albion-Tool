@@ -241,6 +241,10 @@ local texts = {
 	hud_xp = "%s / %s XP",
 	hud_xp_max = "MAX LEVEL",
 	hud_hp = "%s / %s",
+	hud_next_unlock = "Next at Lv %d: %s",
+	unlock_tower = "Shadow Tower",
+	unlock_chest_slot = "chest slot %d",
+	unlock_weapon_slot = "floating weapon %d",
 	-- Menu button icons (emoji render on every platform Roblox runs on).
 	icon_weapons = "⚔️",
 	icon_chests = "🧰",

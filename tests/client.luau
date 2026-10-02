@@ -1871,6 +1871,17 @@ test("see-through: map parts between the camera and the player fade, then come b
 	end
 end)
 
+test("the player card names what the next level milestone opens", function()
+	local heroLevel = hero:GetAttribute("Level")
+	setAttributes({ Level = 4 })
+	assert(shownText(Strings.get("hud_next_unlock", Balance.abilities.star.unlockLevel, Strings.get("ability_star"))), "Star Fall next")
+	setAttributes({ Level = 26 })
+	assert(shownText(Strings.get("hud_next_unlock", 50, Strings.get("unlock_weapon_slot", 2))), "second floating weapon next")
+	setAttributes({ Level = 100 })
+	assert(not isShown(playerGui.Hud:FindFirstChild("NextUnlock", true)), "nothing left at the top")
+	setAttributes({ Level = heroLevel })
+end)
+
 test("purify streak: counts chained purifications, celebrates milestones, leaves when the chain breaks", function()
 	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
 	advance(CombatFeel.WINDOW + 1)

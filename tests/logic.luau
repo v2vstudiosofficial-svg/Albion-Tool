@@ -1764,6 +1764,24 @@ test("titles: earned by progress, chosen only when earned, saved choice is clean
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).equippedTitle, "", "missing value")
 end)
 
+test("next unlock: abilities, chest slots, the tower and floating weapons in level order", function()
+	local Progression = require("../src/shared/Progression")
+	local Balance = require("../src/shared/Balance")
+	local Strings = require("../src/shared/Strings")
+	eq(Progression.nextUnlock(1).level, Balance.wave.unlockLevel, "Light Wave comes first")
+	eq(Progression.nextUnlock(1).key, "wave_button")
+	local previous = 0
+	for _, unlock in Progression.unlocks() do
+		assert(unlock.level >= previous, "sorted")
+		previous = unlock.level
+		assert(Strings.has(unlock.key), "named: " .. unlock.key)
+	end
+	local afterStar = Progression.nextUnlock(Balance.abilities.star.unlockLevel)
+	assert(afterStar.level > Balance.abilities.star.unlockLevel, "strictly above the current level")
+	eq(Progression.nextUnlock(100), nil, "nothing left at the top")
+	eq(Progression.nextUnlock(99).key, "unlock_weapon_slot")
+end)
+
 test("edge arrow: points from the screen edge toward an off-screen goal", function()
 	local MapLogic = require("../src/shared/MapLogic")
 	local x, y, angle = MapLogic.edgeArrow(500, 300, true, 1000, 600, 40)

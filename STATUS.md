@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M45 (boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M46 (sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -90,10 +90,12 @@
   scenes kapalıysa ya da hikâye sahnesi sürerken olmaz); boss savaşı boyunca görev paneli gizlenir ve boss barı en üste çıkar
   (kamera kuzeye baktığı için paneller boss'un üstünü kapatıyordu). Studio'da doğrulandı. Ekran ortası başlık görünürken
   bildirimler gizlenir (şerit onların üstünden geçiyordu); başlık bitince geri gelir ve tam süre ekranda kalır.
+  M46: oyuncu kartının altında sıradaki açılış ("Next at Lv 6: Star Fall"; yetenekler, sandık yuvaları, Gölge Kulesi, yüzen
+  silah yuvaları; `Progression.unlocks/nextUnlock` saf, aynı seviyede yetenek önce), Sv100'de gizli.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 76, balance, api, scene 18, sim 62, client 67/68/68/1, place; hepsi geçti (sinematik akış,
+- logic 77, balance, api, scene 18, sim 62, client 67/68/68/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.

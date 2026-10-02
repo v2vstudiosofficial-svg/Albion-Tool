@@ -219,6 +219,45 @@ function Progression.waveUnlocked(level: number): boolean
 end
 
 -- Star Fall / Lantern Glow (Balance.abilities); false for unknown ids.
+-- Everything a level opens, sorted by level: { level, key, arg } with `key` a Strings key for the
+-- name (`arg` fills its %d where there is one).
+function Progression.unlocks(): { { level: number, key: string, arg: number? } }
+	local list = {
+		{ level = Balance.wave.unlockLevel, key = "wave_button" },
+		{ level = Balance.tower.minLevel, key = "unlock_tower" },
+	}
+	for id, ability in Balance.abilities do
+		table.insert(list, { level = ability.unlockLevel, key = if id == "star" then "ability_star" else "ability_heal" })
+	end
+	for index, level in ChestData.slotUnlockLevels do
+		if level > 1 then
+			table.insert(list, { level = level, key = "unlock_chest_slot", arg = index })
+		end
+	end
+	for slot = 1, WeaponData.maxCompanions do
+		table.insert(list, { level = slot * WeaponData.companionEvery, key = "unlock_weapon_slot", arg = slot })
+	end
+	-- On the same level the bigger news (an ability) comes first.
+	local rank = { wave_button = 1, ability_star = 1, ability_heal = 1, unlock_tower = 2, unlock_weapon_slot = 3, unlock_chest_slot = 4 }
+	table.sort(list, function(a, b)
+		if a.level ~= b.level then
+			return a.level < b.level
+		end
+		return (rank[a.key] or 9) < (rank[b.key] or 9)
+	end)
+	return list
+end
+
+-- The next thing the player will unlock above `level`, or nil when everything is open.
+function Progression.nextUnlock(level: number): { level: number, key: string, arg: number? }?
+	for _, unlock in Progression.unlocks() do
+		if unlock.level > level then
+			return unlock
+		end
+	end
+	return nil
+end
+
 function Progression.abilityUnlocked(id: string, level: number): boolean
 	local ability = Balance.abilities[id]
 	return ability ~= nil and level >= ability.unlockLevel
