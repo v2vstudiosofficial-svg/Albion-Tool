@@ -19,6 +19,7 @@ local Prompts = {}
 local shown: { [ProximityPrompt]: BillboardGui } = {}
 -- The thing's own name tag is hidden while the prompt (which names it too) is up.
 local hiddenTags: { [ProximityPrompt]: BillboardGui } = {}
+local holds: { [ProximityPrompt]: (boolean) -> () } = {}
 
 local function keyName(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInputType): string
 	if inputType == Enum.ProximityPromptInputType.Touch then
@@ -85,11 +86,35 @@ function Prompts.show(prompt: ProximityPrompt, inputType: Enum.ProximityPromptIn
 		TextColor3 = colors.muted,
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, pill)
-	-- Tapping (or clicking) the pill uses the prompt too.
+	-- Hold prompts fill a bar along the pill's bottom while the key (or a finger) is held.
+	local holdBar = UiKit.create("Frame", {
+		Name = "Hold",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 20, 1, -3),
+		Size = UDim2.new(0, 0, 0, 4),
+		BackgroundColor3 = colors.accent,
+		BorderSizePixel = 0,
+		Visible = prompt.HoldDuration > 0,
+	}, pill)
+	UiKit.corner(holdBar, 2)
+	local holdWidth = 220 - 40
+	holds[prompt] = function(holding: boolean)
+		if holding then
+			holdBar.Size = UDim2.new(0, 0, 0, 4)
+			UiKit.tween(holdBar, prompt.HoldDuration, { Size = UDim2.new(0, holdWidth, 0, 4) }, Enum.EasingStyle.Linear)
+		else
+			holdBar.Size = UDim2.new(0, 0, 0, 4)
+		end
+	end
+	-- Tapping (or clicking) the pill uses the prompt too, holding it as long as it needs.
 	pill.Activated:Connect(function()
 		pcall(function()
 			prompt:InputHoldBegin()
-			prompt:InputHoldEnd()
+		end)
+		task.delay(prompt.HoldDuration + 0.05, function()
+			pcall(function()
+				prompt:InputHoldEnd()
+			end)
 		end)
 	end)
 	UiKit.pop(pill)
@@ -103,6 +128,7 @@ end
 
 function Prompts.hide(prompt: ProximityPrompt)
 	local gui = shown[prompt]
+	holds[prompt] = nil
 	if gui then
 		shown[prompt] = nil
 		gui:Destroy()
@@ -135,6 +161,18 @@ function Prompts.start()
 	pcall(function()
 		ProximityPromptService.PromptShown:Connect(Prompts.show)
 		ProximityPromptService.PromptHidden:Connect(Prompts.hide)
+		ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
+			local hold = holds[prompt]
+			if hold then
+				hold(true)
+			end
+		end)
+		ProximityPromptService.PromptButtonHoldEnded:Connect(function(prompt)
+			local hold = holds[prompt]
+			if hold then
+				hold(false)
+			end
+		end)
 	end)
 end
 

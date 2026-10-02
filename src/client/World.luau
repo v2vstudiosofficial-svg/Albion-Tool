@@ -173,6 +173,17 @@ local function buildChest(spotId: string, chestType: string, position: Vector3):
 	light.Brightness = 1.2
 	light.Shadows = false
 	light.Parent = gem
+	-- A soft beam of the chest's colour rises above it, so chests read from across a zone.
+	local beam = localPart({
+		Name = "LootBeam",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(26, if chestType == "wood" then 0.9 else 1.3, if chestType == "wood" then 0.9 else 1.3),
+		CFrame = CFrame.new(position + Vector3.new(0, 14, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = color,
+		Material = Enum.Material.Neon,
+		Transparency = 0.7,
+	}, model)
+	beam.CastShadow = false
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = Strings.get("chest_action")
 	prompt.ObjectText = Strings.get(data.nameKey)
@@ -218,6 +229,10 @@ local function animateChests()
 		if base and model.Parent and model.PrimaryPart then
 			local phase = #spotId
 			model:PivotTo(base * CFrame.new(0, 0.15 + math.sin(now * 2.2 + phase) * 0.14, 0) * CFrame.Angles(0, math.sin(now * 0.9 + phase) * 0.08, 0))
+			local beam = model:FindFirstChild("LootBeam") :: BasePart?
+			if beam then
+				beam.Transparency = 0.68 + 0.14 * math.sin(now * 3 + phase)
+			end
 		end
 	end
 end
