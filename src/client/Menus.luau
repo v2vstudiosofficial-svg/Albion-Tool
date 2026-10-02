@@ -27,6 +27,7 @@ local QuestData = require(Shared:WaitForChild("QuestData"))
 local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local Cinematic = require(script.Parent.Cinematic)
+local ChestReveal = require(script.Parent.ChestReveal)
 local Settings = require(script.Parent.Settings)
 local SettingsMenu = require(script.Parent.SettingsMenu)
 local UiKit = require(script.Parent.UiKit)
@@ -690,12 +691,19 @@ function Menus.start()
 			BorderSizePixel = 0,
 		}, chestRow)
 		UiKit.corner(card, 12)
-		local lid = UiKit.create("Frame", {
-			Position = UDim2.fromOffset(10, 12),
-			Size = UDim2.fromOffset(56, 40),
-			BorderSizePixel = 0,
-		}, card)
-		UiKit.corner(lid, 8)
+		-- A small chest drawing: lid, body and a gold clasp, tinted with the chest's color.
+		local lid = UiKit.create("Frame", { Name = "Lid", Position = UDim2.fromOffset(12, 10), Size = UDim2.fromOffset(52, 18), BorderSizePixel = 0 }, card)
+		UiKit.corner(lid, 7)
+		local chestBody = UiKit.create("Frame", { Name = "ChestBody", Position = UDim2.fromOffset(14, 27), Size = UDim2.fromOffset(48, 26), BorderSizePixel = 0 }, card)
+		UiKit.corner(chestBody, 5)
+		local clasp = UiKit.create("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(38, 28), Size = UDim2.fromOffset(10, 12), BackgroundColor3 = colors.accent, BorderSizePixel = 0, ZIndex = 2 }, card)
+		UiKit.corner(clasp, 3)
+		-- While a chest unlocks, a bar under the timer fills up.
+		local progressBack = UiKit.create("Frame", { Position = UDim2.fromOffset(8, 124), Size = UDim2.new(1, -16, 0, 6), BackgroundColor3 = colors.panel, BorderSizePixel = 0, Visible = false }, card)
+		UiKit.corner(progressBack, 3)
+		local progressFill = UiKit.create("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = colors.xp, BorderSizePixel = 0 }, progressBack)
+		UiKit.corner(progressFill, 3)
+		local cardStroke = UiKit.create("UIStroke", { Color = colors.good, Thickness = 3, Transparency = 1 }, card)
 		local name = UiKit.label({ Position = UDim2.fromOffset(2, 58), Size = UDim2.new(1, -4, 0, 36), TextSize = 13, TextWrapped = true }, card)
 		local timer = UiKit.label({ Position = UDim2.fromOffset(0, 98), Size = UDim2.new(1, 0, 0, 26), TextSize = 18, TextColor3 = colors.xp }, card)
 		local button = UiKit.button({
@@ -719,8 +727,22 @@ function Menus.start()
 				Audio.play("ui")
 			end
 		end)
-		chestCards[index] = { card = card, lid = lid, name = name, timer = timer, button = button }
+		chestCards[index] = { card = card, lid = lid, chestBody = chestBody, clasp = clasp, progressBack = progressBack, progressFill = progressFill, stroke = cardStroke, name = name, timer = timer, button = button }
 	end
+
+	-- Ready chests glow and their lids bob, so the eye goes straight to them.
+	RunService.Heartbeat:Connect(function()
+		if not chestsModal.Visible then
+			return
+		end
+		local beat = os.clock() * 4
+		for _, view in chestCards do
+			if view.ready then
+				view.stroke.Transparency = 0.35 + 0.35 * math.sin(beat)
+				view.lid.Position = UDim2.fromOffset(12, 10 - math.abs(math.sin(beat)) * 4)
+			end
+		end
+	end)
 
 	local function refreshChests()
 		local list = chestStates()
@@ -731,22 +753,32 @@ function Menus.start()
 			local chest = list[index]
 			view.button.Visible = false
 			view.timer.Text = ""
+			view.progressBack.Visible = false
+			view.stroke.Transparency = 1
+			view.ready = false
+			view.lid.Position = UDim2.fromOffset(12, 10)
+			local function showChest(color: Color3?)
+				view.lid.Visible, view.chestBody.Visible, view.clasp.Visible = color ~= nil, color ~= nil, color ~= nil
+				if color then
+					view.lid.BackgroundColor3 = color:Lerp(Color3.new(1, 1, 1), 0.15)
+					view.chestBody.BackgroundColor3 = color:Lerp(Color3.new(0, 0, 0), 0.25)
+				end
+			end
 			if index > slots then
 				view.card.BackgroundColor3 = colors.panel
-				view.lid.BackgroundTransparency = 1
+				showChest(nil)
 				view.name.Text = Strings.get("weapon_locked", ChestData.slotUnlockLevels[index])
 				view.name.TextColor3 = colors.muted
 			elseif not chest then
 				view.card.BackgroundColor3 = colors.panelLight
-				view.lid.BackgroundTransparency = 1
+				showChest(nil)
 				view.name.Text = Strings.get("chest_empty")
 				view.name.TextColor3 = colors.muted
 			else
 				local data = ChestData.chests[chest.type]
 				local left = remaining(chest, now)
 				view.card.BackgroundColor3 = colors.panelLight
-				view.lid.BackgroundTransparency = 0
-				view.lid.BackgroundColor3 = UiKit.rgb(data.color)
+				showChest(UiKit.rgb(data.color))
 				view.name.Text = Strings.get(data.nameKey)
 				view.name.TextColor3 = colors.text
 				view.button.Visible = left == nil or left == 0
@@ -757,50 +789,21 @@ function Menus.start()
 					view.button.TextColor3 = if busy then colors.muted else colors.panel
 				elseif left > 0 then
 					view.timer.Text = clock(left)
+					view.progressBack.Visible = true
+					view.progressFill.Size = UDim2.fromScale(1 - left / data.unlockSeconds, 1)
 				else
 					view.button.Text = Strings.get("chest_open")
 					view.button.BackgroundColor3 = colors.good
 					view.button.TextColor3 = colors.panel
+					view.ready = true
 				end
 			end
 		end
 	end
 
-	-- What the last opened chest gave.
-	local rewardModal, rewardBody = modal("chests_title", 300)
-	UiKit.create("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center }, rewardBody)
+	-- What the last opened chest gave: a full-screen opening moment (client/ChestReveal).
 	local function showReward(reward: { [string]: any })
-		for _, child in rewardBody:GetChildren() do
-			if child:IsA("TextLabel") then
-				child:Destroy()
-			end
-		end
-		local function line(text: string, color: Color3?, size: number?)
-			UiKit.label({ Size = UDim2.new(1, 0, 0, (size or 20) + 10), Text = text, TextSize = size or 20, TextWrapped = true, TextColor3 = color or colors.text }, rewardBody)
-		end
-		local data = ChestData.chests[reward.chest]
-		line(Strings.get("chest_reward_title", Strings.get(if data then data.nameKey else "chests_title")), colors.accent, 24)
-		line(Strings.get("chest_reward_coins", Format.short(reward.coins or 0)), colors.coin)
-		local weapon = WeaponData.weapons[reward.weapon or ""]
-		if weapon then
-			local rarity = WeaponData.rarities[weapon.rarity]
-			if reward.star then
-				line(Strings.get("chest_reward_star", Strings.get(weapon.nameKey), reward.star, WeaponData.maxStars), UiKit.rgb(rarity.color), 22)
-			elseif reward.duplicate then
-				line(Strings.get("chest_reward_duplicate", Strings.get(weapon.nameKey)), colors.muted)
-			else
-				line(Strings.get("chest_reward_weapon", Strings.get(weapon.nameKey), Strings.get(rarity.nameKey)), UiKit.rgb(rarity.color), 22)
-			end
-		end
-		for _, entry in reward.slots or {} do
-			local slot, gained, newLevel = entry[1], entry[2], entry[3]
-			local slotName = if slot == 0 then Strings.get("bag_main") else Strings.get("bag_slot", slot)
-			line(Strings.get("chest_reward_slot", slotName, newLevel, gained), colors.xp)
-		end
-		if openModal ~= rewardModal then
-			showModal(rewardModal)
-		end
-		Audio.play("levelUp")
+		ChestReveal.show(reward)
 	end
 	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, reward)
 		if kind == "chestOpened" and typeof(reward) == "table" then

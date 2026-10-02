@@ -511,6 +511,7 @@ local texts = {
 	weapon_stars = "%d/%d stars",
 	chest_reward_star = "%s again - now %d/%d stars!",
 	chest_reward_slot = "%s slot is now Lv %d (+%d)",
+	chest_continue = "Continue",
 	weapon_locked = "Lv %d",
 
 	menu_bag = "Bag",

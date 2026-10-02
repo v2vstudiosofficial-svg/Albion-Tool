@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M34 (başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M35 (sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -55,6 +55,10 @@
   M34: ekran ortası başlıklar kenarları solan koyu bir şeritte; sevinç anlarında (seviye, görev, boss arındırma) arkada dönen
   altın ışın yelpazesi, tehlike anlarında (boss geldi, rift dalgası, kule boss katı) mor şerit; sayaçlı görevlerde görev panelinde
   ilerleme çubuğu (bitince yeşil); boss barında yüzde ve hasar izi.
+  M35: sandık açılışı tam ekran bir an (`client/ChestReveal`): ekran kararır, sandık düşüp üç kez sarsılır, kapak parlamayla
+  fırlar, arkada sandık renginde dönen ışınlar; ödüller sırayla belirir (sikkeler sayarak artar, yeni silah nadirlik renginde),
+  sonda Continue; yeni sandık gelirse baştan başlar. Sandık kartlarında küçük sandık çizimi, açılırken dolan çubuk, hazır olunca
+  yeşil nabız çerçeve ve zıplayan kapak.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
