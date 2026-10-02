@@ -14,9 +14,14 @@ local player = Players.LocalPlayer
 local Settings = {}
 
 local listeners: { () -> () } = {}
+-- Read every frame by effects, so kept until a Pref_ attribute changes (read-only for callers).
+local cached: { [string]: any }? = nil
 
 -- The values saved for this player (defaults for anything not received yet).
 function Settings.saved(): { [string]: any }
+	if cached then
+		return cached
+	end
 	local values = SettingsData.defaults()
 	for key in SettingsData.settings do
 		local value = player:GetAttribute("Pref_" .. key)
@@ -24,6 +29,7 @@ function Settings.saved(): { [string]: any }
 			values[key] = value
 		end
 	end
+	cached = values
 	return values
 end
 
@@ -53,8 +59,12 @@ local function apply()
 end
 
 function Settings.start()
+	cached = nil
 	for key in SettingsData.settings do
-		player:GetAttributeChangedSignal("Pref_" .. key):Connect(apply)
+		player:GetAttributeChangedSignal("Pref_" .. key):Connect(function()
+			cached = nil
+			apply()
+		end)
 	end
 	apply()
 end

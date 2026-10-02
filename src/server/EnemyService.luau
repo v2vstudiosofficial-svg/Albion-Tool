@@ -108,8 +108,8 @@ function ctx.clampToLeash(enemy: Enemy)
 	end
 end
 
-function ctx.hurt(target: Target, amount: number)
-	CharacterService.damage(target.player, target.humanoid, amount)
+function ctx.hurt(target: Target, amount: number, from: Vector3)
+	CharacterService.damage(target.player, target.humanoid, amount, from)
 end
 
 function ctx.contact(enemy: Enemy, now: number, damage: number?)
@@ -119,7 +119,7 @@ function ctx.contact(enemy: Enemy, now: number, damage: number?)
 			local last = enemy.lastContact[target.player]
 			if not last or now - last >= stats.contactCooldown then
 				enemy.lastContact[target.player] = now
-				ctx.hurt(target, (damage or stats.contactDamage) * enemy.damageMultiplier)
+				ctx.hurt(target, (damage or stats.contactDamage) * enemy.damageMultiplier, enemy.position)
 			end
 		end
 	end
@@ -292,7 +292,7 @@ function behaviors.charger(enemy: Enemy, dt: number, now: number)
 		for _, target in ctx.targets do
 			if not memory.dashHits[target.player] and (target.root.Position - enemy.position).Magnitude <= stats.contactRange + 0.8 then
 				memory.dashHits[target.player] = true
-				ctx.hurt(target, stats.dashDamage * enemy.damageMultiplier)
+				ctx.hurt(target, stats.dashDamage * enemy.damageMultiplier, enemy.position)
 			end
 		end
 		if beyond or now >= enemy.stateUntil then
@@ -577,9 +577,7 @@ function EnemyService.start()
 		spawnAt(index)
 	end
 
-	Projectiles.setHitHandler(function(player, humanoid, amount)
-		CharacterService.damage(player, humanoid, amount)
-	end)
+	Projectiles.setHitHandler(CharacterService.damage)
 
 	Players.PlayerRemoving:Connect(function(player)
 		for _, enemy in enemies do

@@ -13,6 +13,8 @@ local PlayerProfiles = require(script.Parent.PlayerProfiles)
 local Profile = require(script.Parent.Profile)
 local Targets = require(script.Parent.Targets)
 
+local fx = ReplicatedStorage.Remotes.Fx :: RemoteEvent
+
 local CharacterService = {}
 
 local function rgb(c: { number }): Color3
@@ -97,10 +99,12 @@ function CharacterService.onLevelUp(player: Player)
 	applyStats(player, true)
 end
 
--- All enemy damage to players goes through here so charms apply consistently.
-function CharacterService.damage(player: Player, humanoid: Humanoid, amount: number)
+-- All enemy damage to players goes through here so charms apply consistently. `from` (where the
+-- hit came from) lets the player's screen point at it.
+function CharacterService.damage(player: Player, humanoid: Humanoid, amount: number, from: Vector3)
 	local profile = PlayerProfiles.get(player)
 	humanoid:TakeDamage(Progression.damageTaken(amount, profile and profile.equippedCharm))
+	fx:FireClient(player, "hurt", from)
 end
 
 local function onCharacterAdded(player: Player, character: Model)

@@ -993,6 +993,9 @@ test("other enemy behaviors run (shooter, charger) and hurt players", function()
 	end
 	assert(hurt, "sporelings hit bob")
 	assert(logCount("Fx", function(e)
+		return e.target == bob and e.args[1] == "hurt" and typeof(e.args[2]) == "Vector3"
+	end) > 0, "every hit tells bob where it came from")
+	assert(logCount("Fx", function(e)
 		return e.args[1] == "projectile" and e.args[7] == "spore"
 	end) > 0, "spores fired")
 end)

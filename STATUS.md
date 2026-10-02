@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M58 (ayarlar simgeleri ve müzik sesi, oyuncu madalyaları, kule kartı; M57: elit parıltısı, yetenek kartları; M56: sandık ışık sütunu; M55: mini harita ve yer adları; M54: günlük hediye açılışı; M53: silah güç farkı; M52: boss öfkesi, görev tiki, kapanış sesi; M51: Screen flashes ayarı; M50: yenilgi ekranı; M49: silah kartı simgeleri; M48: sade etiketler, parlayan ödül düğmeleri; M47: oyuna özel etkileşim istemi; M46: sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M59 (hasar yönü okları, ayar önbelleği; M58: ayarlar simgeleri ve müzik sesi, oyuncu madalyaları, kule kartı; M57: elit parıltısı, yetenek kartları; M56: sandık ışık sütunu; M55: mini harita ve yer adları; M54: günlük hediye açılışı; M53: silah güç farkı; M52: boss öfkesi, görev tiki, kapanış sesi; M51: Screen flashes ayarı; M50: yenilgi ekranı; M49: silah kartı simgeleri; M48: sade etiketler, parlayan ödül düğmeleri; M47: oyuna özel etkileşim istemi; M46: sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -126,6 +126,10 @@
   büyür, rebirth'te altın halka), X ile kapatma. Kulede görev paneli yerine kule kartı: kat, en iyi kat, boss'a kalan
   kat (bir önceki katta kırmızı uyarı), kalan gölge sayacı (sunucu `TowerLeft`), yeni rekorda altın parlama.
   Eski kule yazısı Players düğmesinin üstüne biniyordu (kaldırıldı). Studio'da doğrulandı.
+  M59: her vuruşta kahramanın çevresinde, vuruşun geldiği yöne bakan kırmızı ok (sunucu `hurt` Fx'i: temas, atılma,
+  boss ezmesi, mermi; CharacterService.damage artık kaynağı alır). Performans: Settings.get her karede 22 öznitelik
+  okuyup tablo kuruyordu; Pref_ değişene kadar önbellekte. Diğer kare döngüleri zaten seyreltilmiş/mesafeyle sınırlı.
+  Studio'da doğrulandı.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

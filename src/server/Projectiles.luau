@@ -24,9 +24,10 @@ local Projectiles = {}
 
 local active: { Projectile } = {}
 local nextId = 0
-local onHit: (Player, Humanoid, number) -> () = function() end
+-- (player, humanoid, damage, where the shot came from)
+local onHit: (Player, Humanoid, number, Vector3) -> () = function() end
 
-function Projectiles.setHitHandler(handler: (Player, Humanoid, number) -> ())
+function Projectiles.setHitHandler(handler: (Player, Humanoid, number, Vector3) -> ())
 	onHit = handler
 end
 
@@ -58,7 +59,7 @@ local function step(dt: number)
 		local hit = false
 		for _, target in targets do
 			if (target.root.Position - projectile.position).Magnitude <= projectile.radius + PLAYER_RADIUS then
-				onHit(target.player, target.humanoid, projectile.damage)
+				onHit(target.player, target.humanoid, projectile.damage, projectile.position - projectile.velocity)
 				fx:FireAllClients("projectileEnd", projectile.id, projectile.position)
 				hit = true
 				break

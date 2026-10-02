@@ -1799,6 +1799,28 @@ test("player card: health bar, red screen edges on a hit and at low health, toas
 	humanoid.Health = 200
 	advance(1)
 	eq(edgeStrength(), 0, "healed: edges clear")
+	-- Each hit points at where it came from, around the hero in the middle of the screen.
+	local root = hero.Character.HumanoidRootPart
+	local look = H.read(workspace.CurrentCamera, "CFrame").LookVector
+	local right = Vector3.new(-look.Z, 0, look.X).Unit
+	remotes.Fx.OnClientEvent:Fire("hurt", root.Position + right * 10)
+	advance(0.05)
+	local arrow = edges:FindFirstChild("HurtArrow")
+	assert(arrow and isShown(arrow), "a chevron points at the hit")
+	assert(math.abs(arrow.Rotation - 90) < 1, "to the right of the view: " .. arrow.Rotation)
+	assert(arrow.Position.X.Offset > 0 and math.abs(arrow.Position.Y.Offset) < 1, "on the hero's right")
+	remotes.Fx.OnClientEvent:Fire("hurt", root.Position - right * 10)
+	advance(0.05)
+	local behind = 0
+	for _, child in edges:GetChildren() do
+		if child.Name == "HurtArrow" and math.abs(child.Rotation - 270) < 1 then
+			behind += 1
+		end
+	end
+	eq(behind, 1, "a hit from the left points left")
+	remotes.Fx.OnClientEvent:Fire("hurt", "x")
+	advance(1.2)
+	eq(edges:FindFirstChild("HurtArrow"), nil, "chevrons fade away")
 	setAttributes({ Pref_flashes = false })
 	humanoid.Health = 150
 	advance(0.05)

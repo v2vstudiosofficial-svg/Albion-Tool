@@ -15,6 +15,7 @@ local UiKit = require(script.Parent.UiKit)
 local Attrs = require(script.Parent.Attrs)
 local Format = require(Shared:WaitForChild("Format"))
 local CombatFeel = require(Shared:WaitForChild("CombatFeel"))
+local MapLogic = require(Shared:WaitForChild("MapLogic"))
 local CameraRig = require(script.Parent.CameraRig)
 local Settings = require(script.Parent.Settings)
 
@@ -31,6 +32,12 @@ local BOSS_INTRO_SECONDS = 1.4
 local RAY_COUNT = 8 -- bars through the center, so twice as many rays
 -- The streak counter appears from this many purifications in a row.
 local STREAK_SHOWN_FROM = 3
+-- Every hit shows a red chevron this far from the middle of the screen (where the hero is), pointing
+-- to where it came from; it holds, then fades.
+local HURT_ARROW_RADIUS = 120
+local HURT_ARROW_HOLD = 0.35
+local HURT_ARROW_FADE = 0.6
+local MAX_HURT_ARROWS = 4
 -- A new best Shadow Tower floor: the tower card glows this gold for a few seconds.
 local RECORD_GOLD = Color3.fromRGB(255, 236, 140)
 local RECORD_SECONDS = 3.5
@@ -970,6 +977,40 @@ function Hud.start()
 		UiKit.create("UIGradient", { Rotation = side[5], Transparency = NumberSequence.new(0, 1) }, edge)
 		table.insert(edges, edge)
 	end
+	local liveArrows = 0
+	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, from)
+		local camera = workspace.CurrentCamera
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if kind ~= "hurt" or typeof(from) ~= "Vector3" or not camera or not root or liveArrows >= MAX_HURT_ARROWS then
+			return
+		end
+		local offset = from - root.Position
+		if Vector3.new(offset.X, 0, offset.Z).Magnitude < 1 then
+			return -- right on top of the hero: no direction to show
+		end
+		local look = camera.CFrame.LookVector
+		local angle = (MapLogic.heading(offset.X, offset.Z) - MapLogic.heading(look.X, look.Z)) % 360
+		local radius = HURT_ARROW_RADIUS * UiKit.screenScale()
+		local arrow = UiKit.label({
+			Name = "HurtArrow",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, math.sin(math.rad(angle)) * radius, 0.5, -math.cos(math.rad(angle)) * radius),
+			Size = UDim2.fromOffset(48, 32),
+			Rotation = angle,
+			Text = "▲",
+			TextSize = 34,
+			TextColor3 = Color3.fromRGB(255, 70, 70),
+			TextStrokeTransparency = 0.3,
+		}, edgesGui)
+		liveArrows += 1
+		task.delay(HURT_ARROW_HOLD, function()
+			UiKit.tween(arrow, HURT_ARROW_FADE, { TextTransparency = 1, TextStrokeTransparency = 1 }).Completed:Connect(function()
+				liveArrows -= 1
+				arrow:Destroy()
+			end)
+		end)
+	end)
 	local shownHp, shownMax = -1, -1
 	local flash = 0
 	local trailToken = 0

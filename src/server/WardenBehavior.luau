@@ -100,7 +100,7 @@ local function resolveSlam(enemy, ctx)
 		ctx.fx("slam", point, stats.slamRadius)
 		for _, target in ctx.targets do
 			if flat(target.root.Position - point).Magnitude <= stats.slamRadius then
-				ctx.hurt(target, stats.slamDamage * enemy.damageMultiplier)
+				ctx.hurt(target, stats.slamDamage * enemy.damageMultiplier, point)
 			end
 		end
 	end
