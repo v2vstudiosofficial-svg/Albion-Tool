@@ -1963,6 +1963,35 @@ if not touchMode then
 	end)
 end
 
+if touchMode then
+	test("touch: one Menu button opens big tiles; a tile opens its window; badges show on Menu", function()
+		local hub = findButton(Strings.get("menu_hub"))
+		assert(hub and isShown(hub), "Menu button in the corner")
+		local bag = findButton(Strings.get("menu_bag"))
+		assert(not isShown(bag), "menu tiles wait inside the Menu window")
+		click(hub)
+		advance(0.3)
+		assert(isShown(bag), "tiles shown")
+		click(bag)
+		advance(0.3)
+		assert(not isShown(bag), "the Menu window closes when a tile is tapped")
+		assert(isShown(playerGui.Menus.Backdrop), "and the chosen window is open")
+		click(playerGui.Menus.Backdrop)
+		advance(0.3)
+		local heroChests = hero:GetAttribute("Chests")
+		setAttributes({ Chests = "wood:0" })
+		advance(0.6)
+		local anyBadge = false
+		for _, child in hub:GetChildren() do
+			if child:IsA("TextLabel") and child.Text == "!" and isShown(child) then
+				anyBadge = true
+			end
+		end
+		assert(anyBadge, "a chest waiting shows ! on the Menu button")
+		setAttributes({ Chests = heroChests or "" })
+	end)
+end
+
 test("menu windows: hotkeys, key caps, a dim backdrop that closes them, blur except in Settings", function()
 	local backdrop = playerGui.Menus.Backdrop
 	-- Window titles are labels (the menu buttons with the same words are buttons).

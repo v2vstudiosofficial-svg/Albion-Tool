@@ -146,14 +146,50 @@ function Menus.start()
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, topRight)
 
+	-- On touch screens the corner keeps a single Menu button (the grid would be too small to tap on a
+	-- phone and would crowd the view); it opens a window of big tiles, one per menu.
+	local touch = UiKit.isTouch()
+	local menuParent: Instance = topRight
+	local hubButton: TextButton? = nil
+	local hubBadge: TextLabel? = nil
+	if touch then
+		local hub, hubBody = modal("menu_hub", 340, 420)
+		UiKit.create("UIGridLayout", {
+			CellSize = UDim2.fromOffset(120, 78),
+			CellPadding = UDim2.fromOffset(10, 10),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, hubBody)
+		menuParent = hubBody
+		hubButton = UiKit.button({ Name = "MenuHub", Size = UDim2.fromOffset(100, 48), Text = Strings.get("menu_hub"), LayoutOrder = -1 }, topRight, function()
+			showModal(hub)
+		end)
+		UiKit.withIcon(hubButton :: TextButton, Strings.get("icon_menu"))
+		hubBadge = UiKit.label({
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(1, -4, 0, 4),
+			Size = UDim2.fromOffset(24, 24),
+			BackgroundColor3 = colors.good,
+			BackgroundTransparency = 0,
+			Text = "!",
+			TextSize = 18,
+			TextColor3 = colors.panel,
+			Visible = false,
+		}, hubButton)
+		UiKit.corner(hubBadge :: TextLabel, 12)
+	end
+
 	-- On a keyboard every menu button has a hotkey, shown as a small key cap on its corner (Settings
 	-- has none: I/O zoom the camera and Esc is Roblox's own menu).
 	local hotkeys: { [string]: () -> () } = {} -- by key name
 	local function menuButton(props: { [string]: any }, hotkey: Enum.KeyCode?, onClick: () -> (), iconKey: string?): TextButton
-		props.Size = UDim2.fromOffset(100, 48)
-		local button = UiKit.button(props, topRight, onClick)
+		props.Size = if touch then UDim2.fromOffset(120, 78) else UDim2.fromOffset(100, 48)
+		if touch then
+			props.TextSize = 18
+		end
+		local button = UiKit.button(props, menuParent, onClick)
 		if iconKey then
-			UiKit.withIcon(button, Strings.get(iconKey))
+			UiKit.withIcon(button, Strings.get(iconKey), if touch then 32 else nil)
 		end
 		if hotkey then
 			hotkeys[hotkey.Name] = onClick
@@ -1730,6 +1766,10 @@ function Menus.start()
 		while true do
 			task.wait(0.5)
 			refreshBadge()
+			-- On touch screens the Menu button carries any "!" of the menus inside it.
+			if hubBadge then
+				hubBadge.Visible = chestBadge.Visible or logBadge.Visible or passBadge.Visible
+			end
 			if openModal == chestsModal then
 				refreshChests()
 			end

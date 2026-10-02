@@ -150,7 +150,7 @@ end
 -- Puts an emoji icon at the top of a button and moves its own text to the bottom edge.
 function UiKit.withIcon(button: TextButton, icon: string, iconSize: number?)
 	button.TextYAlignment = Enum.TextYAlignment.Bottom
-	button.TextSize = math.min(button.TextSize, 16)
+	button.TextSize = math.min(button.TextSize, if (iconSize or 22) > 24 then 20 else 16)
 	UiKit.create("UIPadding", { PaddingBottom = UDim.new(0, 4) }, button)
 	UiKit.label({
 		Name = "Icon",
