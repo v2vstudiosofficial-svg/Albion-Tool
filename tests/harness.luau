@@ -152,6 +152,7 @@ for _, eventName in {
 	"Destroying",
 	"ChildAdded",
 	"ChildRemoved",
+	"DescendantAdded",
 } do
 	roblox.implementProperty("Instance", eventName, function(self)
 		return Harness.signalFor(self, eventName)

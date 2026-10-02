@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M46 (sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M47 (oyuna özel etkileşim istemi; M46: sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -92,6 +92,9 @@
   bildirimler gizlenir (şerit onların üstünden geçiyordu); başlık bitince geri gelir ve tam süre ekranda kalır.
   M46: oyuncu kartının altında sıradaki açılış ("Next at Lv 6: Star Fall"; yetenekler, sandık yuvaları, Gölge Kulesi, yüzen
   silah yuvaları; `Progression.unlocks/nextUnlock` saf, aynı seviyede yetenek önce), Sv100'de gizli.
+  M47: etkileşim istemleri oyunun görünümünde (`client/Prompts`, istem stili yalnızca bu ekranda Custom): koyu hap, altın tuş
+  rozeti (E; dokunmatikte 👆, gamepad'de düğme), eylem ve hedef adı; hapa dokunmak/tıklamak da kullanır; istem açıkken hedefin
+  isim etiketi gizlenir (adı tekrarlamasın); hikâye sahnelerinde istem, ilk dakika ipucu ve kenar oku gizlenir. Studio'da doğrulandı.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

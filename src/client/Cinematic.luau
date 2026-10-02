@@ -27,7 +27,7 @@ local SOFT_MIN_SECONDS = 3.2
 local SOFT_SECONDS_PER_CHAR = 0.045
 local FOV = 38
 -- Screens hidden while a full scene plays, so only the letterbox, caption and Skip are left.
-local HIDDEN_IN_SCENES = { "Hud", "Menus", "Minimap", "Emotes", "PlayerBoard" }
+local HIDDEN_IN_SCENES = { "Hud", "Menus", "Minimap", "Emotes", "PlayerBoard", "Controls", "WaypointEdge" }
 
 local Cinematic = {}
 

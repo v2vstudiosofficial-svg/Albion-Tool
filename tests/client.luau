@@ -1882,6 +1882,32 @@ test("the player card names what the next level milestone opens", function()
 	setAttributes({ Level = heroLevel })
 end)
 
+test("prompts: drawn in the game's look with the key, action and target", function()
+	local Prompts = H.loadModule("src/client/Prompts.luau")
+	local part = Instance.new("Part")
+	part.Parent = workspace
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Talk"
+	prompt.ObjectText = "Test Friend"
+	prompt.Parent = part
+	Prompts.show(prompt, Enum.ProximityPromptInputType.Keyboard)
+	assert(shownText("Talk") and shownText("Test Friend"), "action and target")
+	assert(shownText("E"), "the key to press")
+	Prompts.hide(prompt)
+	assert(not shownText("Test Friend"), "gone when Roblox hides it")
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "NameTag"
+	tag.Parent = part
+	Prompts.show(prompt, Enum.ProximityPromptInputType.Keyboard)
+	eq(tag.Enabled, false, "the name tag steps aside while the prompt names it")
+	Prompts.hide(prompt)
+	eq(tag.Enabled, true, "and comes back")
+	Prompts.show(prompt, Enum.ProximityPromptInputType.Touch)
+	assert(not shownText("E"), "a hand instead of a key on touch screens")
+	Prompts.hide(prompt)
+	part:Destroy()
+end)
+
 test("purify streak: counts chained purifications, celebrates milestones, leaves when the chain breaks", function()
 	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
 	advance(CombatFeel.WINDOW + 1)
