@@ -15,6 +15,8 @@ local UiKit = require(script.Parent.UiKit)
 local Attrs = require(script.Parent.Attrs)
 local Format = require(Shared:WaitForChild("Format"))
 local CombatFeel = require(Shared:WaitForChild("CombatFeel"))
+local CameraRig = require(script.Parent.CameraRig)
+local Settings = require(script.Parent.Settings)
 
 local PURIFY_TOAST_WINDOW = 1.2
 -- Below this share of health the screen edges pulse red.
@@ -24,6 +26,8 @@ local HIT_FLASH_FROM = 0.06
 local HP_HIGH = Color3.fromRGB(110, 220, 120)
 local HP_LOW = Color3.fromRGB(255, 90, 90)
 local MAX_TOASTS = 4
+-- The first time each boss joins a fight this session, the camera glides over to it for a moment.
+local BOSS_INTRO_SECONDS = 1.4
 local RAY_COUNT = 8 -- bars through the center, so twice as many rays
 -- The streak counter appears from this many purifications in a row.
 local STREAK_SHOWN_FROM = 3
@@ -45,6 +49,8 @@ function Hud.toast(text: string, color: Color3?)
 end
 
 -- Notice arguments that are string keys (e.g. a charm name key) are translated before formatting.
+local bossFighting = false
+
 local function translateArgs(...: any): { any }
 	local args = { ... }
 	for index, value in args do
@@ -254,7 +260,7 @@ function Hud.start()
 	-- Boss bar ------------------------------------------------------------------------------
 	local bossPanel = UiKit.panel({
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 80),
+		Position = UDim2.new(0.5, 0, 0, 0),
 		Size = UDim2.fromOffset(420, 46),
 		Visible = false,
 	}, topCenter)
@@ -407,7 +413,9 @@ function Hud.start()
 	local lastQuestText = ""
 	local function refreshQuest()
 		local ready = player:GetAttribute("DataState") == "ready"
-		quest.Visible = ready
+		-- During a boss fight the boss bar takes the top spot (the camera looks north, so anything
+		-- tall up there would cover the boss itself).
+		quest.Visible = ready and not bossFighting
 		card.Visible = ready
 		local state = player:GetAttribute("QuestState")
 		local def = QuestData.quests[player:GetAttribute("QuestId") or ""]
@@ -823,6 +831,7 @@ function Hud.start()
 
 	-- Boss bar polling: the nearest engaged boss (boss models are replaced on every respawn).
 	local shownBoss: Instance? = nil
+	local introduced: { [string]: boolean } = {}
 	task.spawn(function()
 		local enemies = workspace:WaitForChild("Enemies")
 		while true do
@@ -846,10 +855,27 @@ function Hud.start()
 				bossName.Text = Strings.get("enemy_label", boss:GetAttribute("Level") or 1, Strings.get(bossStats.nameKey))
 				if not bossPanel.Visible or shownBoss ~= boss then
 					showBanner(Strings.get("banner_boss", Strings.get(bossStats.nameKey)), Strings.get("banner_boss_sub"), "danger")
+					local kind = boss:GetAttribute("EnemyType")
+					local body = boss:FindFirstChild("Body") :: BasePart?
+					if kind and body and not introduced[kind] and Settings.get("cinematics") and not CameraRig.currentShot() then
+						introduced[kind] = true
+						local focus = body.Position + Vector3.new(0, bossStats.size * 0.3, 0)
+						local intro = { from = focus + Vector3.new(0, bossStats.size * 0.8 + 6, bossStats.size * 1.6 + 14), focus = focus, fov = 45 }
+						CameraRig.setShot(intro)
+						task.delay(BOSS_INTRO_SECONDS, function()
+							if CameraRig.currentShot() == intro then
+								CameraRig.setShot(nil)
+							end
+						end)
+					end
 				end
 			end
 			shownBoss = boss
 			bossPanel.Visible = show
+			if bossFighting ~= show then
+				bossFighting = show
+				refreshQuest()
+			end
 			if show and boss then
 				local hp = boss:GetAttribute("Hp") or 0
 				local maxHp = boss:GetAttribute("MaxHp") or 1

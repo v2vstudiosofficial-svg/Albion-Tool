@@ -45,6 +45,11 @@ function CameraRig.setShot(newShot: Shot?)
 	shot = newShot
 end
 
+-- The story shot in use, if any (a boss intro does not interrupt a story scene).
+function CameraRig.currentShot(): Shot?
+	return shot
+end
+
 function CameraRig.punch(degrees: number)
 	if not Settings.get("shake") then
 		return
