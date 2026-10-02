@@ -1764,6 +1764,38 @@ test("titles: earned by progress, chosen only when earned, saved choice is clean
 	eq(Profile.sanitize({ xp = 0, coins = 0, staffUpgrade = 0 }).equippedTitle, "", "missing value")
 end)
 
+test("day cycle: a long day, golden dusk, a short night, shared by everyone through server time", function()
+	local DayCycle = require("../src/shared/DayCycle")
+	local L = DayCycle.LENGTH
+	eq(DayCycle.clock(0), 7, "the cycle starts in the morning")
+	eq(DayCycle.clock(L), 7, "and loops")
+	assert(math.abs(DayCycle.clock(L * 0.55) - 16.5) < 1e-6)
+	assert(math.abs(DayCycle.clock(L * 0.8) - 0.25) < 1e-6, "past midnight the clock wraps")
+	-- Daylight takes most of the cycle; deep night is short.
+	local day, deepNight = 0, 0
+	for step = 0, 999 do
+		local clock = DayCycle.clock(L * step / 1000)
+		if DayCycle.night(clock) == 0 then
+			day += 1
+		elseif DayCycle.night(clock) == 1 then
+			deepNight += 1
+		end
+	end
+	assert(day > 600, "day is most of the cycle: " .. day)
+	assert(deepNight < 250 and deepNight > 50, "a short real night: " .. deepNight)
+	eq(DayCycle.night(12), 0)
+	eq(DayCycle.night(23), 1)
+	eq(DayCycle.night(3), 1)
+	assert(DayCycle.night(19.7) > 0.4 and DayCycle.night(19.7) < 0.6, "half way into the night")
+	assert(DayCycle.dusk(18.8) == 1 and DayCycle.dusk(12) == 0 and DayCycle.dusk(6) == 1, "orange at sunset and sunrise only")
+	-- Clock time never jumps between neighbouring seconds (except the wrap at midnight).
+	for second = 0, L - 1 do
+		local a, b = DayCycle.clock(second), DayCycle.clock(second + 1)
+		local diff = math.abs(b - a)
+		assert(diff < 0.05 or diff > 23.9, "smooth at " .. second)
+	end
+end)
+
 test("combat feel: threat colors by level gap, purify streaks with milestones", function()
 	local CombatFeel = require("../src/shared/CombatFeel")
 	eq(CombatFeel.threat(10, 10), "even")

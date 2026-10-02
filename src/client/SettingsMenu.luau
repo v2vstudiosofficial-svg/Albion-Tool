@@ -30,7 +30,7 @@ local OPTION_KEYS = {
 local DESCRIPTION_KEYS = {
 	quality = "set_quality_desc", detail = "set_detail_desc", shadows = "set_shadows_desc", effects = "set_effects_desc",
 	bloom = "set_bloom_desc", atmosphere = "set_atmosphere_desc", fov = "set_fov_desc", sound = "set_sound_desc",
-	master = "set_master_desc", sfx = "set_sfx_desc", shake = "set_shake_desc", cinematics = "set_cinematics_desc",
+	master = "set_master_desc", sfx = "set_sfx_desc", shake = "set_shake_desc", cinematics = "set_cinematics_desc", dayNight = "set_day_night_desc",
 	damageNumbers = "set_damage_numbers_desc", rangeRing = "set_range_ring_desc", uiScale = "set_ui_scale_desc",
 	minimap = "set_minimap_desc", playerTags = "set_player_tags_desc", enemyBars = "set_enemy_bars_desc", perf = "set_perf_desc",
 }

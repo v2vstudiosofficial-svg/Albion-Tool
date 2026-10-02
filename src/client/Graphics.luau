@@ -21,13 +21,9 @@ local function effect(className: string, name: string): any
 	return instance
 end
 
--- The base mood, always on (it costs nothing): warm sun, soft blue shade.
+-- The base mood, always on (it costs nothing). Sun, sky colours and time of day belong to
+-- client/DayNight.
 local function applyMood()
-	Lighting.Brightness = 2.4
-	Lighting.ClockTime = 15.5
-	Lighting.Ambient = Color3.fromRGB(96, 98, 120)
-	Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 150)
-	Lighting.ColorShift_Top = Color3.fromRGB(255, 236, 200)
 	Lighting.EnvironmentDiffuseScale = 0.6
 end
 

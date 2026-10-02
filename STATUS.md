@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M37 (yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M38 (gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -65,6 +65,10 @@
   M37: masaüstünde yetenek düğmesinin üzerine gelince bilgi kutusu (ad + tuş, ne yaptığı, dolum süresi ya da açıldığı seviye);
   yetenek yeniden hazır olunca düğmeden renkli halka yayılır; Weapons menüsünde bulunmamış silahlar "🔒 Ad" ve daha belirgin
   nadirlik şeridiyle görünür, tıklayınca nadirliğini, ne yaptığını ve sandıklarda aranacağını söyler.
+  M38: gün-gece döngüsü (`shared/DayCycle` saf + `client/DayNight`): 20 dk'lık gün, saat sunucu zamanından (herkes aynı gökyüzü);
+  uzun gündüz, sıcak turuncu gün batımı/doğumu, kısa ve aydınlık mavi gece; gece fener ışıkları (haritadaki "Glow" ışıkları)
+  parlaklaşır, oyuncunun çevresinde ateş böcekleri çıkar (Effects: Low'da yok). Ayarlar > Graphics > "Day & night" kapalıysa
+  hep öğleden sonra (15.5). Graphics artık saat/ışık rengine dokunmuyor.
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

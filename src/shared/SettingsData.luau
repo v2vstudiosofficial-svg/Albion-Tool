@@ -10,7 +10,7 @@ local SettingsData = {}
 SettingsData.categories = { "graphics", "audio", "gameplay", "interface" }
 
 SettingsData.order = {
-	"quality", "detail", "shadows", "effects", "bloom", "atmosphere", "fov",
+	"quality", "detail", "shadows", "effects", "bloom", "atmosphere", "dayNight", "fov",
 	"sound", "master", "sfx",
 	"shake", "cinematics", "damageNumbers", "rangeRing",
 	"uiScale", "minimap", "playerTags", "enemyBars", "perf",
@@ -23,6 +23,7 @@ SettingsData.settings = {
 	effects = { category = "graphics", kind = "choice", options = { "low", "medium", "high" }, default = "high", nameKey = "set_effects", preset = true },
 	bloom = { category = "graphics", kind = "bool", default = true, nameKey = "set_bloom", preset = true },
 	atmosphere = { category = "graphics", kind = "bool", default = true, nameKey = "set_atmosphere", preset = true },
+	dayNight = { category = "graphics", kind = "bool", default = true, nameKey = "set_day_night" },
 	fov = { category = "graphics", kind = "range", min = 40, max = 70, step = 5, default = 50, nameKey = "set_fov" },
 	sound = { category = "audio", kind = "bool", default = true, nameKey = "set_sound" },
 	master = { category = "audio", kind = "range", min = 0, max = 100, step = 10, default = 100, nameKey = "set_master" },
