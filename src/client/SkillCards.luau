@@ -64,17 +64,18 @@ function SkillCards.start()
 			BorderSizePixel = 0,
 		}, card)
 		UiKit.corner(stripe, 4)
-		local name = UiKit.label({ Position = UDim2.fromOffset(6, 24), Size = UDim2.new(1, -12, 0, 44), TextSize = 18, TextWrapped = true }, card)
+		local icon = UiKit.label({ Name = "Icon", Position = UDim2.fromOffset(0, 22), Size = UDim2.new(1, 0, 0, 34), TextSize = 30 }, card)
+		local name = UiKit.label({ Position = UDim2.fromOffset(6, 56), Size = UDim2.new(1, -12, 0, 40), TextSize = 17, TextWrapped = true }, card)
 		local desc = UiKit.label({
-			Position = UDim2.fromOffset(8, 70),
-			Size = UDim2.new(1, -16, 0, 76),
+			Position = UDim2.fromOffset(8, 96),
+			Size = UDim2.new(1, -16, 0, 54),
 			TextSize = 14,
 			TextWrapped = true,
 			TextColor3 = colors.muted,
 			TextYAlignment = Enum.TextYAlignment.Top,
 		}, card)
 		local rank = UiKit.label({ Position = UDim2.new(0, 0, 1, -30), Size = UDim2.new(1, 0, 0, 24), TextSize = 15, TextColor3 = colors.xp }, card)
-		cards[index] = { card = card, stripe = stripe, name = name, desc = desc, rank = rank }
+		cards[index] = { card = card, stripe = stripe, icon = icon, name = name, desc = desc, rank = rank }
 	end
 	UiKit.button({
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -88,13 +89,30 @@ function SkillCards.start()
 		Audio.play("ui")
 	end)
 
-	-- Reopens the cards later; sits just under the player card in the top-left corner.
-	local corner = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 146), Vector2.new(210, 46))
+	-- Reopens the cards later; sits under the player card and its "next unlock" line.
+	local corner = UiKit.region(gui, Vector2.new(0, 0), UDim2.fromOffset(12, 180), Vector2.new(210, 46))
+	local deal: () -> ()
 	local reopen = UiKit.button({ Size = UDim2.fromOffset(200, 42), TextSize = 18, BackgroundColor3 = colors.good, Visible = false }, corner, function()
 		panel.Visible = true
 		UiKit.pop(panel)
+		deal()
 		Audio.play("ui")
 	end)
+
+	-- Opening the panel deals the cards in one after another, each flipping up into place.
+	deal = function()
+		for index, view in cards do
+			local scale = view.card:FindFirstChildOfClass("UIScale")
+			if scale then
+				scale.Scale = 0.3
+				view.card.Rotation = if index % 2 == 0 then 8 else -8
+				task.delay(0.08 * index, function()
+					UiKit.tween(scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+					UiKit.tween(view.card, 0.35, { Rotation = 0 }, Enum.EasingStyle.Back)
+				end)
+			end
+		end
+	end
 
 	local function refresh()
 		offer = Attrs.list("SkillOffer")
@@ -105,12 +123,14 @@ function SkillCards.start()
 			view.card.Visible = choice ~= nil
 			if choice == COIN_CARD then
 				view.stripe.BackgroundColor3 = UiKit.rgb(CARD_COLOR_COINS)
+				view.icon.Text = Strings.get("icon_skill_coins")
 				view.name.Text = Strings.get("skill_coins_name")
 				view.desc.Text = Strings.get("skill_coins_desc")
 				view.rank.Text = Strings.get("hud_coins", SkillData.fallbackCoins)
 			elseif choice and SkillData.skills[choice] then
 				local skill = SkillData.skills[choice]
 				view.stripe.BackgroundColor3 = UiKit.rgb(skill.color)
+				view.icon.Text = Strings.get(skill.iconKey)
 				view.name.Text = Strings.get(skill.nameKey)
 				view.desc.Text = Strings.get(skill.descKey)
 				view.rank.Text = Strings.get("skill_rank", (skills[choice] or 0) + 1, skill.maxRank)
@@ -133,6 +153,7 @@ function SkillCards.start()
 		if isNew then
 			panel.Visible = true
 			UiKit.pop(panel)
+			deal()
 		end
 		refresh()
 	end)

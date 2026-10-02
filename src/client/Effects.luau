@@ -1009,6 +1009,20 @@ local function attachEnemyUi(model: Instance)
 		end
 	end
 	refreshThreat()
+	-- Elites sparkle gold so they stand out in a pack (not on Low effects).
+	if model:GetAttribute("Elite") and Settings.get("effects") ~= "low" then
+		local sparkles = Instance.new("ParticleEmitter")
+		sparkles.Name = "EliteSparkles"
+		sparkles.Rate = 8
+		sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 220, 90))
+		sparkles.LightEmission = 1
+		sparkles.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.4, 0.35), NumberSequenceKeypoint.new(1, 0) })
+		sparkles.Lifetime = NumberRange.new(0.8, 1.4)
+		sparkles.Speed = NumberRange.new(1, 2.5)
+		sparkles.SpreadAngle = Vector2.new(180, 180)
+		sparkles.Acceleration = Vector3.new(0, 2, 0)
+		sparkles.Parent = body
+	end
 	local levelConnection: RBXScriptConnection
 	levelConnection = player:GetAttributeChangedSignal("Level"):Connect(function()
 		-- The creature may be gone already (respawned packs replace their models).

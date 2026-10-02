@@ -168,7 +168,7 @@ enemiesFolder.Name = "Enemies"
 enemiesFolder.Parent = workspace
 
 local nextEnemyId = 0
-local function addEnemy(kind: string, position: any)
+local function addEnemy(kind: string, position: any, attributes: { [string]: any }?)
 	nextEnemyId += 1
 	local stats = Balance.enemies[kind]
 	local model = EnemyModels.build(kind, stats, CFrame.new(position))
@@ -178,6 +178,9 @@ local function addEnemy(kind: string, position: any)
 	model:SetAttribute("Alive", true)
 	model:SetAttribute("Hp", stats.maxHp)
 	model:SetAttribute("MaxHp", stats.maxHp)
+	for key, value in attributes or {} do
+		model:SetAttribute(key, value)
+	end
 	H.addChild(enemiesFolder, model)
 	return model
 end
@@ -2053,6 +2056,11 @@ test("creature labels: tinted by the level gap, bars keep a trail of the last hi
 	setAttributes({ Level = 26 })
 	assert(name.TextColor3.R < 0.7, "far below the player: grey")
 	eq(gui.MaxDistance, 40, "a calm creature's label shows only up close")
+	assert(not enemy.Body:FindFirstChild("EliteSparkles"), "plain creatures do not sparkle")
+	local elite = addEnemy("Rockling", vec(WorldData.spawn, 3) + Vector3.new(26, 0, 0), { Elite = true })
+	advance(0.2)
+	assert(elite.Body:FindFirstChild("EliteSparkles"), "elites sparkle gold")
+	elite:Destroy()
 	H.setAttribute(enemy, "Hp", 40)
 	advance(0.1)
 	eq(gui.MaxDistance, 90, "a hurt one shows from further away")
