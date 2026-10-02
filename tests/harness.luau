@@ -169,7 +169,11 @@ end)
 roblox.implementMethod("Humanoid", "TakeDamage", function(self, amount: number)
 	self.Health = math.max(0, self.Health - amount)
 end)
-roblox.implementMethod("Workspace", "Raycast", function()
+-- Tests may set Harness.raycast(workspace, origin, direction, params) to fake hits.
+roblox.implementMethod("Workspace", "Raycast", function(self, origin, direction, params)
+	if Harness.raycast then
+		return Harness.raycast(self, origin, direction, params)
+	end
 	return nil
 end)
 roblox.implementMethod("Workspace", "GetServerTimeNow", function()

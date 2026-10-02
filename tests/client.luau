@@ -1834,6 +1834,38 @@ test("ambience: particles match the place (pollen, leaves, snow...) and stop on 
 	advance(0.6)
 end)
 
+test("see-through: map parts between the camera and the player fade, then come back", function()
+	local map = workspace:FindFirstChild("LanternValleyMap")
+	local madeMap = false
+	if not map then
+		map = Instance.new("Folder")
+		map.Name = "LanternValleyMap"
+		map.Parent = workspace
+		madeMap = true
+	end
+	local canopy = Instance.new("Part")
+	canopy.Name = "Canopy"
+	canopy.Parent = map
+	local blockAt = Vector3.new(0, 20, 0)
+	local blocking = true
+	H.raycast = function(_, origin)
+		if blocking and (origin - blockAt).Magnitude > 0.5 then
+			return { Instance = canopy, Position = blockAt }
+		end
+		return nil
+	end
+	advance(0.5)
+	assert(canopy.LocalTransparencyModifier > 0.6, "the blocking canopy fades")
+	blocking = false
+	advance(0.5)
+	eq(canopy.LocalTransparencyModifier, 0, "and comes back when it no longer blocks")
+	H.raycast = nil
+	canopy:Destroy()
+	if madeMap then
+		map:Destroy()
+	end
+end)
+
 test("purify streak: counts chained purifications, celebrates milestones, leaves when the chain breaks", function()
 	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
 	advance(CombatFeel.WINDOW + 1)
