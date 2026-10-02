@@ -751,6 +751,38 @@ function Hud.start()
 		end
 	end)
 
+	-- Defeat: the screen dims, says what happened, counts down to waking up in the village and
+	-- gives one useful tip. It leaves as soon as the new character arrives.
+	local DEFEAT_TIPS = { "defeat_tip_heal", "defeat_tip_level", "defeat_tip_weapons" }
+	local defeatGui = UiKit.create("ScreenGui", { Name = "Defeat", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, Enabled = false }, gui.Parent)
+	local defeatShade = UiKit.create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(20, 8, 30), BackgroundTransparency = 1, BorderSizePixel = 0 }, defeatGui)
+	local defeatRegion = UiKit.region(defeatGui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.45), Vector2.new(520, 150))
+	UiKit.label({ Size = UDim2.new(1, 0, 0, 56), Text = Strings.get("defeat_title"), TextSize = 46, TextColor3 = Color3.fromRGB(230, 170, 255), TextStrokeTransparency = 0.2 }, defeatRegion)
+	local defeatCountdown = UiKit.label({ Position = UDim2.fromOffset(0, 60), Size = UDim2.new(1, 0, 0, 30), TextSize = 24, TextStrokeTransparency = 0.3 }, defeatRegion)
+	local defeatTip = UiKit.label({ Position = UDim2.fromOffset(0, 100), Size = UDim2.new(1, 0, 0, 44), TextSize = 18, TextWrapped = true, TextColor3 = colors.accent, TextStrokeTransparency = 0.4 }, defeatRegion)
+	local defeatedCharacter: Model? = nil
+	local defeatedAt = 0
+	local tipIndex = 0
+	RunService.Heartbeat:Connect(function()
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.Health <= 0 and defeatedCharacter ~= character then
+			defeatedCharacter, defeatedAt = character, os.clock()
+			tipIndex = tipIndex % #DEFEAT_TIPS + 1
+			defeatTip.Text = Strings.get(DEFEAT_TIPS[tipIndex])
+			defeatShade.BackgroundTransparency = 1
+			UiKit.tween(defeatShade, 0.6, { BackgroundTransparency = 0.45 })
+			defeatGui.Enabled = true
+			UiKit.pop(defeatRegion)
+		elseif defeatGui.Enabled and (character ~= defeatedCharacter or (humanoid and humanoid.Health > 0)) then
+			defeatGui.Enabled = false
+		end
+		if defeatGui.Enabled then
+			local left = math.max(1, math.ceil(Balance.player.respawnTime - (os.clock() - defeatedAt)))
+			defeatCountdown.Text = Strings.get("defeat_countdown", left)
+		end
+	end)
+
 	-- Reassure players after a defeat: nothing is ever lost.
 	local firstCharacter = player.Character == nil
 	player.CharacterAdded:Connect(function()

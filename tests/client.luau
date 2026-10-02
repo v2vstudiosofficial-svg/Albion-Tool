@@ -1918,6 +1918,20 @@ test("a new Light Pass tier makes the Pass button glow for a moment", function()
 	assert(not target:FindFirstChild("Pulse"), "then calm again")
 end)
 
+test("defeat: the screen says what happened, counts down and gives a tip, then clears", function()
+	local humanoid = hero.Character:FindFirstChildOfClass("Humanoid")
+	local health = humanoid.Health
+	humanoid.Health = 0
+	advance(0.3)
+	assert(shownText(Strings.get("defeat_title")), "defeat title")
+	assert(shownText(Strings.get("defeat_countdown", Balance.player.respawnTime)), "countdown")
+	advance(1.1)
+	assert(shownText(Strings.get("defeat_countdown", Balance.player.respawnTime - 1)), "counting down")
+	humanoid.Health = health
+	advance(0.2)
+	assert(not shownText(Strings.get("defeat_title")), "gone once alive again")
+end)
+
 test("purify streak: counts chained purifications, celebrates milestones, leaves when the chain breaks", function()
 	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
 	advance(CombatFeel.WINDOW + 1)

@@ -315,6 +315,11 @@ local texts = {
 	banner_boss_down = "%s purified!",
 	banner_boss_down_sub = "Another Legendary Shadow is at peace!",
 	notice_respawn = "You respawned in the village. Nothing was lost!",
+	defeat_title = "The shadows got you!",
+	defeat_countdown = "Back to the village in %d...",
+	defeat_tip_heal = "Tip: press F (Lantern Glow) to heal in a fight.",
+	defeat_tip_level = "Tip: red names are far stronger than you - grow a little first.",
+	defeat_tip_weapons = "Tip: better weapons and floating slots come from chests.",
 
 	wave_button = "Light Wave",
 	ability_star = "Star Fall",
