@@ -38,6 +38,8 @@ local HURT_ARROW_RADIUS = 120
 local HURT_ARROW_HOLD = 0.35
 local HURT_ARROW_FADE = 0.6
 local MAX_HURT_ARROWS = 4
+-- Level-up banner lines for the abilities (they also name the key); other unlocks say "Unlocked: X".
+local ABILITY_NOTICES = { wave_button = "notice_wave_unlocked", ability_star = "notice_star_unlocked", ability_heal = "notice_heal_unlocked" }
 -- A new best Shadow Tower floor: the tower card glows this gold for a few seconds.
 local RECORD_GOLD = Color3.fromRGB(255, 236, 140)
 local RECORD_SECONDS = 3.5
@@ -757,12 +759,18 @@ function Hud.start()
 		end
 		if knownLevel and level > knownLevel then
 			local subtitle = Strings.get("notice_level_up", level)
-			if not Progression.waveUnlocked(knownLevel) and Progression.waveUnlocked(level) then
-				subtitle = Strings.get("notice_wave_unlocked")
-			end
-			for id, key in { star = "notice_star_unlocked", heal = "notice_heal_unlocked" } do
-				if not Progression.abilityUnlocked(id, knownLevel) and Progression.abilityUnlocked(id, level) then
-					subtitle = Strings.get(key)
+			-- What this level opened: the biggest news (abilities first) on the banner, the rest as
+			-- toasts once the banner has gone.
+			local first = true
+			for _, unlock in Progression.unlocks() do
+				if unlock.level > knownLevel and unlock.level <= level then
+					local notice = ABILITY_NOTICES[unlock.key]
+					local text = if notice then Strings.get(notice) else Strings.get("hud_unlocked", if unlock.arg then Strings.get(unlock.key, unlock.arg) else Strings.get(unlock.key))
+					if first then
+						subtitle, first = text, false
+					else
+						showToast(text, colors.accent)
+					end
 				end
 			end
 			showBanner(Strings.get("hud_level", level) .. "!", subtitle, "celebrate")

@@ -1,5 +1,5 @@
 # Durum
-## Aşama: M59 (hasar yönü okları, ayar önbelleği; M58: ayarlar simgeleri ve müzik sesi, oyuncu madalyaları, kule kartı; M57: elit parıltısı, yetenek kartları; M56: sandık ışık sütunu; M55: mini harita ve yer adları; M54: günlük hediye açılışı; M53: silah güç farkı; M52: boss öfkesi, görev tiki, kapanış sesi; M51: Screen flashes ayarı; M50: yenilgi ekranı; M49: silah kartı simgeleri; M48: sade etiketler, parlayan ödül düğmeleri; M47: oyuna özel etkileşim istemi; M46: sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
+## Aşama: M60 (köylü konuşma balonları, seviye şeridinde tüm açılışlar; M59: hasar yönü okları, ayar önbelleği; M58: ayarlar simgeleri ve müzik sesi, oyuncu madalyaları, kule kartı; M57: elit parıltısı, yetenek kartları; M56: sandık ışık sütunu; M55: mini harita ve yer adları; M54: günlük hediye açılışı; M53: silah güç farkı; M52: boss öfkesi, görev tiki, kapanış sesi; M51: Screen flashes ayarı; M50: yenilgi ekranı; M49: silah kartı simgeleri; M48: sade etiketler, parlayan ödül düğmeleri; M47: oyuna özel etkileşim istemi; M46: sıradaki açılış; M45: boss tanıtımı; M44: ekran kenarı hedef oku; M43: dokunmatik Menu; M42: küçük düzeltmeler; M41: ayak tozu; M40: önünü kapatan şeyler saydamlaşır; M39: bölge atmosferi; M38: gün-gece döngüsü; M37: yetenek bilgisi, kilitli silah önizlemesi; M36: menü simgeleri; M35: sandık açılış anı; M34: başlık şeridi ve ilerleme çubukları; M33: dövüş hissi; M32: yükleme ekranı; M31: arayüz cilası 1; M30: saldırı sesleri ve toz; M29: saldırı öncesi pozlar; M28: yaratık animasyonları ve bireysel tonlar; M27: yetenek çubuğu + Star Fall/Lantern Glow, yeni yaratık silüetleri; M26: grafik kalitesi düzeltmesi, düşman/harita görünümü; M25: yaratık kodeksi, günlük hediye, oyuncu etiketleri, mini harita, unvanlar; Kael epilogu, hikâye, sinematik, ayarlar, kule, pet, rebirth) tamam. Studio testleri ertelendi.
 
 ## Tamamlananlar
 - M2–M5: seviye, dalga, tılsım, kayıt, 6 görev, boss, co-op, mobil.
@@ -130,10 +130,15 @@
   boss ezmesi, mermi; CharacterService.damage artık kaynağı alır). Performans: Settings.get her karede 22 öznitelik
   okuyup tablo kuruyordu; Pref_ değişene kadar önbellekte. Diğer kare döngüleri zaten seyreltilmiş/mesafeyle sınırlı.
   Studio'da doğrulandı.
+  M60: yeni `client/Chatter`: oyuncu bir köylünün yanından geçerken (11–28 stud; daha yakında konuşma istemi
+  çıkar) adının sağ üstünde kısa bir konuşma balonu (her NPC'ye 3 satır, 9–16 sn arayla, sahnelerde yok, yalnız bu
+  ekranda; yol işaretiyle çakışmasın diye sağa kaydırıldı). Seviye şeridi artık her açılışı söyler: yetenekler eskisi
+  gibi, diğerleri "Unlocked: Shadow Tower!" vb.; aynı seviyede birden çok açılış varsa geri kalanı bildirim olarak
+  gelir. Studio'da doğrulandı (balon).
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
-- logic 77, balance, api, scene 18, sim 62, client 72/73/73/1, place; hepsi geçti (sinematik akış,
+- logic 77, balance, api, scene 18, sim 62, client 73/74/74/1, place; hepsi geçti (sinematik akış,
   Skip mutasyonla doğrulandı; hikâye verisi, kutsama, ipuçları, işaretçiler, kazanılan kostümler).
 - Denge modeli: yaratık 0,3–2,2 sn'de ölür, 3 yaratığa 9–47 sn dayanılır, seviye başı 1–12 dk,
   Sv100 ≈ 6,0 sa (hikâye ile); efsane savaşları 50/59/79 sn. Hikâye botu: 4,5 bot-dk. Kule duvar katı 25–47; yeniden doğuş tırmanışı 5,3–6,8 sa.

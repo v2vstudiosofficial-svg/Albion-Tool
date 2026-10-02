@@ -702,6 +702,17 @@ test("light wave is locked until level 3", function()
 	actions.LvLightWave("LvLightWave", Enum.UserInputState.Begin, {})
 	eq(sent("RequestWave"), 1, "local cooldown")
 	assert(shownText(Strings.get("notice_wave_unlocked")), "unlock banner")
+	-- Other unlocks are named on the level-up banner too.
+	setAttributes({ Level = Balance.tower.minLevel - 1 })
+	setAttributes({ Level = Balance.tower.minLevel })
+	assert(shownText(Strings.get("notice_heal_unlocked")), "the ability is the banner's news")
+	local announced = false
+	for _ = 1, 16 do
+		advance(0.5)
+		announced = announced or shownText(Strings.get("hud_unlocked", Strings.get("unlock_tower")))
+	end
+	assert(announced, "the tower opening follows as a toast")
+	setAttributes({ Level = 3 })
 end)
 
 test("Star Fall and Lantern Glow: locked by level, need a target / missing health, local cooldown", function()
@@ -2362,6 +2373,40 @@ test("shadow tower: floor banner; a card with floor, best, boss distance, shadow
 	setAttributes({ TowerBest = 9 })
 	assert(not shownText(Strings.get("tower_card_record")), "no celebration outside the tower")
 	advance(3)
+end)
+
+test("villagers chat: a bubble pops over one the hero walks past, not up close or far away", function()
+	local root = hero.Character.HumanoidRootPart
+	local home = root.Position
+	local elder = WorldData.vector(WorldData.npcs.Elder.position)
+	local elderBody = workspace.LanternValleyMap.Village.Elder.Body
+	local function bubble(): any
+		return elderBody:FindFirstChild("LvChatter")
+	end
+	local elderLines = { Strings.get("chatter_elder_1"), Strings.get("chatter_elder_2"), Strings.get("chatter_elder_3") }
+	-- The first line within `seconds`, or nil.
+	local function nextLine(seconds: number): string?
+		for _ = 1, seconds * 2 do
+			advance(0.5)
+			local gui = bubble()
+			if gui then
+				return gui.Bubble:FindFirstChildOfClass("TextLabel").Text
+			end
+		end
+		return nil
+	end
+	teleport(elder + Vector3.new(0, 0, 5))
+	advance(6) -- a line from before the test fades first
+	eq(nextLine(20), nil, "up close the talk prompt is up instead")
+	teleport(elder + Vector3.new(0, 0, 18))
+	local line = nextLine(20)
+	assert(line and table.find(elderLines, line), "the Elder says one of her lines as the hero passes")
+	advance(5)
+	eq(bubble(), nil, "the bubble goes away")
+	teleport(elder + Vector3.new(0, 0, 60))
+	eq(nextLine(20), nil, "far away nobody talks")
+	teleport(home)
+	advance(0.5)
 end)
 
 test("pets: bag tab shows progress, equips earned pets only; the pet follows its owner", function()
