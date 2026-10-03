@@ -20,7 +20,8 @@ local SettingsData = require(Shared:WaitForChild("SettingsData"))
 local CameraRig = require(script.Parent.CameraRig)
 local Settings = require(script.Parent.Settings)
 
-local PURIFY_TOAST_WINDOW = 1.2
+-- XP from purifying shows beside the XP bar this long after the last gain.
+local XP_GAIN_SECONDS = 1.6
 -- Below this share of health the screen edges pulse red.
 local LOW_HEALTH = 0.3
 -- A hit must take at least this share of health to flash the screen edges.
@@ -974,29 +975,48 @@ function Hud.start()
 		end
 	end)
 
-	-- Auto-battle purifies whole packs at once, so purify rewards are summed into one toast.
-	local pendingXp, pendingCount, flushScheduled = 0, 0, false
-	local function flushPurifies()
-		flushScheduled = false
-		if pendingCount == 1 then
-			showToast(Strings.get("reward_purify", Format.short(pendingXp)))
-		elseif pendingCount > 1 then
-			showToast(Strings.get("reward_purify_many", pendingCount, Format.short(pendingXp)))
-		end
-		pendingXp, pendingCount = 0, 0
+	-- XP from purifying pops up beside the XP bar, summed while it shows (auto-battle purifies whole
+	-- packs at once). A toast in the middle of the screen covered the creatures ahead of the hero.
+	local xpGain = UiKit.label({
+		Name = "XpGain",
+		Position = UDim2.fromOffset(240, 26),
+		Size = UDim2.fromOffset(120, 24),
+		TextSize = 18,
+		TextColor3 = colors.xp,
+		TextStrokeTransparency = 0.3,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Visible = false,
+	}, topLeft)
+	local gainTotal, gainToken = 0, 0
+	local function showXpGain(xp: number)
+		gainTotal = (if xpGain.Visible then gainTotal else 0) + xp
+		xpGain.Text = Strings.get("hud_xp_gain", Format.short(gainTotal))
+		xpGain.TextTransparency, xpGain.TextStrokeTransparency = 0, 0.3
+		xpGain.Visible = true
+		UiKit.pop(xpGain)
+		gainToken += 1
+		local token = gainToken
+		task.delay(XP_GAIN_SECONDS, function()
+			if token ~= gainToken then
+				return
+			end
+			UiKit.tween(xpGain, 0.4, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			task.delay(0.4, function()
+				if token == gainToken then
+					xpGain.Visible = false
+				end
+			end)
+		end)
 	end
 	Remotes:WaitForChild("RewardGranted").OnClientEvent:Connect(function(reason, xp, coins)
 		if reason == "quest" then
 			showToast(Strings.get("reward_quest", xp, coins), colors.good)
 		else
-			pendingXp += if typeof(xp) == "number" then xp else 0
-			pendingCount += 1
+			if typeof(xp) == "number" and xp > 0 then
+				showXpGain(xp)
+			end
 			if reason == "purify" then
 				addToStreak(1)
-			end
-			if not flushScheduled then
-				flushScheduled = true
-				task.delay(PURIFY_TOAST_WINDOW, flushPurifies)
 			end
 		end
 		if typeof(coins) == "number" then
@@ -1036,7 +1056,10 @@ function Hud.start()
 			if hit and hit.level >= (player:GetAttribute("Level") or 1) + MUCH_STRONGER then
 				defeatTip.Text = Strings.get("defeat_tip_level")
 			else
-				tipIndex = tipIndex % #DEFEAT_TIPS + 1
+				-- The healing tip waits until Lantern Glow is unlocked.
+				repeat
+					tipIndex = tipIndex % #DEFEAT_TIPS + 1
+				until DEFEAT_TIPS[tipIndex] ~= "defeat_tip_heal" or (player:GetAttribute("Level") or 1) >= Balance.abilities.heal.unlockLevel
 				defeatTip.Text = Strings.get(DEFEAT_TIPS[tipIndex])
 			end
 			defeatShade.BackgroundTransparency = 1

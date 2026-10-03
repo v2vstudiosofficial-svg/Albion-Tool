@@ -352,6 +352,8 @@ local function buildMarker(npcName: string): BillboardGui?
 		Adornee = body,
 		Enabled = false,
 		MaxDistance = 250,
+		-- Kept when the hero respawns (Roblox empties PlayerGui of everything else).
+		ResetOnSpawn = false,
 	}, player:WaitForChild("PlayerGui"))
 	UiKit.label({
 		Size = UDim2.fromScale(1, 1),

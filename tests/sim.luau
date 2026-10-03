@@ -110,9 +110,10 @@ local function spawnCharacter(player, position: any)
 	hand.Name = "RightHand"
 	hand.CFrame = CFrame.new(position + Vector3.new(1.5, -1, 0))
 	hand.Parent = character
-	character.Parent = workspace
+	-- As in Roblox: CharacterAdded fires before the character is parented to the workspace.
 	player.Character = character
 	player.CharacterAdded:Fire(character)
+	character.Parent = workspace
 	return character
 end
 
@@ -924,6 +925,20 @@ test("a defeated character is not revived by a level-up", function()
 	eq(humanoid(alice).Health, 0, "stays defeated until respawn")
 	heal(alice)
 	toVillage(alice)
+end)
+
+test("a respawned character gets the health and weapon of its level", function()
+	local maxHealth = humanoid(alice).MaxHealth
+	assert(maxHealth ~= 100, "levelled past Roblox's default health")
+	local old = alice.Character
+	humanoid(alice).Health = 0
+	advance(0.2)
+	old:Destroy()
+	spawnCharacter(alice, vec(WorldData.spawn, 3))
+	advance(0.5)
+	eq(humanoid(alice).MaxHealth, maxHealth, "the level's health again")
+	eq(humanoid(alice).Health, maxHealth, "and full")
+	assert(alice.Character:FindFirstChild("Weapon"), "weapon in hand")
 end)
 
 test("the boss cancels a pending attack when everyone leaves the arena", function()

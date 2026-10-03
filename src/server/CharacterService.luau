@@ -117,6 +117,11 @@ local function onCharacterAdded(player: Player, character: Model)
 	if humanoid.RigType == Enum.HumanoidRigType.R15 then
 		character:WaitForChild("RightHand", 5)
 	end
+	-- CharacterAdded fires before Roblox parents the character to the workspace; until then the
+	-- level's health and the weapon could not be applied (respawns came back with 100 health).
+	while character.Parent == nil and player.Character == character and player.Parent do
+		task.wait()
+	end
 	if character.Parent == nil then
 		return
 	end

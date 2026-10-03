@@ -42,6 +42,7 @@ if withJumpButton then
 	local touchGui = Instance.new("ScreenGui")
 	touchGui.Name = "TouchGui"
 	touchGui.IgnoreGuiInset = true
+	touchGui.ResetOnSpawn = false -- as in Roblox: it outlives respawns
 	local frame = Instance.new("Frame")
 	frame.Name = "TouchControlFrame"
 	frame.Parent = touchGui
@@ -94,6 +95,7 @@ function ContextActionService:BindAction(name: string, handler, createTouchButto
 	if createTouchButton and touchMode and not casButtons[name] then
 		local holder = playerGui:FindFirstChild("ContextActionGui") or Instance.new("ScreenGui")
 		holder.Name = "ContextActionGui"
+		holder.ResetOnSpawn = false -- as in Roblox: it outlives respawns
 		holder.Parent = playerGui
 		local button = Instance.new("ImageButton")
 		button.Name = name
@@ -189,6 +191,17 @@ local function addEnemy(kind: string, position: any, attributes: { [string]: any
 	end
 	H.addChild(enemiesFolder, model)
 	return model
+end
+
+-- The name, level and health label over each creature (it lives on the creature's body).
+local function enemyLabels(): { BillboardGui }
+	local found = {}
+	for _, gui in enemiesFolder:GetDescendants() do
+		if gui:IsA("BillboardGui") and gui.Name == "LvLabel" then
+			table.insert(found, gui)
+		end
+	end
+	return found
 end
 
 local function makeCharacter(name: string, position: any)
@@ -349,8 +362,7 @@ test("client boots with every module", function()
 	assert(workspace:FindFirstChild("ClientFx"), "fx folder")
 	assert(workspace:FindFirstChild("ClientWorld"), "world folder")
 	assert(shownText(Strings.get("data_loading")), "loading label shown")
-	local billboards = playerGui.EnemyBillboards:GetChildren()
-	eq(#billboards, 4, "a billboard per non-boss enemy")
+	eq(#enemyLabels(), 4, "a billboard per non-boss enemy")
 end)
 
 test("data ready: HUD, quest panel, Elder marker, waypoint", function()
@@ -476,15 +488,21 @@ test("server events render: rewards, notices, dialog, effects", function()
 	remotes.NpcSay.OnClientEvent:Fire("Elder", "elder_need_level", 3)
 	advance(0.2)
 	assert(shownText(Strings.get("reward_quest", 50, 20)), "quest toast")
-	assert(not shownText(Strings.get("reward_purify", 10)), "purify toasts wait to be summed")
-	advance(1.2)
-	assert(shownText(Strings.get("reward_purify", 10)), "one purify, one toast")
-	-- A whole pack melts: one summed toast, not five.
+	-- Purify XP pops beside the XP bar (not a toast over the fight), summed while it shows.
+	local gain = playerGui.Hud:FindFirstChild("XpGain", true)
+	assert(isShown(gain) and gain.Text == Strings.get("hud_xp_gain", "10"), "purify XP beside the XP bar")
 	for _ = 1, 5 do
 		remotes.RewardGranted.OnClientEvent:Fire("purify", 12, 0)
 	end
-	advance(1.3)
-	assert(shownText(Strings.get("reward_purify_many", 5, 60)), "pack summed into one toast")
+	advance(0.2)
+	eq(gain.Text, Strings.get("hud_xp_gain", "70"), "a pack sums up")
+	for _, toast in playerGui.Hud:GetDescendants() do
+		if toast.Name == "Toast" then
+			assert(not string.find(toast:FindFirstChildOfClass("TextLabel").Text, "70", 1, true), "no toast for it")
+		end
+	end
+	advance(2.5)
+	assert(not isShown(gain), "then it fades")
 	assert(shownText(Strings.get("notice_charm_gained", Strings.get("charm_swift_name"))), "translated notice")
 	assert(shownText(Strings.get("elder_need_level", 3)), "dialog line")
 
@@ -1600,8 +1618,8 @@ test("settings apply: look, effects, damage numbers, creature bars, camera scene
 	assert(not Lighting:FindFirstChild("LvAtmosphere"), "Custom: haze off")
 	-- Creature names and health bars.
 	local function barsEnabled(): boolean
-		for _, gui in playerGui.EnemyBillboards:GetChildren() do
-			if gui:IsA("BillboardGui") and gui.Enabled then
+		for _, gui in enemyLabels() do
+			if gui.Enabled then
 				return true
 			end
 		end
@@ -1612,10 +1630,8 @@ test("settings apply: look, effects, damage numbers, creature bars, camera scene
 	advance(0.3)
 	assert(barsEnabled(), "bars shown")
 	setAttributes({ Pref_enemyBars = false })
-	for _, gui in playerGui.EnemyBillboards:GetChildren() do
-		if gui:IsA("BillboardGui") then
-			eq(gui.Enabled, false, "bars hidden")
-		end
+	for _, gui in enemyLabels() do
+		eq(gui.Enabled, false, "bars hidden")
 	end
 	setAttributes({ Pref_enemyBars = true })
 	near:Destroy()
@@ -2355,6 +2371,22 @@ test("defeat: the screen says what happened, counts down and gives a tip, then c
 	assert(not shownText(Strings.get("defeat_by", level + 20, Strings.get(Balance.enemies.Frostling.nameKey))), "an old hit is not named")
 	humanoid.Health = health
 	advance(0.2)
+	-- Lantern Glow is only suggested once it is unlocked.
+	local function healTipShown(heroLevel: number): boolean
+		setAttributes({ Level = heroLevel })
+		local seen = false
+		for _ = 1, 4 do
+			humanoid.Health = 0
+			advance(0.3)
+			seen = seen or shownText(Strings.get("defeat_tip_heal"))
+			humanoid.Health = health
+			advance(0.2)
+		end
+		return seen
+	end
+	eq(healTipShown(1), false, "no healing tip before Lantern Glow")
+	eq(healTipShown(Balance.abilities.heal.unlockLevel), true, "then it comes up")
+	setAttributes({ Level = level })
 end)
 
 test("mini map: north mark, the place you are in, a title when you enter a new place, open rifts", function()
@@ -3109,13 +3141,49 @@ test("level up banner and respawn reassurance", function()
 end)
 
 test("enemy billboards follow enemies coming and going", function()
-	local before = #playerGui.EnemyBillboards:GetChildren()
+	local before = #enemyLabels()
 	H.destroy(enemies[1])
 	advance(0.2)
-	eq(#playerGui.EnemyBillboards:GetChildren(), before - 1, "billboard removed")
+	eq(#enemyLabels(), before - 1, "billboard removed")
 	addEnemy("Sporeling", vec(WorldData.spawns[4].position, 2))
 	advance(0.3)
-	eq(#playerGui.EnemyBillboards:GetChildren(), before, "billboard added")
+	eq(#enemyLabels(), before, "billboard added")
+end)
+
+test("a respawn keeps creature labels, NPC markers and the waypoint", function()
+	local kept: { BillboardGui }, names: { string } = {}, {}
+	local labels, waypoint, markers = 0, false, 0
+	for _, folder in { playerGui, workspace } do
+		for _, gui in folder:GetDescendants() do
+			if gui:IsA("BillboardGui") then
+				table.insert(kept, gui)
+				table.insert(names, gui:GetFullName())
+				local adornee = gui.Adornee
+				if gui.Name == "LvLabel" then
+					labels += 1
+				elseif adornee and adornee.Name == "WaypointAnchor" then
+					waypoint = true
+				elseif adornee and adornee.Parent and adornee.Parent.Parent and adornee.Parent.Parent.Name == "Village" then
+					markers += 1
+				end
+			end
+		end
+	end
+	assert(labels > 0 and waypoint and markers > 0, `labels {labels}, waypoint {waypoint}, markers {markers}`)
+	-- What Roblox does to PlayerGui when a character respawns.
+	for _, child in playerGui:GetChildren() do
+		if not (child:IsA("LayerCollector") and child.ResetOnSpawn == false) then
+			child:Destroy()
+		end
+	end
+	hero.CharacterAdded:Fire(hero.Character)
+	advance(0.5)
+	for index, gui in kept do
+		local readable, parent = pcall(function()
+			return gui.Parent
+		end)
+		assert(readable and parent ~= nil, `{names[index]} survives the respawn`)
+	end
 end)
 
 test("after the story the panel and waypoint show the next personal goal", function()

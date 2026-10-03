@@ -44,6 +44,7 @@ function Prompts.show(prompt: ProximityPrompt, inputType: Enum.ProximityPromptIn
 		StudsOffset = Vector3.new(0, 2.6, 0),
 		LightInfluence = 0,
 		Active = true,
+		ResetOnSpawn = false,
 	}, player:WaitForChild("PlayerGui"))
 	local pill = UiKit.create("TextButton", {
 		Name = "Pill",

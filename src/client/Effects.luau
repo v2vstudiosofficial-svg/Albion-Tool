@@ -50,7 +50,6 @@ local TARGET_COLOR = Color3.fromRGB(255, 240, 190)
 local Effects = {}
 
 local folder: Folder
-local billboards: Folder
 -- Each creature label's "should it show right now" check, run a few times a second.
 local labelChecks: { [BillboardGui]: () -> () } = {}
 
@@ -1067,12 +1066,15 @@ local function attachEnemyUi(model: Instance)
 	if not body or not stats or not model.Parent then
 		return
 	end
+	-- On the creature itself: Roblox empties PlayerGui when the hero respawns, which took every
+	-- creature label with it after the first defeat.
 	local gui = UiKit.create("BillboardGui", {
+		Name = "LvLabel",
 		Size = UDim2.fromOffset(160, 42),
 		StudsOffset = Vector3.new(0, body.Size.Y * 0.5 + 1.8, 0),
 		Adornee = body,
 		Enabled = false,
-	}, billboards)
+	}, body)
 	local nameLabel = UiKit.label({
 		Name = "NameLabel",
 		Size = UDim2.new(1, 0, 0, 18),
@@ -1251,9 +1253,6 @@ function Effects.start()
 	folder = Instance.new("Folder")
 	folder.Name = "ClientFx"
 	folder.Parent = workspace
-	billboards = Instance.new("Folder")
-	billboards.Name = "EnemyBillboards"
-	billboards.Parent = player:WaitForChild("PlayerGui")
 
 	local shownWeapon = player:GetAttribute("Weapon")
 	player:GetAttributeChangedSignal("Weapon"):Connect(function()

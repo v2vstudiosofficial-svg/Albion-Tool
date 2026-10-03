@@ -135,6 +135,8 @@ function Waypoint.start()
 		Adornee = anchor,
 		Enabled = false,
 		LightInfluence = 0,
+		-- Kept when the hero respawns (Roblox empties PlayerGui of everything else).
+		ResetOnSpawn = false,
 	}, player:WaitForChild("PlayerGui"))
 	local diamond = UiKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
