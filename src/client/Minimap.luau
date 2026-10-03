@@ -1,11 +1,13 @@
 -- A small map under the top-right buttons: creature zones by level band, the village, other
--- players, the guide goal and an arrow for you. Tap it to switch between "near" (around you) and
+-- players, the guide goal, open rifts, the weather (rain on the marsh, blizzards on the peaks) and
+-- an arrow for you. Tap it to switch between "near" (around you) and
 -- the whole valley. Everything is drawn from data the client already has; it can be turned off in
 -- Settings > Interface (Mini map).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local MapLogic = require(Shared:WaitForChild("MapLogic"))
 local MusicLogic = require(Shared:WaitForChild("MusicLogic"))
 local Strings = require(Shared:WaitForChild("Strings"))
@@ -138,6 +140,20 @@ function Minimap.start()
 		rifts[index].Name = "Rift"
 		UiKit.create("UIStroke", { Color = Color3.fromRGB(240, 210, 255), Thickness = 1.5 }, rifts[index])
 	end
+	-- Weather over its place while it lasts (DayCycle, the same for everyone).
+	local weather = {}
+	for _, spec in { { name = "WeatherRain", key = "map_rain", area = "marsh", level = DayCycle.rain }, { name = "WeatherSnow", key = "map_blizzard", area = "peaks", level = DayCycle.blizzard } } do
+		local label = UiKit.label({
+			Name = spec.name,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromOffset(20, 20),
+			Text = Strings.get(spec.key),
+			TextSize = 16,
+			ZIndex = 2,
+			Visible = false,
+		}, map)
+		table.insert(weather, { label = label, area = WorldData.areas[spec.area], level = spec.level })
+	end
 	-- Where you are, under the map.
 	local placeLabel = UiKit.label({
 		Name = "Place",
@@ -155,7 +171,9 @@ function Minimap.start()
 		placeLabel.Text = name
 		-- Boss arenas announce their boss instead.
 		if shownPlace ~= nil and shownPlace ~= theme and theme ~= "boss" and not Cinematic.playing() then
-			Hud.banner(name, nil, "place")
+			local now = workspace:GetServerTimeNow()
+			local subtitle = if theme == "marsh" and DayCycle.rain(now) > 0 then Strings.get("place_raining") elseif theme == "peaks" and DayCycle.blizzard(now) > 0 then Strings.get("place_blizzard") else nil
+			Hud.banner(name, subtitle, "place")
 		end
 		shownPlace = theme
 	end
@@ -238,6 +256,14 @@ function Minimap.start()
 				rift.Size = UDim2.fromOffset(beat, beat)
 			else
 				rift.Visible = false
+			end
+		end
+		local now = workspace:GetServerTimeNow()
+		for _, entry in weather do
+			if entry.level(now) > 0 then
+				place(entry.label, view, entry.area.center[1], entry.area.center[3], false)
+			else
+				entry.label.Visible = false
 			end
 		end
 		local goal = Waypoint.goal()

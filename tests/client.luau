@@ -1926,6 +1926,9 @@ test("ambience: particles match the place (pollen, leaves, snow...), marsh showe
 	local rainSound = H.game:GetService("SoundService"):FindFirstChild("Ambient_rain")
 	advance(2)
 	assert(rainSound and rainSound.Playing and rainSound.Volume > 0, "and the sound of rain")
+	local minimap = playerGui.Minimap
+	assert(isShown(minimap:FindFirstChild("WeatherRain", true)), "a rain cloud over the marsh on the mini map")
+	assert(not isShown(minimap:FindFirstChild("WeatherSnow", true)), "no blizzard meanwhile")
 	H.advance(DayCycle.RAIN_LENGTH / 2 + 5, 0.5)
 	advance(2)
 	eq(rain.Rate, 0, "the shower passes")
@@ -1945,12 +1948,22 @@ test("ambience: particles match the place (pollen, leaves, snow...), marsh showe
 	assert(emitter.Rate > calmSnow * 2, "a blizzard: " .. emitter.Rate .. " vs " .. calmSnow)
 	local wind = H.game:GetService("SoundService"):FindFirstChild("Ambient_wind")
 	assert(wind and wind.Playing and wind.Volume > 0, "the wind howls")
+	assert(isShown(minimap:FindFirstChild("WeatherSnow", true)), "a snow cloud over the peaks on the mini map")
 	local haze = Lighting:FindFirstChildOfClass("Atmosphere")
 	assert(haze and haze.Density > Graphics.HAZE.density + 0.1, "the haze thickens")
 	teleport(vec(WorldData.spawn, 3))
 	advance(6)
 	assert(math.abs(haze.Density - Graphics.HAZE.density) < 1e-3, "back to the usual haze off the peaks")
 	assert(not wind.Playing, "no wind in the village")
+	teleport(vec(WorldData.areas.peaks.center, 3))
+	local warned = false
+	for _ = 1, 6 do
+		advance(0.5)
+		warned = warned or shownText(Strings.get("place_blizzard"))
+	end
+	assert(warned, "walking into the storm, the place title warns of it")
+	teleport(vec(WorldData.spawn, 3))
+	advance(6)
 	setAttributes({ Pref_quality = "custom", Pref_effects = "low" })
 	advance(0.6)
 	eq(emitter.Rate, 0, "nothing with Low effects")
