@@ -1222,6 +1222,7 @@ function Menus.start()
 				view.progress.Text = ""
 				view.barFill.Size = UDim2.fromScale(1, 1)
 				view.button.Text = Strings.get("log_done")
+				UiKit.coinMark(view.button, false)
 				view.button.BackgroundColor3 = colors.panel
 				view.button.TextColor3 = colors.muted
 				UiKit.setPulse(view.button, false)
@@ -1229,7 +1230,12 @@ function Menus.start()
 				view.progress.Text = Strings.get("log_progress", Format.short(math.min(entry.progress, tier.goal)), Format.short(tier.goal))
 				view.barFill.Size = UDim2.fromScale(math.clamp(entry.progress / tier.goal, 0, 1), 1)
 				local ready = entry.progress >= tier.goal
-				view.button.Text = if ready then Strings.get("log_claim") else Strings.get("hud_coins", Format.short(tier.coins))
+				-- Not reached yet: the reward, a coin before it and a chest after it when the tier gives one.
+				view.button.Text = if ready
+					then Strings.get("log_claim")
+					elseif tier.chest then Strings.get("log_reward_chest", Format.short(tier.coins), Strings.get("icon_chests"))
+					else Strings.get("hud_coins", Format.short(tier.coins))
+				UiKit.coinMark(view.button, not ready)
 				view.button.BackgroundColor3 = if ready then colors.good else colors.panel
 				view.button.TextColor3 = if ready then colors.panel else colors.coin
 				UiKit.setPulse(view.button, ready)
@@ -1596,7 +1602,7 @@ function Menus.start()
 	end)
 	local track = UiKit.create("ScrollingFrame", {
 		Position = UDim2.fromOffset(0, 124),
-		Size = UDim2.new(1, 0, 1, -124),
+		Size = UDim2.new(1, 0, 1, -164), -- the hint sits under it
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollBarThickness = 6,
@@ -1604,6 +1610,17 @@ function Menus.start()
 		CanvasSize = UDim2.fromOffset(PassData.tiers * 86, 0),
 	}, passBody)
 	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, track)
+	-- Under the track: where Pass points come from (players asked how to move along it).
+	UiKit.label({
+		Name = "PassHint",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, 36),
+		Text = Strings.get("pass_hint"),
+		TextSize = 14,
+		TextWrapped = true,
+		TextColor3 = colors.muted,
+	}, passBody)
 	local function rewardText(reward, level: number): string
 		if reward.costume then
 			return Strings.get(CosmeticData.costumes[reward.costume].nameKey)
@@ -1649,7 +1666,9 @@ function Menus.start()
 		local level = Attrs.get("Level", 1)
 		local xp = Attrs.get("PassXp", 0)
 		passTitle.Text = Strings.get("pass_title", Attrs.get("PassSeason", PassData.season))
-		passTier.Text = Strings.get("pass_tier", tier, PassData.tiers)
+		passTier.Text = if tier >= PassData.tiers
+			then Strings.get("pass_tier", tier, PassData.tiers)
+			else Strings.get("pass_tier_progress", tier, PassData.tiers, Format.short(xp % PassData.xpPerTier), Format.short(PassData.xpPerTier))
 		passBarFill.Size = UDim2.fromScale(if tier >= PassData.tiers then 1 else (xp % PassData.xpPerTier) / PassData.xpPerTier, 1)
 		local premiumPrice = priceOf(StoreData.products.pass_premium.productId)
 		if premium then
@@ -1743,19 +1762,7 @@ function Menus.start()
 		}, row, function()
 			upgradeStaff:FireServer(stat)
 		end)
-		-- A gold coin before the price, like the one on the player card.
-		UiKit.create("UIPadding", { PaddingLeft = UDim.new(0, 22) }, button)
-		local coin = UiKit.create("Frame", {
-			Name = "Coin",
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, -12, 0.5, 0),
-			Size = UDim2.fromOffset(16, 16),
-			BackgroundColor3 = colors.coin,
-			BorderSizePixel = 0,
-		}, button)
-		UiKit.corner(coin, 8)
-		UiKit.create("UIStroke", { Color = Color3.fromRGB(170, 110, 20), Thickness = 2 }, coin)
-		upgradeRows[stat] = { name = name, button = button, effect = effect, coin = coin }
+		upgradeRows[stat] = { name = name, button = button, effect = effect }
 	end
 
 	local function refreshShop()
@@ -1774,7 +1781,7 @@ function Menus.start()
 			view.effect.Text = if nextValue
 				then Strings.get(keys[1], effectNumber(now), effectNumber(nextValue))
 				else Strings.get(keys[2], effectNumber(now))
-			view.coin.Visible = cost ~= nil
+			UiKit.coinMark(view.button, cost ~= nil)
 			if not cost then
 				view.button.Text = Strings.get("upgrade_max")
 				view.button.BackgroundColor3 = colors.panel
@@ -1860,6 +1867,9 @@ function Menus.start()
 	end, "icon_shop")
 	local passButton = menuButton({ Text = Strings.get("menu_pass"), LayoutOrder = 7, BackgroundColor3 = colors.boss }, Enum.KeyCode.P, function()
 		refreshPass()
+		-- Open at the player's own tier (the next one to reach, with one reached tier to its left).
+		local reachedTier = math.min(PassData.tiers, Attrs.get("PassXp", 0) // PassData.xpPerTier)
+		track.CanvasPosition = Vector2.new(math.max(0, reachedTier - 1) * 86, 0)
 		showModal(pass)
 	end, "icon_pass")
 	-- A new Light Pass tier makes the Pass button (or the touch Menu button) jump and glow a moment.

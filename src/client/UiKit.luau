@@ -205,6 +205,30 @@ function UiKit.setPulse(button: GuiObject, on: boolean)
 	end
 end
 
+-- A gold coin drawn before a button's price (like the coin on the player card), shown or hidden;
+-- the text moves aside only while the coin is there.
+function UiKit.coinMark(button: GuiObject, shown: boolean)
+	local coin = button:FindFirstChild("CoinMark") :: GuiObject?
+	local pad = button:FindFirstChild("CoinPad") :: UIPadding?
+	if shown and not coin then
+		pad = UiKit.create("UIPadding", { Name = "CoinPad" }, button)
+		coin = UiKit.create("Frame", {
+			Name = "CoinMark",
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, -12, 0.5, 0),
+			Size = UDim2.fromOffset(16, 16),
+			BackgroundColor3 = UiKit.colors.coin,
+			BorderSizePixel = 0,
+		}, button)
+		UiKit.corner(coin :: GuiObject, 8)
+		UiKit.create("UIStroke", { Color = Color3.fromRGB(170, 110, 20), Thickness = 2 }, coin)
+	end
+	if coin and pad then
+		coin.Visible = shown
+		pad.PaddingLeft = UDim.new(0, if shown then 22 else 0)
+	end
+end
+
 -- Gamepad or not: the key hints on screen follow the controller the player last touched.
 local inputKindListeners: { () -> () } = {}
 local wasGamepad: boolean? = nil

@@ -1201,6 +1201,10 @@ test("adventure log: rows with progress, claim when ready, badge", function()
 	click(findButton(Strings.get("menu_log")))
 	assert(shownText(Strings.get(AchievementData.achievements.friends.nameKey) .. "  " .. Strings.get("log_tier", 1, 5)), "row with tier")
 	assert(shownText(Strings.get("log_progress", 12, 50)), "progress")
+	local reward = findButton(Strings.get("hud_coins", AchievementData.achievements.friends.tiers[1].coins))
+	assert(reward and reward:FindFirstChild("CoinMark") and reward.CoinMark.Visible, "the reward is coins: a coin before it")
+	local claim = findButton(Strings.get("log_claim"))
+	assert(not (claim:FindFirstChild("CoinMark") and claim.CoinMark.Visible), "no coin on Claim")
 	click(findButton(Strings.get("log_claim")))
 	eq(sent("ClaimAchievement", function(args)
 		return args[1] == "elites"
@@ -2976,7 +2980,11 @@ test("light pass: tiers, claim all, costume cell, premium button, badge", functi
 	setAttributes({ PassXp = 5 * PassData.xpPerTier + 10 })
 	eq(findText("!", passButton).Visible, true, "badge when a tier is ready")
 	click(passButton)
-	assert(shownText(Strings.get("pass_tier", 5, PassData.tiers)), "tier shown")
+	local Format = H.loadModule("src/shared/Format.luau")
+	assert(shownText(Strings.get("pass_tier_progress", 5, PassData.tiers, Format.short(10), Format.short(PassData.xpPerTier))), "tier and the way to the next")
+	assert(shownText(Strings.get("pass_hint")), "where Pass points come from")
+	local passTrack = findButton(Strings.get("costume_leaf_crown")).Parent.Parent
+	eq(passTrack.CanvasPosition.X, 4 * 86, "the track opens at the player's tier")
 	click(findButton(Strings.get("pass_claim_all")))
 	eq(sent("ClaimPass", function(args)
 		return args[1] == "all"

@@ -432,6 +432,7 @@ local texts = {
 	upgrade_effect_regen_max = "Heals %s per second",
 	upgrade_effect_crit_max = "Lucky hits %s%%",
 	upgrade_level = "Lv %d/%d",
+	log_reward_chest = "%s +%s",
 	upgrade_max = "MAX",
 
 	skills_title = "Level up! Pick a skill",
@@ -563,6 +564,8 @@ local texts = {
 	notice_costume_new = "New costume: %s!",
 	pass_title = "Light Pass - Season %d",
 	pass_tier = "Tier %d / %d",
+	pass_tier_progress = "Tier %d / %d   ·   %s / %s to the next",
+	pass_hint = "Pass points come from everything you do: creatures, quests, chests, rifts, bounties and more.",
 	pass_free = "Free",
 	pass_premium = "Premium",
 	pass_claim_all = "Claim all",
