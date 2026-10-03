@@ -228,6 +228,7 @@ function Menus.start()
 	local bag, bagBody = modal("bag_title", 440)
 	local bagTab = "charms"
 	local refreshBag: () -> ()
+	local markBagTabSeen: () -> ()
 	local bagTabRow = UiKit.create("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1 }, bagBody)
 	UiKit.create("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, bagTabRow)
 	local bagTabButtons = {}
@@ -236,6 +237,7 @@ function Menus.start()
 		bagTabButtons[tab] = UiKit.button({ Size = UDim2.fromOffset(96, 40), TextSize = 17, LayoutOrder = order, Text = Strings.get(BAG_TAB_KEYS[tab]) }, bagTabRow, function()
 			bagTab = tab
 			refreshBag()
+			markBagTabSeen()
 		end)
 	end
 	local staffLine = UiKit.label({ Position = UDim2.fromOffset(0, 44), Size = UDim2.new(1, 0, 0, 28), TextSize = 20 }, bagBody)
@@ -494,7 +496,101 @@ function Menus.start()
 		end
 	end
 
+	-- New in the Bag: charms, pets and titles earned while playing (not the ones the save brought)
+	-- carry a NEW tag, their tab a dot and the Bag button a "!", until their tab has been looked at.
+	local NEW_TABS = { "charms", "pets", "titles" }
+	local unseen: { [string]: { [string]: boolean } } = { charms = {}, pets = {}, titles = {} }
+	local knownEarned: { [string]: { [string]: boolean } }? = nil
+	local bagBadge: TextLabel? = nil
+	local tabDots: { [string]: TextLabel } = {}
+	local function earnedNow(): { [string]: { [string]: boolean } }
+		local found = { charms = Attrs.set("Charms"), pets = {}, titles = {} }
+		local petProgress = Attrs.pairs("PetProgress")
+		for petId, pet in PetData.pets do
+			found.pets[petId] = (petProgress[petId] or 0) >= pet.unlock.goal or nil
+		end
+		local titleProgress = Attrs.pairs("TitleProgress")
+		for titleId, title in TitleData.titles do
+			found.titles[titleId] = (titleProgress[titleId] or 0) >= title.unlock.goal or nil
+		end
+		return found
+	end
+	local function rowsOf(tab: string): { [string]: Instance }
+		local rows = {}
+		if tab == "charms" then
+			for id, view in charmRows do
+				rows[id] = view.row
+			end
+		else
+			for id, view in (if tab == "pets" then petRows else titleRows) :: any do
+				rows[id] = view.name.Parent
+			end
+		end
+		return rows
+	end
+	local function refreshNewMarks()
+		local any = false
+		for _, tab in NEW_TABS do
+			local waiting = next(unseen[tab]) ~= nil
+			any = any or waiting
+			tabDots[tab].Visible = waiting and tab ~= bagTab
+		end
+		if bagBadge then
+			bagBadge.Visible = any
+		end
+	end
+	local function markTabSeen()
+		if unseen[bagTab] then
+			unseen[bagTab] = {}
+		end
+		refreshNewMarks()
+	end
+	local function checkNew()
+		if player:GetAttribute("DataState") ~= "ready" then
+			return
+		end
+		local now = earnedNow()
+		if knownEarned then
+			for _, tab in NEW_TABS do
+				for id in now[tab] do
+					if not knownEarned[tab][id] then
+						unseen[tab][id] = true
+					end
+				end
+			end
+		end
+		knownEarned = now
+		refreshNewMarks()
+	end
+	for _, tab in NEW_TABS do
+		local dot = UiKit.label({ Name = "NewDot", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -4, 0, 4), Size = UDim2.fromOffset(14, 14), BackgroundColor3 = colors.accent, BackgroundTransparency = 0, Text = "", Visible = false }, bagTabButtons[tab])
+		UiKit.corner(dot, 7)
+		tabDots[tab] = dot
+	end
+	markBagTabSeen = markTabSeen
+	local function bagNewBadge(label: TextLabel)
+		bagBadge = label
+		refreshNewMarks()
+	end
+	for _, name in { "Charms", "PetProgress", "TitleProgress", "DataState" } do
+		player:GetAttributeChangedSignal(name):Connect(checkNew)
+	end
+	checkNew()
+
 	refreshBag = function()
+		-- NEW tags show what this look at the tab is about (markTabSeen clears them for next time).
+		for _, tab in NEW_TABS do
+			for id, row in rowsOf(tab) do
+				local tag = row:FindFirstChild("NewTag")
+				if unseen[tab][id] and not tag then
+					tag = UiKit.label({ Name = "NewTag", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -118, 0, 4), Size = UDim2.fromOffset(40, 18), BackgroundColor3 = colors.accent, BackgroundTransparency = 0, Text = Strings.get("bag_new"), TextSize = 12, TextColor3 = colors.panel }, row)
+					UiKit.corner(tag, 9)
+				end
+				if tag then
+					tag.Visible = unseen[tab][id] == true
+				end
+			end
+		end
 		storyList.Visible = bagTab == "story"
 		if bagTab == "story" then
 			refreshStory()
@@ -1781,10 +1877,25 @@ function Menus.start()
 		end
 	end)
 	refreshLogBadge()
-	menuButton({ Text = Strings.get("menu_bag"), LayoutOrder = 3 }, Enum.KeyCode.B, function()
+	local bagButton = menuButton({ Text = Strings.get("menu_bag"), LayoutOrder = 3 }, Enum.KeyCode.B, function()
 		refreshBag()
 		showModal(bag)
+		markBagTabSeen()
 	end, "icon_bag")
+	local newBadge = UiKit.label({
+		Name = "NewBadge",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -4, 0, 4),
+		Size = UDim2.fromOffset(24, 24),
+		BackgroundColor3 = colors.accent,
+		BackgroundTransparency = 0,
+		Text = "!",
+		TextSize = 18,
+		TextColor3 = colors.panel,
+		Visible = false,
+	}, bagButton)
+	UiKit.corner(newBadge, 12)
+	bagNewBadge(newBadge)
 	menuButton({
 		Text = Strings.get("menu_settings"),
 		LayoutOrder = 4,
@@ -1817,7 +1928,7 @@ function Menus.start()
 			refreshBadge()
 			-- On touch screens the Menu button carries any "!" of the menus inside it.
 			if hubBadge then
-				hubBadge.Visible = chestBadge.Visible or logBadge.Visible or passBadge.Visible
+				hubBadge.Visible = chestBadge.Visible or logBadge.Visible or passBadge.Visible or newBadge.Visible
 			end
 			if openModal == chestsModal then
 				refreshChests()

@@ -672,6 +672,7 @@ local texts = {
 	bag_staff = "Weapon power: level %d  (power %d)",
 	bag_equip = "Equip",
 	bag_unequip = "Remove",
+	bag_new = "NEW",
 	bag_locked = "Earned from a quest",
 	players_title = "Players here",
 	players_button = "Players",
