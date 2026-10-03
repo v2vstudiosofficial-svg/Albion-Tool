@@ -77,20 +77,23 @@ end
 
 -- An arrow on the screen edge toward a point that is off screen. `px, py` is the point's screen
 -- position, `inFront` false when it is behind the camera (its projection is then mirrored).
--- Returns where the arrow sits (inside the edge by `margin`) and its angle in degrees (0 = right,
--- 90 = down), or nil when the point is on screen anyway.
-function MapLogic.edgeArrow(px: number, py: number, inFront: boolean, width: number, height: number, margin: number): (number?, number?, number?)
+-- Returns where the arrow sits (inside the edge by `margin`, or `top` from the top edge, which can
+-- keep it clear of a panel there) and its angle in degrees (0 = right, 90 = down), or nil when the
+-- point is on screen anyway.
+function MapLogic.edgeArrow(px: number, py: number, inFront: boolean, width: number, height: number, margin: number, top: number?): (number?, number?, number?)
 	local cx, cy = width / 2, height / 2
+	local topMargin = math.min(top or margin, cy - 1)
 	if not inFront then
 		px, py = width - px, height - py
-	elseif px >= margin and px <= width - margin and py >= margin and py <= height - margin then
+	elseif px >= margin and px <= width - margin and py >= topMargin and py <= height - margin then
 		return nil, nil, nil
 	end
 	local dx, dy = px - cx, py - cy
 	if dx == 0 and dy == 0 then
 		dy = 1
 	end
-	local scale = math.min((cx - margin) / math.max(math.abs(dx), 1e-6), (cy - margin) / math.max(math.abs(dy), 1e-6))
+	local reachY = if dy < 0 then cy - topMargin else cy - margin
+	local scale = math.min((cx - margin) / math.max(math.abs(dx), 1e-6), reachY / math.max(math.abs(dy), 1e-6))
 	return cx + dx * scale, cy + dy * scale, math.deg(math.atan2(dy, dx))
 end
 

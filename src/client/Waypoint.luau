@@ -1,5 +1,6 @@
 -- A floating diamond with distance over the current objective, so players never need to read
 -- long text to know where to go next.
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -18,6 +19,8 @@ local player = Players.LocalPlayer
 local UPDATE_INTERVAL = 0.2
 local HIDE_DISTANCE = 9
 local EDGE_MARGIN = 60 -- pixels between the edge arrow and the screen border
+-- Along the top the arrow stays below the HUD's quest panel (12 + 72 tall) so it never covers it.
+local EDGE_TOP = 12 + 72 + 34
 
 local Waypoint = {}
 
@@ -185,16 +188,22 @@ function Waypoint.start()
 			edge.Visible = false
 			return
 		end
+		-- In front means a positive depth, on screen or not: a goal far ahead (above the top edge)
+		-- used to count as "behind" and the arrow pointed the opposite way.
 		local ok, point, inFront = pcall(function()
-			local screen, visible = camera:WorldToViewportPoint(goal + Vector3.new(0, 4, 0))
-			return screen, visible and screen.Z > 0
+			local screen = camera:WorldToViewportPoint(goal + Vector3.new(0, 4, 0))
+			return screen, screen.Z > 0
 		end)
 		if not ok then
 			edge.Visible = false
 			return
 		end
 		local viewport = camera.ViewportSize
-		local x, y, angle = MapLogic.edgeArrow(point.X, point.Y, inFront, viewport.X, viewport.Y, EDGE_MARGIN)
+		local insetOk, inset = pcall(function()
+			return GuiService:GetGuiInset()
+		end)
+		local top = (if insetOk then inset.Y else 0) + EDGE_TOP * UiKit.screenScale()
+		local x, y, angle = MapLogic.edgeArrow(point.X, point.Y, inFront, viewport.X, viewport.Y, EDGE_MARGIN, top)
 		edge.Visible = x ~= nil
 		if x and y and angle then
 			edge.Position = UDim2.fromOffset(x, y)

@@ -1798,6 +1798,13 @@ test("edge arrow: points from the screen edge toward an off-screen goal", functi
 	assert(x > 500, "behind the camera on the left: mirrored to the right")
 	x, y = MapLogic.edgeArrow(3000, 3000, true, 1000, 600, 40)
 	assert(x >= 40 and x <= 960 and y >= 40 and y <= 560, "always inside the margin")
+	-- A panel along the top: the arrow for a goal straight ahead stops below it.
+	x, y, angle = MapLogic.edgeArrow(500, -900, true, 1000, 600, 40, 150)
+	eq(y, 150, "below the top panel")
+	eq(angle, -90)
+	x, y = MapLogic.edgeArrow(500, 1500, true, 1000, 600, 40, 150)
+	eq(y, 560, "the bottom edge keeps the usual margin")
+	eq(MapLogic.edgeArrow(500, 100, true, 1000, 600, 40, 150), 500, "a goal on screen behind the panel still gets an arrow")
 end)
 
 test("day cycle: a long day, golden dusk, a short night, shared by everyone through server time", function()

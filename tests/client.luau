@@ -61,6 +61,16 @@ camera.Parent = workspace
 workspace.CurrentCamera = camera
 -- Where a test wants world points to land on the screen (nil: off screen).
 local fakeScreenPoint: Vector3? = nil
+-- The same for viewport points (the waypoint's edge arrow); nil: the projection fails, as before.
+local fakeViewportPoint: Vector3? = nil
+roblox.implementMethod("Camera", "WorldToViewportPoint", function(self)
+	local point = fakeViewportPoint
+	if not point then
+		error("no projection in this test")
+	end
+	local size = self.ViewportSize
+	return point, point.Z > 0 and point.X >= 0 and point.Y >= 0 and point.X <= size.X and point.Y <= size.Y
+end)
 roblox.implementMethod("Camera", "WorldToScreenPoint", function()
 	return fakeScreenPoint or Vector3.new(-1000, -1000, -1), fakeScreenPoint ~= nil
 end)
@@ -2522,6 +2532,27 @@ test("creature labels: near the player, tinted by the level gap, health in numbe
 	assert(trail.Size.X.Scale < 0.45, "then drains")
 	enemy:Destroy()
 	setAttributes({ Level = heroLevel })
+end)
+
+test("the waypoint's edge arrow points the right way: ahead off screen at the top, behind at the bottom", function()
+	setAttributes({ QuestState = "available" })
+	advance(0.6)
+	local edge = playerGui.WaypointEdge.EdgeArrow
+	local height = workspace.CurrentCamera.ViewportSize.Y
+	local function arrowAt(point: Vector3): number?
+		fakeViewportPoint = point
+		advance(0.05)
+		return if edge.Visible then edge.Position.Y.Offset else nil
+	end
+	local ahead = arrowAt(Vector3.new(workspace.CurrentCamera.ViewportSize.X / 2, -400, 30))
+	assert(ahead and ahead < height / 2, "a goal far ahead: the arrow is at the top")
+	local panelScale = playerGui.Hud:FindFirstChild("QuestPanel", true).Parent:FindFirstChildOfClass("UIScale").Scale
+	assert(ahead >= (12 + 72) * panelScale, "below the quest panel, not over it")
+	local behind = arrowAt(Vector3.new(workspace.CurrentCamera.ViewportSize.X / 2, -400, -30))
+	assert(behind and behind > height / 2, "a goal behind: the arrow is at the bottom")
+	eq(arrowAt(Vector3.new(300, 200, 30)), nil, "on screen: no arrow")
+	fakeViewportPoint = nil
+	advance(0.05)
 end)
 
 test("the Great Lantern's Rebirth prompt shows only to players who can rebirth", function()
