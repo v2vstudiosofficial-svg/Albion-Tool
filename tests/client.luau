@@ -1718,6 +1718,13 @@ test("mini map: near and world views, other players, guide goal, follows the set
 	local goal = frames("Goal")[1]
 	assert(goal, "the guide goal is on the map")
 	assert(H.read(goal, "Position").Y.Offset < H.read(you, "Position").Y.Offset, "north is up")
+	-- Nearby creature zones name their levels; in the whole-valley view the discs are too small to.
+	teleport(vec(WorldData.areas.glade.center, 3) + Vector3.new(0, 0, 30))
+	advance(0.5)
+	local glade = Strings.get("map_zone_levels", WorldData.areas.glade.levels[1], WorldData.areas.glade.levels[2])
+	assert(shownText(glade), "the glade's levels on the mini map")
+	teleport(vec(WorldData.spawn, 3))
+	advance(0.5)
 	-- Walking east moves the map, not the arrow.
 	teleport(vec(WorldData.spawn, 3) + Vector3.new(30, 0, 0))
 	advance(0.5)
@@ -1729,6 +1736,7 @@ test("mini map: near and world views, other players, guide goal, follows the set
 	local view = MapLogic.view("world", 30, 43, 132)
 	local x, y = MapLogic.toMap(view, 132, H.read(hero.Character.HumanoidRootPart, "Position").X, H.read(hero.Character.HumanoidRootPart, "Position").Z)
 	assert(math.abs(H.read(you, "Position").X.Offset - x) < 1 and math.abs(H.read(you, "Position").Y.Offset - y) < 1, "world view places the arrow on the valley map")
+	assert(not shownText(glade), "no level labels on the tiny discs of the whole valley")
 	click(map)
 	advance(0.5)
 	assert(math.abs(H.read(you, "Position").X.Offset - 66) < 1, "tapping again returns to the near view")

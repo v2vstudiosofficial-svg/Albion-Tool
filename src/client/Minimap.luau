@@ -44,6 +44,7 @@ local PLACE_KEYS = {
 	tower = "place_tower",
 }
 local EDGE_MARGIN = 7
+local ZONE_LABEL_FROM = 30 -- a zone disc this many pixels across or more names its creature levels
 
 -- Zone tint by the first level of the zone's range (the same bands the story follows).
 local BANDS = {
@@ -116,7 +117,17 @@ function Minimap.start()
 				ZIndex = 1,
 			}, map)
 			UiKit.corner(disc, 1000)
-			table.insert(zones, { disc = disc, area = area })
+			local levels = UiKit.label({
+				Name = "Levels",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromOffset(44, 12),
+				Text = Strings.get("map_zone_levels", area.levels[1], area.levels[2]),
+				TextSize = 10,
+				TextStrokeTransparency = 0.3,
+				ZIndex = 2,
+			}, disc)
+			table.insert(zones, { disc = disc, area = area, levels = levels })
 		end
 	end
 	local landmarks = {
@@ -250,6 +261,7 @@ function Minimap.start()
 			zone.disc.Position = UDim2.fromOffset(px, py)
 			zone.disc.Size = UDim2.fromOffset(radius * 2, radius * 2)
 			zone.disc.Visible = MapLogic.circleVisible(SIZE, px, py, radius)
+			zone.levels.Visible = radius * 2 >= ZONE_LABEL_FROM
 		end
 		for _, landmark in landmarks do
 			place(landmark.dot, view, landmark.point[1], landmark.point[3], false)

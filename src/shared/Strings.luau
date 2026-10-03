@@ -271,6 +271,7 @@ local texts = {
 	place_boss = "Legend's Lair",
 	place_tower = "Shadow Tower",
 	map_north = "N",
+	map_zone_levels = "Lv %d-%d",
 	map_rain = "🌧️",
 	map_blizzard = "🌨️",
 	place_raining = "It is raining",
