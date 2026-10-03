@@ -476,6 +476,31 @@ function World.greet(npcName: string)
 	greeted[npcName] = os.clock()
 end
 
+-- A finished quest: its giver hops and hearts float up over their head (the scene that follows
+-- looks at them).
+local CHEER_HEARTS = 3
+local function cheer(npcName: string)
+	local map = workspace:FindFirstChild("LanternValleyMap")
+	local village = map and map:FindFirstChild("Village")
+	local npc = village and village:FindFirstChild(npcName)
+	local head = npc and npc:FindFirstChild("Head")
+	if not head then
+		return
+	end
+	World.greet(npcName)
+	for index = 1, CHEER_HEARTS do
+		task.delay((index - 1) * 0.3, function()
+			local side = (index - 2) * 0.8
+			local gui = UiKit.create("BillboardGui", { Name = "Heart", Adornee = head, Size = UDim2.fromOffset(40, 40), StudsOffset = Vector3.new(side, 1.2, 0), LightInfluence = 0 }, head)
+			local label = UiKit.label({ Size = UDim2.fromScale(1, 1), Text = Strings.get("icon_heart"), TextSize = 30 }, gui)
+			UiKit.tween(gui, 1.6, { StudsOffset = Vector3.new(side + (math.random() - 0.5), 4, 0) }, Enum.EasingStyle.Sine)
+			UiKit.tween(label, 1.6, { TextTransparency = 1 }).Completed:Connect(function()
+				gui:Destroy()
+			end)
+		end)
+	end
+end
+
 -- A short line of chatter: a hop, then nodding while it lasts.
 function World.chat(npcName: string, seconds: number)
 	greeted[npcName] = os.clock()
@@ -775,6 +800,11 @@ function World.start()
 			local data = ChestData.chests[extra or ""]
 			Effects.burst(position + Vector3.new(0, 2, 0), if data then UiKit.rgb(data.color) else GOLD, 40, 10)
 			Audio.play("pickup")
+		elseif kind == "questComplete" then
+			local def = QuestData.quests[id or ""]
+			if def then
+				cheer(def.giver or "Elder")
+			end
 		elseif kind == "vineCleared" then
 			local vine = WorldData.vines[id]
 			if vine then

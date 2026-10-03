@@ -294,6 +294,7 @@ local texts = {
 	icon_players = "👥",
 	icon_menu = "📋",
 	icon_tower = "🗼",
+	icon_heart = "💖",
 	icon_skill_swift = "⚡",
 	icon_skill_sharp = "🗡️",
 	icon_skill_reach = "🎯",

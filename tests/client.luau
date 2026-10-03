@@ -2120,6 +2120,25 @@ test("idle camera: left alone it slowly circles the hero, any input brings it st
 	assert(turned() < 1, "back to the usual view on any input: " .. turned())
 end)
 
+test("a finished quest: its giver hops and hearts float up over their head", function()
+	local head = workspace.LanternValleyMap.Village.Wren.Head
+	local function hearts(): number
+		local count = 0
+		for _, child in head:GetChildren() do
+			if child.Name == "Heart" then
+				count += 1
+			end
+		end
+		return count
+	end
+	remotes.Fx.OnClientEvent:Fire("questComplete", "marsh_scouts")
+	advance(0.8)
+	assert(hearts() >= 2, "hearts over Ranger Wren, who gave the quest: " .. hearts())
+	eq(workspace.LanternValleyMap.Village.Elder.Head:FindFirstChild("Heart"), nil, "not over the Elder")
+	advance(3)
+	eq(hearts(), 0, "the hearts float away")
+end)
+
 test("glow pond: rings spread on the water and frogs croak nearby, nothing far away", function()
 	local pond = vec(WorldData.landmarks.glow_pond.position)
 	local function ripples(): number
