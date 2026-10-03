@@ -1828,9 +1828,13 @@ test("player card: health bar, red screen edges on a hit and at low health, toas
 	humanoid.Health = 40
 	advance(0.5)
 	assert(edgeStrength() > 0.1, "low health keeps the edges red")
+	advance(1.5)
+	local heartbeat = H.game:GetService("SoundService"):FindFirstChild("Ambient_heartbeat")
+	assert(heartbeat and heartbeat.Playing and heartbeat.Volume > 0, "a heartbeat at low health")
 	humanoid.Health = 200
-	advance(1)
+	advance(2)
 	eq(edgeStrength(), 0, "healed: edges clear")
+	assert(not heartbeat.Playing, "healed: the heartbeat fades away")
 	-- Each hit points at where it came from, around the hero in the middle of the screen.
 	local root = hero.Character.HumanoidRootPart
 	local look = H.read(workspace.CurrentCamera, "CFrame").LookVector

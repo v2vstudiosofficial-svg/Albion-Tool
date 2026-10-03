@@ -989,8 +989,8 @@ function Hud.start()
 
 	-- Health ------------------------------------------------------------------------------------
 	-- The card's bar follows the character every frame (cheap: it only redraws on a change). A hit
-	-- flashes the screen edges red and leaves a pale trail on the bar; below LOW_HEALTH the edges
-	-- keep pulsing until the player heals.
+	-- flashes the screen edges red and leaves a pale trail on the bar; below LOW_HEALTH a heartbeat
+	-- sounds and the edges keep pulsing until the player heals.
 	local edgesGui = UiKit.create("ScreenGui", { Name = "HealthEdges", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = -1 }, gui.Parent)
 	local edges: { Frame } = {}
 	for _, side in { { 0.5, 0, 1, 0.2, 90 }, { 0.5, 1, 1, 0.2, -90 }, { 0, 0.5, 0.13, 1, 0 }, { 1, 0.5, 0.13, 1, 180 } } do
@@ -1051,6 +1051,7 @@ function Hud.start()
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if not humanoid then
+			Audio.setAmbient("heartbeat", 0)
 			return
 		end
 		local hp, maxHp = math.max(0, humanoid.Health), math.max(1, humanoid.MaxHealth)
@@ -1081,6 +1082,8 @@ function Hud.start()
 		end
 		flash = math.max(0, flash - dt * 1.6)
 		local low = ratio < LOW_HEALTH and hp > 0
+		-- A heartbeat is heard while health is low.
+		Audio.setAmbient("heartbeat", if low then 1 else 0)
 		local strength
 		if Settings.get("flashes") then
 			strength = math.max(flash, if low then 0.4 + 0.15 * math.sin(clock * 5) else 0)
