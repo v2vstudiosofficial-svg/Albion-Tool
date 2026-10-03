@@ -2,3 +2,4 @@
 *.rbxl
 /.vscode/
 build/
+*.rbxlx.lock
