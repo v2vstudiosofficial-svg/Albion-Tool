@@ -1,5 +1,5 @@
 -- A small map under the top-right buttons: creature zones by level band, the village, other
--- players, the guide goal, open rifts, the weather (rain on the marsh, blizzards on the peaks) and
+-- players, the guide goal, open rifts, chests waiting to be taken, the weather (rain on the marsh, blizzards on the peaks) and
 -- an arrow for you. Tap it to switch between "near" (around you) and
 -- the whole valley. Everything is drawn from data the client already has; it can be turned off in
 -- Settings > Interface (Mini map).
@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ChestData = require(Shared:WaitForChild("ChestData"))
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local MapLogic = require(Shared:WaitForChild("MapLogic"))
 local MusicLogic = require(Shared:WaitForChild("MusicLogic"))
@@ -19,6 +20,7 @@ local Hud = require(script.Parent.Hud)
 local Settings = require(script.Parent.Settings)
 local UiKit = require(script.Parent.UiKit)
 local Waypoint = require(script.Parent.Waypoint)
+local World = require(script.Parent.World)
 
 local player = Players.LocalPlayer
 local colors = UiKit.colors
@@ -140,6 +142,22 @@ function Minimap.start()
 		rifts[index].Name = "Rift"
 		UiKit.create("UIStroke", { Color = Color3.fromRGB(240, 210, 255), Thickness = 1.5 }, rifts[index])
 	end
+	-- Chests waiting in the world: small squares in their chest's colour.
+	local chestMarks: { [string]: Frame } = {}
+	for spotId, spot in WorldData.chests do
+		local mark = UiKit.create("Frame", {
+			Name = "Chest",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromOffset(7, 6),
+			BackgroundColor3 = UiKit.rgb(ChestData.chests[spot.type].color),
+			BorderSizePixel = 0,
+			ZIndex = 3,
+			Visible = false,
+		}, map)
+		UiKit.corner(mark, 2)
+		UiKit.create("UIStroke", { Color = Color3.fromRGB(60, 35, 15), Thickness = 1 }, mark)
+		chestMarks[spotId] = mark
+	end
 	-- Weather over its place while it lasts (DayCycle, the same for everyone).
 	local weather = {}
 	for _, spec in { { name = "WeatherRain", key = "map_rain", area = "marsh", level = DayCycle.rain }, { name = "WeatherSnow", key = "map_blizzard", area = "peaks", level = DayCycle.blizzard } } do
@@ -256,6 +274,15 @@ function Minimap.start()
 				rift.Size = UDim2.fromOffset(beat, beat)
 			else
 				rift.Visible = false
+			end
+		end
+		local ready = World.readyChests()
+		for spotId, mark in chestMarks do
+			local at = ready[spotId]
+			if at then
+				place(mark, view, at.X, at.Z, false)
+			else
+				mark.Visible = false
 			end
 		end
 		local now = workspace:GetServerTimeNow()

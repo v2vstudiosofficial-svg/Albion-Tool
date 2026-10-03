@@ -221,6 +221,15 @@ local function refreshChests()
 	end
 end
 
+-- The chests waiting in the world for this player, by spot id (the mini map marks them).
+function World.readyChests(): { [string]: Vector3 }
+	local ready = {}
+	for spotId, base in chestBase do
+		ready[spotId] = base.Position
+	end
+	return ready
+end
+
 -- Chests that are ready hover and sway a little, so they read as "take me" from far away.
 local function animateChests()
 	local now = os.clock()

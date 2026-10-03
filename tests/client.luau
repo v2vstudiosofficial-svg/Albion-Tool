@@ -923,9 +923,25 @@ test("chests in the world: shown when ready, hidden while their spot is empty", 
 		total += 1
 	end
 	eq(chestModels(), total, "every spot has a chest")
+	-- The mini map marks the chests waiting nearby.
+	local function chestMarks(): number
+		local count = 0
+		for _, descendant in playerGui.Minimap:GetDescendants() do
+			if descendant.Name == "Chest" and isShown(descendant) then
+				count += 1
+			end
+		end
+		return count
+	end
+	teleport(vec(WorldData.chests.chest_glade_1.position, 3) + Vector3.new(0, 0, 8))
+	advance(0.3)
+	local marked = chestMarks()
+	assert(marked >= 1, "chests on the mini map")
 	local now = H.EPOCH + H.now()
 	setAttributes({ ChestSpots = "chest_glade_1:" .. math.floor(now + 5) })
 	eq(chestModels(), total - 1, "taken spot is empty")
+	eq(chestMarks(), marked - 1, "a taken chest leaves the mini map")
+	teleport(vec(WorldData.spawn, 3))
 	advance(6)
 	eq(chestModels(), total, "chest came back when its time passed")
 	local prompt = workspace.ClientWorld.Chest_chest_glade_1:FindFirstChildWhichIsA("ProximityPrompt", true)
