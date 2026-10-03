@@ -81,6 +81,8 @@ local function refresh()
 			gui.TitleLine.Visible = title ~= ""
 			gui.NameLine.Text = nameOf(other)
 			gui.LevelLine.Text = PlayerTags.levelLine(other)
+			-- The same colour as their level badge in the Players panel.
+			gui.LevelLine.TextColor3 = PlayerBoard.badgeColor(other:GetAttribute("Level") or 1):Lerp(Color3.new(1, 1, 1), 0.35)
 			if humanoid then
 				humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 			end
