@@ -998,6 +998,13 @@ test("chests menu: slots by level, one unlock at a time, timers, open and reward
 	click(findButton(Strings.get("menu_chests")))
 	assert(shownText(Strings.get("chest_hint")), "chests menu open")
 	assert(shownText(Strings.get("weapon_locked", ChestData.slotUnlockLevels[3])), "third slot closed at level 3")
+	local padlocks = 0
+	for _, label in playerGui.Menus:GetDescendants() do
+		if label.Name == "Padlock" and isShown(label) then
+			padlocks += 1
+		end
+	end
+	eq(padlocks, #ChestData.slotUnlockLevels - 2, "a padlock on each closed slot")
 	assert(shownText(Strings.get(ChestData.chests.silver.nameKey)), "silver chest listed")
 	click(findButton(Strings.get("chest_unlock")))
 	eq(sent("ChestAction", function(args)

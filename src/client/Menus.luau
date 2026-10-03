@@ -875,6 +875,8 @@ function Menus.start()
 		UiKit.corner(progressFill, 3)
 		local cardStroke = UiKit.create("UIStroke", { Color = colors.good, Thickness = 3, Transparency = 1 }, card)
 		local name = UiKit.label({ Position = UDim2.fromOffset(2, 58), Size = UDim2.new(1, -4, 0, 36), TextSize = 13, TextWrapped = true }, card)
+		-- A locked slot shows a padlock where the chest would sit.
+		local padlock = UiKit.label({ Name = "Padlock", Position = UDim2.fromOffset(0, 12), Size = UDim2.new(1, 0, 0, 40), Text = Strings.get("icon_lock"), TextSize = 30, Visible = false }, card)
 		local timer = UiKit.label({ Position = UDim2.fromOffset(0, 98), Size = UDim2.new(1, 0, 0, 26), TextSize = 18, TextColor3 = colors.xp }, card)
 		local button = UiKit.button({
 			AnchorPoint = Vector2.new(0.5, 1),
@@ -897,7 +899,7 @@ function Menus.start()
 				Audio.play("ui")
 			end
 		end)
-		chestCards[index] = { card = card, lid = lid, chestBody = chestBody, clasp = clasp, progressBack = progressBack, progressFill = progressFill, stroke = cardStroke, name = name, timer = timer, button = button }
+		chestCards[index] = { card = card, lid = lid, chestBody = chestBody, clasp = clasp, padlock = padlock, progressBack = progressBack, progressFill = progressFill, stroke = cardStroke, name = name, timer = timer, button = button }
 	end
 
 	-- Ready chests glow and their lids bob, so the eye goes straight to them.
@@ -928,13 +930,17 @@ function Menus.start()
 			view.ready = false
 			view.lid.Position = UDim2.fromOffset(12, 10)
 			UiKit.setPulse(view.button, false)
-			local function showChest(color: Color3?)
-				view.lid.Visible, view.chestBody.Visible, view.clasp.Visible = color ~= nil, color ~= nil, color ~= nil
-				if color then
-					view.lid.BackgroundColor3 = color:Lerp(Color3.new(1, 1, 1), 0.15)
-					view.chestBody.BackgroundColor3 = color:Lerp(Color3.new(0, 0, 0), 0.25)
-				end
+			-- `ghost`: a faint chest shape in an empty slot (a chest goes here).
+			local function showChest(color: Color3?, ghost: boolean?)
+				local drawn = color ~= nil or ghost == true
+				view.lid.Visible, view.chestBody.Visible, view.clasp.Visible = drawn, drawn, color ~= nil
+				local fade = if ghost then 0.75 else 0
+				view.lid.BackgroundTransparency, view.chestBody.BackgroundTransparency = fade, fade
+				local tint = color or colors.muted
+				view.lid.BackgroundColor3 = tint:Lerp(Color3.new(1, 1, 1), 0.15)
+				view.chestBody.BackgroundColor3 = tint:Lerp(Color3.new(0, 0, 0), 0.25)
 			end
+			view.padlock.Visible = index > slots
 			if index > slots then
 				view.card.BackgroundColor3 = colors.panel
 				showChest(nil)
@@ -942,7 +948,7 @@ function Menus.start()
 				view.name.TextColor3 = colors.muted
 			elseif not chest then
 				view.card.BackgroundColor3 = colors.panelLight
-				showChest(nil)
+				showChest(nil, true)
 				view.name.Text = Strings.get("chest_empty")
 				view.name.TextColor3 = colors.muted
 			else
