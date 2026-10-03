@@ -28,6 +28,11 @@ local wantedTheme: string? = nil
 local wantedFor = 0
 local fade = 0 -- 0..1, how loud `music` is right now
 
+-- Looped backgrounds (the marsh rain): client/Ambience sets how loud (0-1) and the sound eases
+-- there, so leaving the marsh fades the rain out instead of cutting it.
+local AMBIENT_FADE = 1.5 -- seconds from silent to full
+local ambient: { [string]: { sound: Sound, level: number, target: number } } = {}
+
 -- Pitch and, for long files, the part of the file that plays.
 local function shape(sound: Sound, entry)
 	sound.PlaybackSpeed = entry.pitch or 1
@@ -148,8 +153,41 @@ local function stepMusic(dt: number)
 	end
 end
 
+function Audio.setAmbient(key: string, target: number)
+	local entry = ambient[key]
+	if not entry then
+		if target <= 0 then
+			return
+		end
+		local sound = Instance.new("Sound")
+		sound.Name = "Ambient_" .. key
+		sound.SoundId = Sounds[key].id
+		sound.Looped = true
+		sound.Volume = 0
+		sound.Parent = SoundService
+		entry = { sound = sound, level = 0, target = 0 }
+		ambient[key] = entry
+	end
+	entry.target = math.clamp(target, 0, 1)
+end
+
+local function stepAmbient(dt: number)
+	for key, entry in ambient do
+		local step = dt / AMBIENT_FADE
+		entry.level = if entry.target > entry.level then math.min(entry.target, entry.level + step) else math.max(entry.target, entry.level - step)
+		entry.sound.Volume = Sounds[key].volume * masterVolume * sfxVolume * entry.level
+		local audible = enabled and entry.level > 0
+		if entry.sound.Playing ~= audible then
+			entry.sound.Playing = audible
+		end
+	end
+end
+
 function Audio.start()
-	RunService.Heartbeat:Connect(stepMusic)
+	RunService.Heartbeat:Connect(function(dt)
+		stepMusic(dt)
+		stepAmbient(dt)
+	end)
 end
 
 return Audio

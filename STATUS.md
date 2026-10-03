@@ -138,7 +138,8 @@
   M61: bataklıkta her 9 dakikanın 3'ünde yağmur (DayCycle.rain, sunucu saatiyle herkes için aynı; 15 sn'de başlar ve
   diner): oyuncunun üstündeki bir yüzeyden ince dikey çizgiler (varsayılan parçacık, FacingCameraWorldUp + Squash,
   ışıktan etkilenmez, gece de görünür) ve ayak dibinde su sıçramaları. Effects ayarıyla ölçeklenir, Low'da yok.
-  Studio'da ayarlanıp doğrulandı.
+  Yağmur sesi: ProSoundEffects "Rain On Water 1" (61 sn döngü), `Audio.setAmbient` ile yağmurla birlikte yükselir,
+  bataklıktan çıkınca 1,5 sn'de söner; Low'da da duyulur. Studio'da ayarlanıp doğrulandı (ses dosyası yükleniyor).
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)

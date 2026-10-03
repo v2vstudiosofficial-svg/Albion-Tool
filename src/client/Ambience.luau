@@ -2,7 +2,7 @@
 -- the music (MusicLogic.theme): pollen in the village, drifting leaves in the woods, green spores
 -- in the marsh, snow on the peaks, embers at the citadel and violet motes in the Shadow Tower.
 -- Now and then it rains in the marsh (DayCycle.rain, the same for everyone), with little splashes
--- at your feet. Only this screen draws them; "Low" effects turns them off.
+-- at your feet and the sound of rain on water. Only this screen draws them; "Low" effects turns them off.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local MusicLogic = require(Shared:WaitForChild("MusicLogic"))
 local SettingsData = require(Shared:WaitForChild("SettingsData"))
+local Audio = require(script.Parent.Audio)
 local Settings = require(script.Parent.Settings)
 
 local player = Players.LocalPlayer
@@ -121,6 +122,7 @@ function Ambience.start()
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if not root then
 			emitter.Rate, rain.Rate, splash.Rate = 0, 0, 0
+			Audio.setAmbient("rain", 0)
 			return
 		end
 		holder.CFrame = CFrame.new(root.Position + Vector3.new(0, 8, 0))
@@ -129,12 +131,14 @@ function Ambience.start()
 		local theme = MusicLogic.theme(root.Position.X, root.Position.Z)
 		local look = LOOKS[theme]
 		local density = SettingsData.effectDensity[Settings.get("effects")] or 1
+		local wet = if theme == "marsh" then DayCycle.rain(workspace:GetServerTimeNow()) else 0
+		-- The rain is heard even with Low effects (only the drops are not drawn).
+		Audio.setAmbient("rain", wet)
 		if not look or Settings.get("effects") == "low" then
 			emitter.Rate, rain.Rate, splash.Rate = 0, 0, 0
 			shown = nil
 			return
 		end
-		local wet = if theme == "marsh" then DayCycle.rain(workspace:GetServerTimeNow()) else 0
 		rain.Rate = RAIN_RATE * wet * density
 		splash.Rate = SPLASH_RATE * wet * density
 		if shown ~= theme then
