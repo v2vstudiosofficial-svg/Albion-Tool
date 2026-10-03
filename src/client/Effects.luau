@@ -27,10 +27,8 @@ local SPORE_COLOR = Color3.fromRGB(255, 130, 200)
 local SHADOW_COLOR = Color3.fromRGB(150, 80, 230)
 local WARN_COLOR = Color3.fromRGB(255, 120, 90)
 local GOLD = Color3.fromRGB(255, 220, 120)
--- Creature labels: calm, unhurt creatures show theirs only this close, so a busy forest is not a
--- wall of names; once a creature is hurt or chasing someone it shows from further away.
 -- Creature labels (name, level, health) show within this many studs of the player: calm, unhurt
--- creatures up close, ones in a fight from further away.
+-- creatures up close (so a busy forest is not a wall of names), ones in a fight from further away.
 local LABEL_DISTANCE_CALM = 45
 local LABEL_DISTANCE_FIGHT = 100
 local LABEL_CHECK_SECONDS = 0.2
@@ -44,6 +42,10 @@ local THREAT_COLORS = {
 }
 -- Other players' weapon effects farther than this from the local player are skipped.
 local ATTACK_FX_DISTANCE = 160
+-- The creature the hero's own weapon is hitting wears a soft outline, so in a crowd it is clear
+-- whom the automatic attacks chose; it fades once the attacks stop for this long.
+local TARGET_HOLD = 1.2
+local TARGET_COLOR = Color3.fromRGB(255, 240, 190)
 
 local Effects = {}
 
@@ -373,10 +375,50 @@ function Effects.ability(attacker: Player?, id: string, position: Vector3, amoun
 	swingArm(attacker and attacker.Character)
 end
 
+local targetMark: Highlight? = nil
+local targetToken = 0
+
+-- Outlines the creature at `aim` (the server aims at the body of the one it chose).
+local function markTarget(aim: Vector3)
+	local enemies = workspace:FindFirstChild("Enemies")
+	local best, bestDistance = nil, 3
+	for _, model in if enemies then enemies:GetChildren() else {} do
+		local body = model:FindFirstChild("Body")
+		if body and body:IsA("BasePart") and (body.Position - aim).Magnitude < bestDistance then
+			best, bestDistance = model, (body.Position - aim).Magnitude
+		end
+	end
+	if not best then
+		return
+	end
+	-- A purified creature takes the outline with it; the next target gets a new one.
+	local mark = targetMark
+	if not mark or not mark.Parent then
+		mark = Instance.new("Highlight")
+		mark.Name = "TargetMark"
+		mark.FillTransparency = 1
+		mark.OutlineColor = TARGET_COLOR
+		mark.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		targetMark = mark
+	end
+	mark.OutlineTransparency = 0.1
+	mark.Parent = best
+	targetToken += 1
+	local token = targetToken
+	task.delay(TARGET_HOLD, function()
+		if token == targetToken and mark.Parent then
+			UiKit.tween(mark, 0.4, { OutlineTransparency = 1 })
+		end
+	end)
+end
+
 function Effects.attack(attacker: Player?, weaponId: string, slot: number, origin: Vector3, aim: Vector3, tier: number)
 	local weapon = WeaponData.weapons[weaponId]
 	if not weapon then
 		return
+	end
+	if attacker == player and slot == 0 then
+		markTarget(aim)
 	end
 	if attacker ~= player then
 		local own = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
