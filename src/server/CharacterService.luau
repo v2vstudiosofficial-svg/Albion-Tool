@@ -100,11 +100,12 @@ function CharacterService.onLevelUp(player: Player)
 end
 
 -- All enemy damage to players goes through here so charms apply consistently. `from` (where the
--- hit came from) lets the player's screen point at it.
-function CharacterService.damage(player: Player, humanoid: Humanoid, amount: number, from: Vector3)
+-- hit came from) lets the player's screen point at it; `source` (the creature's kind and level)
+-- names it on the defeat screen.
+function CharacterService.damage(player: Player, humanoid: Humanoid, amount: number, from: Vector3, source: { kind: string, level: number }?)
 	local profile = PlayerProfiles.get(player)
 	humanoid:TakeDamage(Progression.damageTaken(amount, profile and profile.equippedCharm))
-	fx:FireClient(player, "hurt", from)
+	fx:FireClient(player, "hurt", from, source and source.kind, source and source.level)
 end
 
 local function onCharacterAdded(player: Player, character: Model)

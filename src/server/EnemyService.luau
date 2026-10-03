@@ -108,8 +108,13 @@ function ctx.clampToLeash(enemy: Enemy)
 	end
 end
 
-function ctx.hurt(target: Target, amount: number, from: Vector3)
-	CharacterService.damage(target.player, target.humanoid, amount, from)
+function ctx.hurt(target: Target, amount: number, from: Vector3, enemy: Enemy)
+	CharacterService.damage(target.player, target.humanoid, amount, from, ctx.source(enemy))
+end
+
+-- Who an attack came from, for the player's screen.
+function ctx.source(enemy: Enemy): { kind: string, level: number }
+	return { kind = enemy.kind, level = enemy.level }
 end
 
 function ctx.contact(enemy: Enemy, now: number, damage: number?)
@@ -119,7 +124,7 @@ function ctx.contact(enemy: Enemy, now: number, damage: number?)
 			local last = enemy.lastContact[target.player]
 			if not last or now - last >= stats.contactCooldown then
 				enemy.lastContact[target.player] = now
-				ctx.hurt(target, (damage or stats.contactDamage) * enemy.damageMultiplier, enemy.position)
+				ctx.hurt(target, (damage or stats.contactDamage) * enemy.damageMultiplier, enemy.position, enemy)
 			end
 		end
 	end
@@ -245,7 +250,8 @@ function behaviors.shooter(enemy: Enemy, dt: number, now: number)
 						stats.projectileRadius,
 						stats.projectileDamage * enemy.damageMultiplier,
 						stats.projectileLifetime,
-						"spore"
+						"spore",
+						ctx.source(enemy)
 					)
 				end
 			end
@@ -292,7 +298,7 @@ function behaviors.charger(enemy: Enemy, dt: number, now: number)
 		for _, target in ctx.targets do
 			if not memory.dashHits[target.player] and (target.root.Position - enemy.position).Magnitude <= stats.contactRange + 0.8 then
 				memory.dashHits[target.player] = true
-				ctx.hurt(target, stats.dashDamage * enemy.damageMultiplier, enemy.position)
+				ctx.hurt(target, stats.dashDamage * enemy.damageMultiplier, enemy.position, enemy)
 			end
 		end
 		if beyond or now >= enemy.stateUntil then

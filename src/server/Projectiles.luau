@@ -18,20 +18,22 @@ type Projectile = {
 	radius: number,
 	damage: number,
 	expires: number,
+	source: { kind: string, level: number }?,
 }
 
 local Projectiles = {}
 
 local active: { Projectile } = {}
 local nextId = 0
--- (player, humanoid, damage, where the shot came from)
-local onHit: (Player, Humanoid, number, Vector3) -> () = function() end
+-- (player, humanoid, damage, where the shot came from, who shot it)
+local onHit: (Player, Humanoid, number, Vector3, { kind: string, level: number }?) -> () = function() end
 
-function Projectiles.setHitHandler(handler: (Player, Humanoid, number, Vector3) -> ())
+function Projectiles.setHitHandler(handler: (Player, Humanoid, number, Vector3, { kind: string, level: number }?) -> ())
 	onHit = handler
 end
 
-function Projectiles.fire(origin: Vector3, velocity: Vector3, radius: number, damage: number, lifetime: number, style: string)
+-- `source` (the shooter's kind and level) tells the player what hit them.
+function Projectiles.fire(origin: Vector3, velocity: Vector3, radius: number, damage: number, lifetime: number, style: string, source: { kind: string, level: number }?)
 	if #active >= MAX_ACTIVE then
 		return
 	end
@@ -43,6 +45,7 @@ function Projectiles.fire(origin: Vector3, velocity: Vector3, radius: number, da
 		radius = radius,
 		damage = damage,
 		expires = os.clock() + lifetime,
+		source = source,
 	})
 	fx:FireAllClients("projectile", nextId, origin, velocity, lifetime, radius, style)
 end
@@ -59,7 +62,7 @@ local function step(dt: number)
 		local hit = false
 		for _, target in targets do
 			if (target.root.Position - projectile.position).Magnitude <= projectile.radius + PLAYER_RADIUS then
-				onHit(target.player, target.humanoid, projectile.damage, projectile.position - projectile.velocity)
+				onHit(target.player, target.humanoid, projectile.damage, projectile.position - projectile.velocity, projectile.source)
 				fx:FireAllClients("projectileEnd", projectile.id, projectile.position)
 				hit = true
 				break

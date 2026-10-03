@@ -996,6 +996,9 @@ test("other enemy behaviors run (shooter, charger) and hurt players", function()
 		return e.target == bob and e.args[1] == "hurt" and typeof(e.args[2]) == "Vector3"
 	end) > 0, "every hit tells bob where it came from")
 	assert(logCount("Fx", function(e)
+		return e.target == bob and e.args[1] == "hurt" and Balance.enemies[e.args[3]] ~= nil and typeof(e.args[4]) == "number"
+	end) > 0, "and which creature (kind and level) it was")
+	assert(logCount("Fx", function(e)
 		return e.args[1] == "projectile" and e.args[7] == "spore"
 	end) > 0, "spores fired")
 end)

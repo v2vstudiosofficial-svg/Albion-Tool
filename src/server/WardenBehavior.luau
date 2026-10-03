@@ -100,7 +100,7 @@ local function resolveSlam(enemy, ctx)
 		ctx.fx("slam", point, stats.slamRadius)
 		for _, target in ctx.targets do
 			if flat(target.root.Position - point).Magnitude <= stats.slamRadius then
-				ctx.hurt(target, stats.slamDamage * enemy.damageMultiplier, point)
+				ctx.hurt(target, stats.slamDamage * enemy.damageMultiplier, point, enemy)
 			end
 		end
 	end
@@ -122,7 +122,8 @@ local function fireRing(enemy, ctx, offset: number)
 				stats.orbRadius,
 				stats.orbDamage * enemy.damageMultiplier,
 				stats.orbLifetime,
-				"shadow"
+				"shadow",
+				ctx.source(enemy)
 			)
 		end
 	end

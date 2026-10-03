@@ -2326,6 +2326,20 @@ test("defeat: the screen says what happened, counts down and gives a tip, then c
 	humanoid.Health = health
 	advance(0.2)
 	assert(not shownText(Strings.get("defeat_title")), "gone once alive again")
+	-- The last hit names who won; one far above the player picks the "grow first" tip.
+	local level = hero:GetAttribute("Level") or 1
+	remotes.Fx.OnClientEvent:Fire("hurt", H.read(hero.Character.HumanoidRootPart, "Position") + Vector3.new(5, 0, 0), "Frostling", level + 20)
+	humanoid.Health = 0
+	advance(0.3)
+	assert(shownText(Strings.get("defeat_by", level + 20, Strings.get(Balance.enemies.Frostling.nameKey))), "defeated by a Frostling")
+	assert(shownText(Strings.get("defeat_tip_level")), "much stronger: grow a little first")
+	humanoid.Health = health
+	advance(7)
+	humanoid.Health = 0
+	advance(0.3)
+	assert(not shownText(Strings.get("defeat_by", level + 20, Strings.get(Balance.enemies.Frostling.nameKey))), "an old hit is not named")
+	humanoid.Health = health
+	advance(0.2)
 end)
 
 test("mini map: north mark, the place you are in, a title when you enter a new place, open rifts", function()

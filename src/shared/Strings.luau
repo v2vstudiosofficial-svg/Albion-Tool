@@ -371,6 +371,7 @@ local texts = {
 	banner_boss_enraged = "%s is enraged!",
 	banner_boss_enraged_sub = "It strikes faster now - keep moving!",
 	defeat_countdown = "Back to the village in %d...",
+	defeat_by = "Defeated by a Lv %d %s",
 	defeat_tip_heal = "Tip: press F (Lantern Glow) to heal in a fight.",
 	defeat_tip_level = "Tip: red names are far stronger than you - grow a little first.",
 	defeat_tip_weapons = "Tip: better weapons and floating slots come from chests.",

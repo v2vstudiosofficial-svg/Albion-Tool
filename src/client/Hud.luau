@@ -962,12 +962,18 @@ function Hud.start()
 	-- Defeat: the screen dims, says what happened, counts down to waking up in the village and
 	-- gives one useful tip. It leaves as soon as the new character arrives.
 	local DEFEAT_TIPS = { "defeat_tip_heal", "defeat_tip_level", "defeat_tip_weapons" }
+	-- The last hit (from the server's "hurt"), to name who won; a creature this many levels above the
+	-- player picks the "grow a little first" tip.
+	local DEFEAT_BY_SECONDS = 6
+	local MUCH_STRONGER = 5
+	local lastHit: { kind: string, level: number, at: number }? = nil
 	local defeatGui = UiKit.create("ScreenGui", { Name = "Defeat", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, Enabled = false }, gui.Parent)
 	local defeatShade = UiKit.create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(20, 8, 30), BackgroundTransparency = 1, BorderSizePixel = 0 }, defeatGui)
-	local defeatRegion = UiKit.region(defeatGui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.45), Vector2.new(520, 150))
+	local defeatRegion = UiKit.region(defeatGui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.45), Vector2.new(520, 176))
 	UiKit.label({ Size = UDim2.new(1, 0, 0, 56), Text = Strings.get("defeat_title"), TextSize = 46, TextColor3 = Color3.fromRGB(230, 170, 255), TextStrokeTransparency = 0.2 }, defeatRegion)
-	local defeatCountdown = UiKit.label({ Position = UDim2.fromOffset(0, 60), Size = UDim2.new(1, 0, 0, 30), TextSize = 24, TextStrokeTransparency = 0.3 }, defeatRegion)
-	local defeatTip = UiKit.label({ Position = UDim2.fromOffset(0, 100), Size = UDim2.new(1, 0, 0, 44), TextSize = 18, TextWrapped = true, TextColor3 = colors.accent, TextStrokeTransparency = 0.4 }, defeatRegion)
+	local defeatBy = UiKit.label({ Position = UDim2.fromOffset(0, 56), Size = UDim2.new(1, 0, 0, 24), TextSize = 18, TextColor3 = colors.muted, TextStrokeTransparency = 0.4 }, defeatRegion)
+	local defeatCountdown = UiKit.label({ Position = UDim2.fromOffset(0, 84), Size = UDim2.new(1, 0, 0, 30), TextSize = 24, TextStrokeTransparency = 0.3 }, defeatRegion)
+	local defeatTip = UiKit.label({ Position = UDim2.fromOffset(0, 124), Size = UDim2.new(1, 0, 0, 44), TextSize = 18, TextWrapped = true, TextColor3 = colors.accent, TextStrokeTransparency = 0.4 }, defeatRegion)
 	local defeatedCharacter: Model? = nil
 	local defeatedAt = 0
 	local tipIndex = 0
@@ -976,14 +982,25 @@ function Hud.start()
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if humanoid and humanoid.Health <= 0 and defeatedCharacter ~= character then
 			defeatedCharacter, defeatedAt = character, os.clock()
-			tipIndex = tipIndex % #DEFEAT_TIPS + 1
-			defeatTip.Text = Strings.get(DEFEAT_TIPS[tipIndex])
+			local hit = if lastHit and os.clock() - lastHit.at <= DEFEAT_BY_SECONDS then lastHit else nil
+			local foe = hit and Balance.enemies[hit.kind]
+			defeatBy.Visible = foe ~= nil
+			if hit and foe then
+				defeatBy.Text = Strings.get("defeat_by", hit.level, Strings.get(foe.nameKey))
+			end
+			if hit and hit.level >= (player:GetAttribute("Level") or 1) + MUCH_STRONGER then
+				defeatTip.Text = Strings.get("defeat_tip_level")
+			else
+				tipIndex = tipIndex % #DEFEAT_TIPS + 1
+				defeatTip.Text = Strings.get(DEFEAT_TIPS[tipIndex])
+			end
 			defeatShade.BackgroundTransparency = 1
 			UiKit.tween(defeatShade, 0.6, { BackgroundTransparency = 0.45 })
 			defeatGui.Enabled = true
 			UiKit.pop(defeatRegion)
 		elseif defeatGui.Enabled and (character ~= defeatedCharacter or (humanoid and humanoid.Health > 0)) then
 			defeatGui.Enabled = false
+			defeatedCharacter = nil
 		end
 		if defeatGui.Enabled then
 			local left = math.max(1, math.ceil(Balance.player.respawnTime - (os.clock() - defeatedAt)))
@@ -1088,7 +1105,10 @@ function Hud.start()
 		table.insert(edges, edge)
 	end
 	local liveArrows = 0
-	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, from)
+	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, from, sourceKind, sourceLevel)
+		if kind == "hurt" and typeof(sourceKind) == "string" and typeof(sourceLevel) == "number" then
+			lastHit = { kind = sourceKind, level = sourceLevel, at = os.clock() }
+		end
 		local camera = workspace.CurrentCamera
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
