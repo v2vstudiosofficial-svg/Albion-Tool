@@ -693,6 +693,21 @@ test("creature attacks: dust and sounds for chargers, shooters, blinkers and sla
 	advance(1)
 end)
 
+test("the top level: its own banner and confetti", function()
+	local Progression = H.loadModule("src/shared/Progression.luau")
+	local level = hero:GetAttribute("Level")
+	setAttributes({ Level = Progression.MAX_LEVEL - 1 })
+	advance(4)
+	setAttributes({ Level = Progression.MAX_LEVEL })
+	assert(shownText(Strings.get("banner_max_level", Progression.MAX_LEVEL)), "max level banner")
+	assert(shownText(Strings.get("banner_max_level_sub")), "it says the lantern can rebirth you")
+	assert(playerGui.Hud:FindFirstChild("Confetti", true), "confetti")
+	advance(4)
+	eq(playerGui.Hud:FindFirstChild("Confetti", true), nil, "gone after a few seconds")
+	setAttributes({ Level = level })
+	advance(4)
+end)
+
 test("light wave is locked until level 3", function()
 	actions.LvLightWave("LvLightWave", Enum.UserInputState.Begin, {})
 	eq(sent("RequestWave"), 0, "locked")
@@ -2734,6 +2749,22 @@ test("rebirth: the panel says what resets, confirms only at level 100, badge and
 	eq(sent("ConfirmRebirth"), 1, "confirmed at level 100")
 	assert(not shownText(Strings.get("rebirth_intro")), "panel closes after confirming")
 	assert(shownText(Strings.get("rebirth_hud", 2)), "rebirth count under the level badge")
+	-- The server's word that it happened: a banner and confetti.
+	local function confettiCount(): number
+		local count = 0
+		for _, descendant in playerGui.Hud:GetDescendants() do
+			if descendant.Name == "Confetti" then
+				count += 1
+			end
+		end
+		return count
+	end
+	remotes.Notice.OnClientEvent:Fire("notice_rebirth_done", 3)
+	advance(0.2)
+	assert(shownText(Strings.get("banner_reborn")) and shownText(Strings.get("banner_reborn_sub", 3)), "rebirth banner")
+	assert(confettiCount() > 20, "confetti")
+	advance(4)
+	eq(confettiCount(), 0, "the confetti is gone")
 	setAttributes({ Rebirths = 0 })
 	assert(not shownText(Strings.get("rebirth_hud", 2)), "no badge before the first rebirth")
 	-- The shop shows how the rebirth costumes are earned.

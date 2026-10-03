@@ -16,6 +16,7 @@ local Attrs = require(script.Parent.Attrs)
 local Format = require(Shared:WaitForChild("Format"))
 local CombatFeel = require(Shared:WaitForChild("CombatFeel"))
 local MapLogic = require(Shared:WaitForChild("MapLogic"))
+local SettingsData = require(Shared:WaitForChild("SettingsData"))
 local CameraRig = require(script.Parent.CameraRig)
 local Settings = require(script.Parent.Settings)
 
@@ -40,6 +41,9 @@ local HURT_ARROW_FADE = 0.6
 local MAX_HURT_ARROWS = 4
 -- Level-up banner lines for the abilities (they also name the key); other unlocks say "Unlocked: X".
 local ABILITY_NOTICES = { wave_button = "notice_wave_unlocked", ability_star = "notice_star_unlocked", ability_heal = "notice_heal_unlocked" }
+-- Confetti for the biggest moments (the top level, a rebirth): pieces at High effects, fewer below.
+local CONFETTI_PIECES = 70
+local CONFETTI_COLORS = { Color3.fromRGB(255, 215, 110), Color3.fromRGB(255, 130, 170), Color3.fromRGB(140, 210, 255), Color3.fromRGB(150, 235, 150), Color3.fromRGB(200, 160, 255) }
 -- A new best Shadow Tower floor: the tower card glows this gold for a few seconds.
 local RECORD_GOLD = Color3.fromRGB(255, 236, 140)
 local RECORD_SECONDS = 3.5
@@ -771,6 +775,32 @@ function Hud.start()
 
 	bannerFunction = showBanner
 
+	-- Paper pieces tumble down the whole screen and are gone in a few seconds.
+	local function confetti()
+		local viewport = gui.AbsoluteSize
+		local count = math.floor(CONFETTI_PIECES * (SettingsData.effectDensity[Settings.get("effects")] or 1))
+		for index = 1, count do
+			local startX = math.random() * viewport.X
+			local piece = UiKit.create("Frame", {
+				Name = "Confetti",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromOffset(startX, -20 - math.random() * 120),
+				Size = UDim2.fromOffset(8, 14),
+				Rotation = math.random(0, 360),
+				BackgroundColor3 = CONFETTI_COLORS[index % #CONFETTI_COLORS + 1],
+				BorderSizePixel = 0,
+				ZIndex = 30,
+			}, gui)
+			local fall = 1.8 + math.random() * 1.2
+			UiKit.tween(piece, fall, {
+				Position = UDim2.fromOffset(startX + math.random(-120, 120), viewport.Y + 30),
+				Rotation = piece.Rotation + math.random(-540, 540),
+			}, Enum.EasingStyle.Sine).Completed:Connect(function()
+				piece:Destroy()
+			end)
+		end
+	end
+
 	local knownLevel: number? = nil
 	local function onLevelChanged()
 		local level = player:GetAttribute("Level")
@@ -793,10 +823,16 @@ function Hud.start()
 					end
 				end
 			end
-			showBanner(Strings.get("hud_level", level) .. "!", subtitle, "celebrate")
+			if level >= Progression.MAX_LEVEL then
+				showBanner(Strings.get("banner_max_level", level), Strings.get("banner_max_level_sub"), "celebrate")
+				confetti()
+			else
+				showBanner(Strings.get("hud_level", level) .. "!", subtitle, "celebrate")
+			end
 		end
 		knownLevel = level
 	end
+
 
 	for _, name in { "XP", "Coins", "Crystals", "Upgrades" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshStats)
@@ -941,6 +977,12 @@ function Hud.start()
 		end)
 	end)
 	Remotes:WaitForChild("Notice").OnClientEvent:Connect(function(key, ...)
+		-- A rebirth gets a banner and confetti instead of a toast.
+		if key == "notice_rebirth_done" and typeof((...)) == "number" then
+			showBanner(Strings.get("banner_reborn"), Strings.get("banner_reborn_sub", (...)), "celebrate")
+			confetti()
+			return
+		end
 		if typeof(key) == "string" then
 			showToast(Strings.get(key, table.unpack(translateArgs(...))), colors.text)
 		end
