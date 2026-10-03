@@ -2530,6 +2530,13 @@ test("creature labels: near the player, tinted by the level gap, health in numbe
 	assert(fill.Size.X.Scale < 0.45 and trail.Size.X.Scale > 0.9, "the trail lingers after a hit")
 	advance(1)
 	assert(trail.Size.X.Scale < 0.45, "then drains")
+	-- In a fight only the hero's target (and elites) keep the full label; others show a slim bar.
+	eq(name.Visible, false, "a hurt creature that is not the target: no name")
+	eq(gui:FindFirstChild("HpText", true).Visible, false, "and no numbers, just a slim bar")
+	assert(gui.Enabled and fill.Visible, "the bar itself stays")
+	remotes.Fx.OnClientEvent:Fire("attack", hero, "staff", 0, H.read(hero.Character.HumanoidRootPart, "Position"), H.read(enemy.Body, "Position"), 0)
+	advance(0.3)
+	assert(name.Visible and gui:FindFirstChild("HpText", true).Visible, "the hero's target keeps name and numbers")
 	enemy:Destroy()
 	setAttributes({ Level = heroLevel })
 end)
@@ -2630,6 +2637,28 @@ test("the creature the hero's weapon is hitting wears an outline and a ground ri
 end)
 
 if not touchMode then
+	test("toasts hang under the quest panel on tall screens and lie over it on short ones", function()
+		remotes.Notice.OnClientEvent:Fire("notice_streak", 10)
+		advance(0.1)
+		local holder
+		for _, toast in playerGui.Hud:GetDescendants() do
+			if toast.Name == "Toast" then
+				holder = toast.Parent
+			end
+		end
+		local camera = workspace.CurrentCamera
+		local function resize(size: Vector2)
+			camera.ViewportSize = size
+			H.signalFor(camera, "prop:ViewportSize"):Fire()
+		end
+		eq(holder.Position.Y.Offset, 0, "a 720-tall window: over the quest panel, clear of the hero")
+		resize(Vector2.new(1920, 1080))
+		assert(holder.Position.Y.Offset > 72, "a tall screen: under the quest panel")
+		resize(Vector2.new(1280, 720))
+		eq(holder.Position.Y.Offset, 0, "and back")
+		advance(4)
+	end)
+
 	test("a ready ability that would help beats: Lantern Glow when hurt, Light Wave in a crowd", function()
 		local bar = playerGui.Controls:FindFirstChild("AbilityBar")
 		local function beating(id: string): boolean

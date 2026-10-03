@@ -376,6 +376,8 @@ end
 
 local targetMark: Highlight? = nil
 local targetToken = 0
+-- The creature the hero's weapon is on (its label stays full in a crowd; see attachEnemyUi).
+local targetModel: Instance? = nil
 -- A gold ring on the ground under the target as well (the outline alone was hard to see on light
 -- ground); it follows the creature and fades with the outline.
 local targetRing: Part? = nil
@@ -445,6 +447,7 @@ local function markTarget(aim: Vector3)
 	end
 	mark.OutlineTransparency = 0.1
 	mark.Parent = best
+	targetModel = best
 	local stroke = ringUnder(best:FindFirstChild("Body") :: BasePart)
 	stroke.Transparency = 0.15
 	followTargetRing()
@@ -454,6 +457,7 @@ local function markTarget(aim: Vector3)
 		if token ~= targetToken then
 			return
 		end
+		targetModel = nil
 		if mark.Parent then
 			UiKit.tween(mark, 0.4, { OutlineTransparency = 1 })
 		end
@@ -1223,6 +1227,9 @@ local function attachEnemyUi(model: Instance)
 		end
 	end)
 	-- Shown near the player (measured from the hero, not the camera, which sits far behind).
+	-- In a fight creatures crowd together and full labels piled up unreadably: there only the hero's
+	-- target and elites keep name and numbers, the others a slim health bar.
+	local shownFull = true
 	labelChecks[gui] = function()
 		if not model.Parent then
 			error("gone")
@@ -1231,6 +1238,14 @@ local function attachEnemyUi(model: Instance)
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local range = if fighting then LABEL_DISTANCE_FIGHT else LABEL_DISTANCE_CALM
 		gui.Enabled = Settings.get("enemyBars") == true and root ~= nil and model:GetAttribute("Alive") ~= false and (body.Position - root.Position).Magnitude <= range
+		local full = not fighting or model == targetModel or model:GetAttribute("Elite") == true
+		if full ~= shownFull then
+			shownFull = full
+			nameLabel.Visible = full
+			hpText.Visible = full
+			bar.Position = if full then UDim2.fromOffset(8, 21) else UDim2.new(0.15, 0, 0, 30)
+			bar.Size = if full then UDim2.new(1, -16, 0, 17) else UDim2.new(0.7, 0, 0, 7)
+		end
 	end
 	labelChecks[gui]()
 	model.Destroying:Connect(function()

@@ -30,6 +30,9 @@ local HP_HIGH = Color3.fromRGB(110, 220, 120)
 local HP_LOW = Color3.fromRGB(255, 90, 90)
 local MAX_TOASTS = 4
 local MAX_TOASTS_TOUCH = 3
+-- Below this screen height (phones, small laptop windows) the space under the quest panel is where
+-- the hero and the creatures ahead are, so toasts lie over the quest panel instead (3 at most).
+local TOASTS_UNDER_PANEL_FROM = 820
 -- The first time each boss joins a fight this session, the camera glides over to it for a moment.
 local BOSS_INTRO_SECONDS = 1.4
 local RAY_COUNT = 8 -- bars through the center, so twice as many rays
@@ -447,14 +450,23 @@ function Hud.start()
 	UiKit.corner(bossFill, 7)
 
 	-- Toasts, banner, dialog ----------------------------------------------------------------
-	-- On a phone the space under the quest panel is where the hero stands, so toasts lie over the
-	-- quest panel for their few seconds instead (and fewer of them at once).
+	-- On short screens toasts lie over the quest panel for their few seconds (see
+	-- TOASTS_UNDER_PANEL_FROM); on tall ones they hang under it.
 	local toasts = UiKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, if isTouch then 0 else 134),
 		Size = UDim2.fromOffset(440, 170),
 		BackgroundTransparency = 1,
 	}, topCenter)
+	local toastsOnTop = false
+	local function placeToasts()
+		local camera = workspace.CurrentCamera
+		toastsOnTop = isTouch or (camera ~= nil and camera.ViewportSize.Y < TOASTS_UNDER_PANEL_FROM)
+		toasts.Position = UDim2.new(0.5, 0, 0, if toastsOnTop then 0 else 134)
+	end
+	placeToasts()
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(placeToasts)
+	end
 	UiKit.create("UIListLayout", { HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, toasts)
 
 	local banner = UiKit.create("Frame", {
@@ -777,7 +789,7 @@ function Hud.start()
 		}, pill)
 		local entry = { text = text, pill = pill, label = label, count = 1, token = 0 }
 		table.insert(liveToasts, entry)
-		while #liveToasts > (if isTouch then MAX_TOASTS_TOUCH else MAX_TOASTS) do
+		while #liveToasts > (if toastsOnTop then MAX_TOASTS_TOUCH else MAX_TOASTS) do
 			dropToast(liveToasts[1])
 		end
 		UiKit.pop(pill)
