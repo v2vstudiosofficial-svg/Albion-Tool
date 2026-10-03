@@ -1,5 +1,5 @@
--- The valley's day and night (pure; client/DayNight applies it). Everyone sees the same sky: the
--- time comes from the server clock. Days are long, dusk is golden, and the short night is blue
+-- The valley's day and night, and the marsh rain (pure; client/DayNight and client/Ambience apply
+-- them). Everyone sees the same sky: the time comes from the server clock. Days are long, dusk is golden, and the short night is blue
 -- and bright enough to play - the lanterns and fireflies are what make it night.
 local DayCycle = {}
 
@@ -47,6 +47,20 @@ function DayCycle.dusk(clock: number): number
 		return math.max(0, 1 - math.abs(clock - center) / width)
 	end
 	return math.max(bump(18.8, 1.4), bump(6, 1))
+end
+
+-- Rain in the marsh: a few minutes of every RAIN_EVERY, easing in and out over RAIN_FADE seconds.
+DayCycle.RAIN_EVERY = 9 * 60
+DayCycle.RAIN_LENGTH = 3 * 60
+DayCycle.RAIN_FADE = 15
+
+-- How hard it rains (0-1) at a server time in seconds.
+function DayCycle.rain(serverTime: number): number
+	local into = serverTime % DayCycle.RAIN_EVERY
+	if into >= DayCycle.RAIN_LENGTH then
+		return 0
+	end
+	return math.min(into, DayCycle.RAIN_LENGTH - into, DayCycle.RAIN_FADE) / DayCycle.RAIN_FADE
 end
 
 return DayCycle

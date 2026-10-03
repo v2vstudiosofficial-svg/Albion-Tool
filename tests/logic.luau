@@ -1823,6 +1823,14 @@ test("day cycle: a long day, golden dusk, a short night, shared by everyone thro
 	eq(DayCycle.night(3), 1)
 	assert(DayCycle.night(19.7) > 0.4 and DayCycle.night(19.7) < 0.6, "half way into the night")
 	assert(DayCycle.dusk(18.8) == 1 and DayCycle.dusk(12) == 0 and DayCycle.dusk(6) == 1, "orange at sunset and sunrise only")
+	-- Marsh rain: eases in, pours, eases out, then a long dry spell; it repeats.
+	eq(DayCycle.rain(0), 0)
+	eq(DayCycle.rain(DayCycle.RAIN_FADE / 2), 0.5, "easing in")
+	eq(DayCycle.rain(DayCycle.RAIN_LENGTH / 2), 1, "pouring")
+	eq(DayCycle.rain(DayCycle.RAIN_LENGTH - DayCycle.RAIN_FADE / 2), 0.5, "easing out")
+	eq(DayCycle.rain(DayCycle.RAIN_LENGTH + 1), 0, "dry")
+	eq(DayCycle.rain(DayCycle.RAIN_EVERY + 60), DayCycle.rain(60), "repeats")
+	assert(DayCycle.RAIN_LENGTH < DayCycle.RAIN_EVERY / 2, "dry more often than wet")
 	-- Clock time never jumps between neighbouring seconds (except the wrap at midnight).
 	for second = 0, L - 1 do
 		local a, b = DayCycle.clock(second), DayCycle.clock(second + 1)

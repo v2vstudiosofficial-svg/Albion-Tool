@@ -1,12 +1,14 @@
 -- Weather-like particles around the camera that tell you where you are, using the same places as
 -- the music (MusicLogic.theme): pollen in the village, drifting leaves in the woods, green spores
 -- in the marsh, snow on the peaks, embers at the citadel and violet motes in the Shadow Tower.
--- Only this screen draws them; "Low" effects turns them off.
+-- Now and then it rains in the marsh (DayCycle.rain, the same for everyone), with little splashes
+-- at your feet. Only this screen draws them; "Low" effects turns them off.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local MusicLogic = require(Shared:WaitForChild("MusicLogic"))
 local SettingsData = require(Shared:WaitForChild("SettingsData"))
 local Settings = require(script.Parent.Settings)
@@ -14,6 +16,10 @@ local Settings = require(script.Parent.Settings)
 local player = Players.LocalPlayer
 
 local UPDATE_SECONDS = 0.5
+local RAIN_RATE = 550 -- drops per second at full rain and High effects
+local SPLASH_RATE = 140
+-- Unlit, so the rain still shows at night.
+local RAIN_COLOR = Color3.fromRGB(170, 195, 225)
 
 type Look = {
 	color: ColorSequence,
@@ -41,18 +47,60 @@ local LOOKS: { [string]: Look } = {
 
 local Ambience = {}
 
+-- An invisible, non-solid part that only carries particles.
+local function holderPart(name: string, size: Vector3): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Transparency = 1
+	part.Size = size
+	part.Parent = workspace
+	return part
+end
+
+-- Rain falls from a sheet above the player as thin upright streaks (the default particle squashed
+-- tall, kept upright on screen), and splashes flick up from a sheet at their feet.
+local function rainEmitters(): (Part, ParticleEmitter, Part, ParticleEmitter)
+	local sky = holderPart("LvRain", Vector3.new(80, 1, 80))
+	local rain = Instance.new("ParticleEmitter")
+	rain.Name = "Rain"
+	rain.Shape = Enum.ParticleEmitterShape.Box
+	rain.EmissionDirection = Enum.NormalId.Bottom
+	rain.Orientation = Enum.ParticleOrientation.FacingCameraWorldUp
+	rain.Speed = NumberRange.new(70, 80)
+	rain.Lifetime = NumberRange.new(0.45, 0.55)
+	rain.Size = NumberSequence.new(0.45)
+	rain.Squash = NumberSequence.new(2.8)
+	rain.Transparency = NumberSequence.new(0.45)
+	rain.Color = ColorSequence.new(RAIN_COLOR)
+	rain.LightInfluence = 0
+	rain.Rate = 0
+	rain.Parent = sky
+	local ground = holderPart("LvSplashes", Vector3.new(50, 0.2, 50))
+	local splash = Instance.new("ParticleEmitter")
+	splash.Name = "Splashes"
+	splash.Shape = Enum.ParticleEmitterShape.Box
+	splash.EmissionDirection = Enum.NormalId.Top
+	splash.Speed = NumberRange.new(0)
+	splash.Lifetime = NumberRange.new(0.2, 0.3)
+	splash.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 0.9) })
+	splash.Squash = NumberSequence.new(-1.5)
+	splash.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
+	splash.Color = ColorSequence.new(RAIN_COLOR)
+	splash.LightInfluence = 0
+	splash.Rate = 0
+	splash.Parent = ground
+	return sky, rain, ground, splash
+end
+
 Ambience.looks = LOOKS
 
 function Ambience.start()
-	local holder = Instance.new("Part")
-	holder.Name = "LvAmbience"
-	holder.Anchored = true
-	holder.CanCollide = false
-	holder.CanQuery = false
-	holder.CanTouch = false
-	holder.Transparency = 1
-	holder.Size = Vector3.new(70, 24, 70)
-	holder.Parent = workspace
+	local holder = holderPart("LvAmbience", Vector3.new(70, 24, 70))
+	local sky, rain, ground, splash = rainEmitters()
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Name = "Ambience"
 	emitter.Shape = Enum.ParticleEmitterShape.Box
@@ -72,18 +120,23 @@ function Ambience.start()
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if not root then
-			emitter.Rate = 0
+			emitter.Rate, rain.Rate, splash.Rate = 0, 0, 0
 			return
 		end
 		holder.CFrame = CFrame.new(root.Position + Vector3.new(0, 8, 0))
+		sky.CFrame = CFrame.new(root.Position + Vector3.new(0, 30, 0))
+		ground.CFrame = CFrame.new(root.Position - Vector3.new(0, 2.9, 0))
 		local theme = MusicLogic.theme(root.Position.X, root.Position.Z)
 		local look = LOOKS[theme]
 		local density = SettingsData.effectDensity[Settings.get("effects")] or 1
 		if not look or Settings.get("effects") == "low" then
-			emitter.Rate = 0
+			emitter.Rate, rain.Rate, splash.Rate = 0, 0, 0
 			shown = nil
 			return
 		end
+		local wet = if theme == "marsh" then DayCycle.rain(workspace:GetServerTimeNow()) else 0
+		rain.Rate = RAIN_RATE * wet * density
+		splash.Rate = SPLASH_RATE * wet * density
 		if shown ~= theme then
 			shown = theme
 			emitter.Color = look.color

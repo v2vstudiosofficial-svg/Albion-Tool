@@ -1903,7 +1903,7 @@ test("day and night: the sky follows the server clock; the setting keeps it afte
 	advance(0.5)
 end)
 
-test("ambience: particles match the place (pollen, leaves, snow...) and stop on Low effects", function()
+test("ambience: particles match the place (pollen, leaves, snow...), marsh showers, all off on Low effects", function()
 	local holder = workspace:FindFirstChild("LvAmbience")
 	assert(holder and holder:FindFirstChild("Ambience"), "ambience emitter exists")
 	local emitter = holder.Ambience
@@ -1914,9 +1914,25 @@ test("ambience: particles match the place (pollen, leaves, snow...) and stop on 
 	teleport(vec(WorldData.areas.peaks.center, 3))
 	advance(0.6)
 	assert(emitter.Rate > 0 and emitter.Color.Keypoints[1].Value ~= villageColor, "snow on the peaks looks different")
+	-- Rain in the marsh now and then, the same for everyone (server time).
+	local DayCycle = H.loadModule("src/shared/DayCycle.luau")
+	local rain = workspace.LvRain.Rain
+	eq(rain.Rate, 0, "no rain on the peaks")
+	teleport(vec(WorldData.areas.marsh.center, 3))
+	local into = workspace:GetServerTimeNow() % DayCycle.RAIN_EVERY
+	H.advance((DayCycle.RAIN_EVERY - into + DayCycle.RAIN_LENGTH / 2) % DayCycle.RAIN_EVERY + 0.1, 0.5)
+	advance(0.6)
+	assert(rain.Rate > 0 and workspace.LvSplashes.Splashes.Rate > 0, "a marsh shower, with splashes")
+	H.advance(DayCycle.RAIN_LENGTH / 2 + 5, 0.5)
+	advance(0.6)
+	eq(rain.Rate, 0, "the shower passes")
+	H.advance(DayCycle.RAIN_EVERY - DayCycle.RAIN_LENGTH, 0.5)
+	advance(0.6)
+	assert(rain.Rate > 0, "and comes back")
 	setAttributes({ Pref_quality = "custom", Pref_effects = "low" })
 	advance(0.6)
 	eq(emitter.Rate, 0, "nothing with Low effects")
+	eq(rain.Rate, 0, "no rain with Low effects")
 	setAttributes({ Pref_quality = "auto", Pref_effects = "high" })
 	teleport(vec(WorldData.spawn, 3))
 	advance(0.6)
