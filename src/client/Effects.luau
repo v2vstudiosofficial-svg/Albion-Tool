@@ -29,8 +29,12 @@ local WARN_COLOR = Color3.fromRGB(255, 120, 90)
 local GOLD = Color3.fromRGB(255, 220, 120)
 -- Creature labels: calm, unhurt creatures show theirs only this close, so a busy forest is not a
 -- wall of names; once a creature is hurt or chasing someone it shows from further away.
-local LABEL_DISTANCE_CALM = 40
-local LABEL_DISTANCE_FIGHT = 90
+-- Creature labels (name, level, health) show within this many studs of the player: calm, unhurt
+-- creatures up close, ones in a fight from further away.
+local LABEL_DISTANCE_CALM = 45
+local LABEL_DISTANCE_FIGHT = 100
+local LABEL_CHECK_SECONDS = 0.2
+local ENEMY_HP_COLOR = Color3.fromRGB(235, 80, 80)
 -- Creature names are tinted by how their level compares with the player's (CombatFeel.threat).
 local THREAT_COLORS = {
 	trivial = Color3.fromRGB(165, 165, 180),
@@ -45,6 +49,20 @@ local Effects = {}
 
 local folder: Folder
 local billboards: Folder
+-- Each creature label's "should it show right now" check, run a few times a second.
+local labelChecks: { [BillboardGui]: () -> () } = {}
+
+-- A creature that is gone takes its label with it (even if its Destroying never fired).
+local function checkLabels()
+	for gui, check in labelChecks do
+		if not pcall(check) then
+			labelChecks[gui] = nil
+			pcall(function()
+				gui:Destroy()
+			end)
+		end
+	end
+end
 local shakeUntil, shakeStrength, shakeLength = 0, 0, 1
 
 local function newPart(props: { [string]: any }): Part
@@ -1008,11 +1026,10 @@ local function attachEnemyUi(model: Instance)
 		return
 	end
 	local gui = UiKit.create("BillboardGui", {
-		Size = UDim2.fromOffset(140, 34),
-		StudsOffset = Vector3.new(0, body.Size.Y * 0.5 + 1.6, 0),
-		MaxDistance = LABEL_DISTANCE_CALM,
+		Size = UDim2.fromOffset(160, 42),
+		StudsOffset = Vector3.new(0, body.Size.Y * 0.5 + 1.8, 0),
 		Adornee = body,
-		Enabled = Settings.get("enemyBars"),
+		Enabled = false,
 	}, billboards)
 	local nameLabel = UiKit.label({
 		Name = "NameLabel",
@@ -1056,29 +1073,33 @@ local function attachEnemyUi(model: Instance)
 		end
 	end)
 	local bar = UiKit.create("Frame", {
-		Position = UDim2.fromOffset(10, 21),
-		Size = UDim2.new(1, -20, 0, 9),
+		Position = UDim2.fromOffset(8, 21),
+		Size = UDim2.new(1, -16, 0, 17),
 		BackgroundColor3 = Color3.fromRGB(40, 30, 60),
 		BorderSizePixel = 0,
 	}, gui)
-	UiKit.corner(bar, 5)
+	UiKit.corner(bar, 6)
+	UiKit.create("UIStroke", { Color = Color3.fromRGB(20, 14, 30), Thickness = 1.5 }, bar)
 	-- A pale trail lingers where the last hit took health, then drains to the new value.
 	local trail = UiKit.create("Frame", { Name = "Trail", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(255, 245, 225), BorderSizePixel = 0 }, bar)
 	UiKit.corner(trail, 5)
 	local fill = UiKit.create("Frame", {
 		Name = "Fill",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = GOLD,
+		BackgroundColor3 = ENEMY_HP_COLOR,
 		BorderSizePixel = 0,
 	}, bar)
 	UiKit.corner(fill, 5)
+	-- How much health is left, in numbers, across the bar.
+	local hpText = UiKit.label({ Name = "HpText", Size = UDim2.fromScale(1, 1), TextSize = 14, TextStrokeTransparency = 0, ZIndex = 3 }, bar)
 	local trailToken = 0
+	local fighting = false
 	local function refresh()
 		local hp = model:GetAttribute("Hp") or 0
 		local maxHp = model:GetAttribute("MaxHp") or 1
 		local ratio = math.clamp(hp / maxHp, 0, 1)
-		-- Calm, unhurt creatures only show their label up close; fighting ones from further away.
-		gui.MaxDistance = if ratio < 1 or model:GetAttribute("Aggro") then LABEL_DISTANCE_FIGHT else LABEL_DISTANCE_CALM
+		fighting = ratio < 1 or model:GetAttribute("Aggro") == true
+		hpText.Text = Strings.get("enemy_hp", Format.short(math.ceil(math.max(hp, 0))), Format.short(maxHp))
 		UiKit.tween(fill, 0.12, { Size = UDim2.fromScale(ratio, 1) })
 		trailToken += 1
 		local token = trailToken
@@ -1100,9 +1121,21 @@ local function attachEnemyUi(model: Instance)
 			Effects.popup(body.Position + Vector3.new(0, stats.size * 0.5 + 1, 0), "!", Color3.fromRGB(255, 150, 80), 34)
 		end
 	end)
+	-- Shown near the player (measured from the hero, not the camera, which sits far behind).
+	labelChecks[gui] = function()
+		if not model.Parent then
+			error("gone")
+		end
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local range = if fighting then LABEL_DISTANCE_FIGHT else LABEL_DISTANCE_CALM
+		gui.Enabled = Settings.get("enemyBars") == true and root ~= nil and model:GetAttribute("Alive") ~= false and (body.Position - root.Position).Magnitude <= range
+	end
+	labelChecks[gui]()
 	model.Destroying:Connect(function()
 		levelConnection:Disconnect()
 		trailToken += 1
+		labelChecks[gui] = nil
 		gui:Destroy()
 	end)
 end
@@ -1212,15 +1245,17 @@ function Effects.start()
 		task.spawn(watchAnimations, child)
 	end
 
-	-- Turning the creature name/health bars on or off applies to the ones already showing.
-	Settings.onChanged(function()
-		local show = Settings.get("enemyBars")
-		for _, gui in billboards:GetChildren() do
-			if gui:IsA("BillboardGui") then
-				gui.Enabled = show
-			end
+	-- Creature labels follow the setting and the player's distance (a few times a second).
+	local sinceLabels = 0
+	RunService.Heartbeat:Connect(function(dt)
+		sinceLabels += dt
+		if sinceLabels < LABEL_CHECK_SECONDS then
+			return
 		end
+		sinceLabels = 0
+		checkLabels()
 	end)
+	Settings.onChanged(checkLabels)
 
 	RunService.RenderStepped:Connect(updateProjectiles)
 	RunService.Heartbeat:Connect(updateFootsteps)

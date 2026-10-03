@@ -397,6 +397,7 @@ local texts = {
 
 	enemy_label = "Lv.%d %s",
 	enemy_label_elite = "Elite Lv.%d %s",
+	enemy_hp = "%s / %s",
 	notice_elite_chest = "The elite dropped a %s!",
 	notice_rift_open = "A Shadow Rift opened nearby! Clear its waves!",
 	notice_rift_done = "Shadow Rift closed! You earned a %s!",

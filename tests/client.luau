@@ -1601,13 +1601,15 @@ test("settings apply: look, effects, damage numbers, creature bars, camera scene
 	-- Creature names and health bars.
 	local function barsEnabled(): boolean
 		for _, gui in playerGui.EnemyBillboards:GetChildren() do
-			if gui:IsA("BillboardGui") and not gui.Enabled then
-				return false
+			if gui:IsA("BillboardGui") and gui.Enabled then
+				return true
 			end
 		end
-		return #playerGui.EnemyBillboards:GetChildren() > 0
+		return false
 	end
+	local near = addEnemy("Rockling", H.read(hero.Character.HumanoidRootPart, "Position") + Vector3.new(10, 0, 0))
 	setAttributes({ Pref_enemyBars = true })
+	advance(0.3)
 	assert(barsEnabled(), "bars shown")
 	setAttributes({ Pref_enemyBars = false })
 	for _, gui in playerGui.EnemyBillboards:GetChildren() do
@@ -1616,6 +1618,7 @@ test("settings apply: look, effects, damage numbers, creature bars, camera scene
 		end
 	end
 	setAttributes({ Pref_enemyBars = true })
+	near:Destroy()
 	-- Damage numbers.
 	local function damageText(text: string): boolean
 		for _, descendant in workspace:GetDescendants() do
@@ -2413,14 +2416,15 @@ test("purify streak: counts chained purifications, celebrates milestones, leaves
 	advance(3)
 end)
 
-test("creature labels: tinted by the level gap, bars keep a trail of the last hit", function()
+test("creature labels: near the player, tinted by the level gap, health in numbers, a trail of the last hit", function()
 	local CombatFeel = H.loadModule("src/shared/CombatFeel.luau")
 	local heroLevel = hero:GetAttribute("Level")
+	teleport(vec(WorldData.spawn, 3))
 	setAttributes({ Level = 10 })
 	local enemy = addEnemy("Rockling", vec(WorldData.spawn, 3) + Vector3.new(20, 0, 0))
 	enemy:SetAttribute("Level", 20)
-	enemy:SetAttribute("MaxHp", 100)
-	enemy:SetAttribute("Hp", 100)
+	H.setAttribute(enemy, "MaxHp", 100)
+	H.setAttribute(enemy, "Hp", 100)
 	advance(0.5)
 	local gui
 	for _, candidate in workspace.ClientFx:GetDescendants() do
@@ -2448,15 +2452,22 @@ test("creature labels: tinted by the level gap, bars keep a trail of the last hi
 	assert(name.TextColor3.G > 0.9, "a fair fight: plain cream")
 	setAttributes({ Level = 26 })
 	assert(name.TextColor3.R < 0.7, "far below the player: grey")
-	eq(gui.MaxDistance, 40, "a calm creature's label shows only up close")
+	-- Shown near the hero (the camera sits far behind, so this is measured from the hero).
+	assert(gui.Enabled, "a calm creature close by shows its label")
+	eq(gui:FindFirstChild("HpText", true).Text, Strings.get("enemy_hp", "100", "100"), "its health in numbers")
+	teleport(vec(WorldData.spawn, 3) + Vector3.new(-40, 0, 0))
+	advance(0.3)
+	eq(gui.Enabled, false, "a calm creature far away keeps quiet")
 	assert(not enemy.Body:FindFirstChild("EliteSparkles"), "plain creatures do not sparkle")
 	local elite = addEnemy("Rockling", vec(WorldData.spawn, 3) + Vector3.new(26, 0, 0), { Elite = true })
 	advance(0.2)
 	assert(elite.Body:FindFirstChild("EliteSparkles"), "elites sparkle gold")
 	elite:Destroy()
 	H.setAttribute(enemy, "Hp", 40)
-	advance(0.1)
-	eq(gui.MaxDistance, 90, "a hurt one shows from further away")
+	advance(0.3)
+	assert(gui.Enabled, "a hurt one shows from further away")
+	eq(gui:FindFirstChild("HpText", true).Text, Strings.get("enemy_hp", "40", "100"), "how much health is left")
+	teleport(vec(WorldData.spawn, 3))
 	local fill, trail = gui:FindFirstChild("Fill", true), gui:FindFirstChild("Trail", true)
 	assert(fill.Size.X.Scale < 0.45 and trail.Size.X.Scale > 0.9, "the trail lingers after a hit")
 	advance(1)
@@ -2897,7 +2908,7 @@ test("creature codex: the Adventure Log tab shows counts, hides unmet creatures 
 	assert(not shownText(Strings.get(Balance.enemies.ShadowKing.nameKey)), "and not named")
 	setAttributes({ Bestiary = "Gloomling:50,Warden:1,Mudling:1000" })
 	assert(shownText(Strings.get("codex_count", 50)), "the tab follows the count while open")
-	assert(not shownText(Strings.get("notice_codex_new", Strings.get(Balance.enemies.Gloomling.nameKey))), "more of a known kind is not news")
+	assert(not shownText(Strings.get("notice_codex_new", Strings.get(Balance.enemies.Gloomling.nameKey)) .. "  x2"), "more of a known kind is not news again")
 	setAttributes({ Bestiary = "Gloomling:50,Warden:1,Mudling:1000,Frostling:1" })
 	local news = false
 	for _ = 1, 16 do -- (the level-up banner from the start of this test holds toasts back for a moment)
