@@ -376,6 +376,49 @@ end
 
 local targetMark: Highlight? = nil
 local targetToken = 0
+-- A gold ring on the ground under the target as well (the outline alone was hard to see on light
+-- ground); it follows the creature and fades with the outline.
+local targetRing: Part? = nil
+local ringStroke: UIStroke? = nil
+local ringBody: BasePart? = nil
+
+local function dropTargetRing()
+	if targetRing then
+		targetRing:Destroy()
+	end
+	targetRing, ringStroke, ringBody = nil, nil, nil
+end
+
+local function ringUnder(body: BasePart): UIStroke
+	if not targetRing or not ringStroke then
+		local plate = newPart({ Name = "TargetRing", Size = Vector3.new(1, 0.05, 1), Transparency = 1 })
+		local surface = UiKit.create("SurfaceGui", { Face = Enum.NormalId.Top, PixelsPerStud = 24, LightInfluence = 0 }, plate)
+		local circle = UiKit.create("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, surface)
+		UiKit.create("UICorner", { CornerRadius = UDim.new(1, 0) }, circle)
+		targetRing = plate
+		ringStroke = UiKit.create("UIStroke", { Color = TARGET_COLOR, Thickness = 5 }, circle)
+	end
+	local diameter = math.max(body.Size.X, body.Size.Z) * 1.4 + 1
+	(targetRing :: Part).Size = Vector3.new(diameter, 0.05, diameter)
+	ringBody = body
+	return ringStroke :: UIStroke
+end
+
+-- Keeps the ring under its creature (every frame); a purified creature takes it away.
+local function followTargetRing()
+	local plate, body = targetRing, ringBody
+	if not plate or not body then
+		return
+	end
+	local ok, position = pcall(function()
+		return if body.Parent then body.Position - Vector3.new(0, body.Size.Y * 0.5 - 0.15, 0) else nil
+	end)
+	if ok and position then
+		plate.CFrame = CFrame.new(position)
+	else
+		dropTargetRing()
+	end
+end
 
 -- Outlines the creature at `aim` (the server aims at the body of the one it chose).
 local function markTarget(aim: Vector3)
@@ -402,12 +445,26 @@ local function markTarget(aim: Vector3)
 	end
 	mark.OutlineTransparency = 0.1
 	mark.Parent = best
+	local stroke = ringUnder(best:FindFirstChild("Body") :: BasePart)
+	stroke.Transparency = 0.15
+	followTargetRing()
 	targetToken += 1
 	local token = targetToken
 	task.delay(TARGET_HOLD, function()
-		if token == targetToken and mark.Parent then
+		if token ~= targetToken then
+			return
+		end
+		if mark.Parent then
 			UiKit.tween(mark, 0.4, { OutlineTransparency = 1 })
 		end
+		if stroke == ringStroke then
+			UiKit.tween(stroke, 0.4, { Transparency = 1 })
+		end
+		task.delay(0.4, function()
+			if token == targetToken then
+				dropTargetRing()
+			end
+		end)
 	end)
 end
 
@@ -1299,6 +1356,7 @@ function Effects.start()
 	Settings.onChanged(checkLabels)
 
 	RunService.RenderStepped:Connect(updateProjectiles)
+	RunService.RenderStepped:Connect(followTargetRing)
 	RunService.Heartbeat:Connect(updateFootsteps)
 	RunService.RenderStepped:Connect(spinPortals)
 	RunService.RenderStepped:Connect(animateCreatures)

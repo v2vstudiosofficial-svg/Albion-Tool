@@ -2547,7 +2547,7 @@ test("the quest panel turns see-through while a creature label is behind it", fu
 	advance(1.5)
 end)
 
-test("the creature the hero's weapon is hitting wears an outline that fades when attacks stop", function()
+test("the creature the hero's weapon is hitting wears an outline and a ground ring that fade when attacks stop", function()
 	local spot = vec(WorldData.spawn, 3)
 	teleport(spot)
 	local first = addEnemy("Rockling", spot + Vector3.new(12, 0, 0))
@@ -2556,13 +2556,23 @@ test("the creature the hero's weapon is hitting wears an outline that fades when
 	remotes.Fx.OnClientEvent:Fire("attack", hero, "staff", 0, spot, H.read(first.Body, "Position"), 0)
 	local mark = first:FindFirstChild("TargetMark")
 	assert(mark and mark.OutlineTransparency < 0.5, "the chosen creature is outlined")
+	local ring = workspace.ClientFx:FindFirstChild("TargetRing")
+	assert(ring, "a ring on the ground under it")
+	local function under(model): boolean
+		advance(0.05)
+		local offset = H.read(ring, "CFrame").Position - H.read(model.Body, "Position")
+		return Vector3.new(offset.X, 0, offset.Z).Magnitude < 0.5 and offset.Y < 0
+	end
+	assert(under(first), "right under the creature")
 	remotes.Fx.OnClientEvent:Fire("attack", hero, "staff", 1, spot, H.read(second.Body, "Position"), 0)
 	remotes.Fx.OnClientEvent:Fire("attack", friend, "staff", 0, spot, H.read(second.Body, "Position"), 0)
 	eq(mark.Parent, first, "floating weapons and other players do not move it")
 	remotes.Fx.OnClientEvent:Fire("attack", hero, "staff", 0, spot, H.read(second.Body, "Position"), 0)
 	eq(mark.Parent, second, "the outline moves to the next target")
+	assert(under(second), "the ring moves along")
 	advance(2)
 	eq(mark.OutlineTransparency, 1, "it fades once the attacks stop")
+	assert(not workspace.ClientFx:FindFirstChild("TargetRing"), "the ring goes too")
 	second:Destroy()
 	remotes.Fx.OnClientEvent:Fire("attack", hero, "staff", 0, spot, H.read(first.Body, "Position"), 0)
 	local fresh = first:FindFirstChild("TargetMark")
