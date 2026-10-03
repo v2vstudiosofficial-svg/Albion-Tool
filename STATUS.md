@@ -220,7 +220,9 @@
   M82: yaratık etiketleri arayüzün altında çizildiği için kahramanın önündekiler görev panelinin arkasında
   kalıyordu. Hud saniyede 5 kez açık etiketlerin ekran konumuna bakar; biri panelin arkasındaysa panel ve yazıları
   saydamlaşır (arka plan 0,85, yazı 0,7), etiket çekildikten 1 sn sonra geri gelir. Gizli etiketler sayılmaz.
-  Studio'da görüldü.
+  Studio'da görüldü; ayrıca kule kat ışığı (mor sütun + zemin halkası) ve Bag'de NEW etiketi (Glowmoth, Pets
+  sekmesi noktası, Bag "!" rozeti) gözle doğrulandı. Gözle bakılmayan tek M76-78 işi: oyuncu etiketi renkleri
+  (iki oyunculu test gerekir).
 - Denge: `lune run tests/balance` Sv1–100 modeli (silah, düşman canı, kese).
 
 ## Doğrulanan testler (bu bulut ortamında çalıştırıldı: `lune run tests/all`)
