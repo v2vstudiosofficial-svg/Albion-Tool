@@ -45,6 +45,8 @@ local ABILITY_NOTICES = { wave_button = "notice_wave_unlocked", ability_star = "
 -- back, with a zoom kick.
 local BOSS_DOWN_HOLD = 0.45
 local BOSS_DOWN_RETURN = 1.2
+-- A quest that has not moved for this long makes its panel beat gently (a nudge to look at it).
+local QUEST_NUDGE_SECONDS = 180
 -- Confetti for the biggest moments (the top level, a rebirth): pieces at High effects, fewer below.
 local CONFETTI_PIECES = 70
 local CONFETTI_COLORS = { Color3.fromRGB(255, 215, 110), Color3.fromRGB(255, 130, 170), Color3.fromRGB(140, 210, 255), Color3.fromRGB(150, 235, 150), Color3.fromRGB(200, 160, 255) }
@@ -866,6 +868,22 @@ function Hud.start()
 	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState", "TowerFloor" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshQuest)
 	end
+	local questMovedAt = os.clock()
+	for _, name in { "QuestState", "QuestId", "QuestCount" } do
+		player:GetAttributeChangedSignal(name):Connect(function()
+			questMovedAt = os.clock()
+			UiKit.setPulse(quest, false)
+		end)
+	end
+	task.spawn(function()
+		while true do
+			task.wait(5)
+			local state = player:GetAttribute("QuestState")
+			if (state == "active" or state == "available") and quest.Visible and os.clock() - questMovedAt >= QUEST_NUDGE_SECONDS then
+				UiKit.setPulse(quest, true)
+			end
+		end
+	end)
 	-- Progress numbers only matter for the post-story goal line.
 	for _, name in { "XP", "Coins", "StaffTier" } do
 		player:GetAttributeChangedSignal(name):Connect(function()

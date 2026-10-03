@@ -2025,6 +2025,15 @@ test("quest panel: a counting quest fills a bar that turns green when done", fun
 	assert(fill.Size.X.Scale > 0.99 and fill.BackgroundColor3.G > 0.8, "full and green")
 	setAttributes({ QuestState = "available" })
 	assert(not isShown(bar), "no bar when the quest is not running")
+	-- A quest that does not move for a few minutes nudges with a gentle beat; progress calms it.
+	local panel = bar.Parent
+	setAttributes({ QuestState = "active", QuestCount = 1 })
+	H.advance(170, 0.5)
+	eq(panel:FindFirstChild("Pulse"), nil, "not yet")
+	H.advance(20, 0.5)
+	assert(panel:FindFirstChild("Pulse"), "a stuck quest beats")
+	setAttributes({ QuestCount = 2 })
+	eq(panel:FindFirstChild("Pulse"), nil, "progress calms it")
 	setAttributes(saved)
 end)
 
