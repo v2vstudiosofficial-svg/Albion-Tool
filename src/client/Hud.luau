@@ -48,6 +48,8 @@ local BOSS_DOWN_HOLD = 0.45
 local BOSS_DOWN_RETURN = 1.2
 -- A quest that has not moved for this long makes its panel beat gently (a nudge to look at it).
 local QUEST_NUDGE_SECONDS = 180
+-- The quest panel stays see-through this long after a creature label was last behind it.
+local QUEST_GHOST_HOLD = 1
 -- Confetti for the biggest moments (the top level, a rebirth): pieces at High effects, fewer below.
 local CONFETTI_PIECES = 70
 local CONFETTI_COLORS = { Color3.fromRGB(255, 215, 110), Color3.fromRGB(255, 130, 170), Color3.fromRGB(140, 210, 255), Color3.fromRGB(150, 235, 150), Color3.fromRGB(200, 160, 255) }
@@ -304,6 +306,7 @@ function Hud.start()
 
 	-- Quest panel ---------------------------------------------------------------------------
 	local quest = UiKit.panel({
+		Name = "QuestPanel",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
 		Size = UDim2.fromOffset(340, 72),
@@ -369,6 +372,49 @@ function Hud.start()
 	UiKit.corner(questBar, 3)
 	local questFill = UiKit.create("Frame", { Name = "Fill", Size = UDim2.fromScale(0, 1), BackgroundColor3 = colors.accent, BorderSizePixel = 0 }, questBar)
 	UiKit.corner(questFill, 3)
+
+	-- Creature labels are drawn under the HUD, so one ahead of the hero can sit behind the quest
+	-- panel; while one does (and a moment after), the panel turns see-through.
+	local questGhosted, labelBehindAt = false, -math.huge
+	local function labelBehindQuest(): boolean
+		local camera = workspace.CurrentCamera
+		local enemies = workspace:FindFirstChild("Enemies")
+		if not quest.Visible or not camera or not enemies then
+			return false
+		end
+		local corner, size = quest.AbsolutePosition, quest.AbsoluteSize
+		for _, model in enemies:GetChildren() do
+			local body = model:FindFirstChild("Body")
+			local label = body and body:FindFirstChild("LvLabel")
+			if label and label:IsA("BillboardGui") and label.Enabled then
+				local point, onScreen = camera:WorldToScreenPoint((body :: BasePart).Position + label.StudsOffset)
+				local half = label.Size
+				if onScreen and math.abs(point.X - (corner.X + size.X / 2)) < (size.X + half.X.Offset) / 2
+					and math.abs(point.Y - (corner.Y + size.Y / 2)) < (size.Y + half.Y.Offset) / 2 then
+					return true
+				end
+			end
+		end
+		return false
+	end
+	task.spawn(function()
+		while true do
+			task.wait(0.2)
+			if labelBehindQuest() then
+				labelBehindAt = os.clock()
+			end
+			local ghost = os.clock() - labelBehindAt < QUEST_GHOST_HOLD
+			if ghost ~= questGhosted then
+				questGhosted = ghost
+				UiKit.tween(quest, 0.25, { BackgroundTransparency = if ghost then 0.85 else 0.12 })
+				for _, text in { questTitle, questLabel } do
+					UiKit.tween(text, 0.25, { TextTransparency = if ghost then 0.7 else 0 })
+				end
+				UiKit.tween(questBar, 0.25, { BackgroundTransparency = if ghost then 0.8 else 0 })
+				UiKit.tween(questFill, 0.25, { BackgroundTransparency = if ghost then 0.7 else 0 })
+			end
+		end
+	end)
 
 	-- Boss bar ------------------------------------------------------------------------------
 	local bossPanel = UiKit.panel({

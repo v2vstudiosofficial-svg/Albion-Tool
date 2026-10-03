@@ -59,6 +59,11 @@ camera.ViewportSize = if touchMode then Vector2.new(640, 360) else Vector2.new(1
 camera.CFrame = CFrame.new(0, 20, 60)
 camera.Parent = workspace
 workspace.CurrentCamera = camera
+-- Where a test wants world points to land on the screen (nil: off screen).
+local fakeScreenPoint: Vector3? = nil
+roblox.implementMethod("Camera", "WorldToScreenPoint", function()
+	return fakeScreenPoint or Vector3.new(-1000, -1000, -1), fakeScreenPoint ~= nil
+end)
 
 roblox.implementMethod("Model", "GetPivot", function(self)
 	return self.PrimaryPart.CFrame
@@ -2506,6 +2511,35 @@ test("creature labels: near the player, tinted by the level gap, health in numbe
 	assert(trail.Size.X.Scale < 0.45, "then drains")
 	enemy:Destroy()
 	setAttributes({ Level = heroLevel })
+end)
+
+test("the quest panel turns see-through while a creature label is behind it", function()
+	local panel = playerGui.Hud:FindFirstChild("QuestPanel", true)
+	assert(isShown(panel), "quest panel up")
+	panel.AbsolutePosition, panel.AbsoluteSize = Vector2.new(470, 12), Vector2.new(340, 72)
+	local spot = vec(WorldData.spawn, 3)
+	teleport(spot)
+	local enemy = addEnemy("Rockling", spot + Vector3.new(0, 0, -12))
+	advance(0.5)
+	fakeScreenPoint = Vector3.new(640, 300, 20)
+	advance(0.3)
+	assert(panel.BackgroundTransparency < 0.2, "solid while the label is clear of it")
+	fakeScreenPoint = Vector3.new(700, 60, 20)
+	advance(0.3)
+	assert(panel.BackgroundTransparency > 0.5, "see-through with a label behind it")
+	fakeScreenPoint = Vector3.new(640, 300, 20)
+	advance(0.4)
+	assert(panel.BackgroundTransparency > 0.5, "holds a moment")
+	advance(1)
+	assert(panel.BackgroundTransparency < 0.2, "then solid again")
+	fakeScreenPoint = Vector3.new(700, 60, 20)
+	setAttributes({ Pref_enemyBars = false })
+	advance(0.5)
+	assert(panel.BackgroundTransparency < 0.2, "hidden labels do not count")
+	setAttributes({ Pref_enemyBars = true })
+	fakeScreenPoint = nil
+	enemy:Destroy()
+	advance(1.5)
 end)
 
 test("the creature the hero's weapon is hitting wears an outline that fades when attacks stop", function()
