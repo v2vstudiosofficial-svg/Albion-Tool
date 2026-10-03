@@ -4,7 +4,8 @@
 -- Now and then it rains in the marsh (DayCycle.rain, the same for everyone), with little splashes
 -- at your feet and the sound of rain on water (and lightning while it pours); between the showers a blizzard blows over the peaks
 -- (more snow, driven sideways, a whistling wind and a cold white haze). The village and the woods
--- have birdsong by day and crickets by night. Only this screen draws them; "Low" effects turns them off.
+-- have birdsong by day and crickets by night; at the Glow Pond rings spread on the water and frogs
+-- croak. Only this screen draws them; "Low" effects turns them off.
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,10 +15,12 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local MusicLogic = require(Shared:WaitForChild("MusicLogic"))
 local SettingsData = require(Shared:WaitForChild("SettingsData"))
+local WorldData = require(Shared:WaitForChild("WorldData"))
 local Audio = require(script.Parent.Audio)
 local DayNight = require(script.Parent.DayNight)
 local Graphics = require(script.Parent.Graphics)
 local Settings = require(script.Parent.Settings)
+local UiKit = require(script.Parent.UiKit)
 
 local player = Players.LocalPlayer
 
@@ -32,6 +35,15 @@ local STORM_HAZE = Color3.fromRGB(225, 235, 250)
 local FOG_STEP = 0.1 -- per update, so the haze takes a few seconds to come and go
 -- While it pours in the marsh, lightning strikes every LIGHTNING_EVERY seconds of server time (the
 -- same moment for everyone): the sky flickers (not with Screen flashes off) and thunder follows.
+-- The Glow Pond: the frogs fade in from POND_HEAR studs away; rings appear within RIPPLE_SPREAD of
+-- the middle (the water is 9 studs across from the middle, its top 0.2 above the ground) while the
+-- player is within RIPPLE_SEEN.
+local POND_HEAR = 45
+local RIPPLE_SEEN = 90
+local RIPPLE_SPREAD = 5
+local RIPPLE_SIZE = 7 -- studs across when a ring has spread out (it stays on the water)
+local RIPPLE_SECONDS = 1.8
+local RIPPLE_CHANCE = 0.7 -- per update
 -- Places with birds by day and crickets by night.
 local LIVELY = { village = true, wilds = true }
 local LIGHTNING_EVERY = 17
@@ -65,6 +77,29 @@ local LOOKS: { [string]: Look } = {
 }
 
 local Ambience = {}
+
+-- One ring spreading over the water: a round outline on a flat see-through plate, growing and fading.
+local function ripple(center: Vector3)
+	local plate = Instance.new("Part")
+	plate.Name = "LvRipple"
+	plate.Anchored = true
+	plate.CanCollide = false
+	plate.CanQuery = false
+	plate.CanTouch = false
+	plate.Transparency = 1
+	plate.Size = Vector3.new(RIPPLE_SIZE, 0.05, RIPPLE_SIZE)
+	plate.CFrame = CFrame.new(center)
+	plate.Parent = workspace
+	-- Fine enough that the outline stays a clean line from the camera's height.
+	local surface = UiKit.create("SurfaceGui", { Face = Enum.NormalId.Top, PixelsPerStud = 40, LightInfluence = 0 }, plate)
+	local ring = UiKit.create("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.1, 0.1), BackgroundTransparency = 1 }, surface)
+	UiKit.create("UICorner", { CornerRadius = UDim.new(1, 0) }, ring)
+	local stroke = UiKit.create("UIStroke", { Color = Color3.fromRGB(225, 245, 255), Thickness = 12, Transparency = 0.15 }, ring)
+	UiKit.tween(ring, RIPPLE_SECONDS, { Size = UDim2.fromScale(1, 1) }, Enum.EasingStyle.Sine)
+	UiKit.tween(stroke, RIPPLE_SECONDS, { Transparency = 1 }).Completed:Connect(function()
+		plate:Destroy()
+	end)
+end
 
 -- An invisible, non-solid part that only carries particles.
 local function holderPart(name: string, size: Vector3): Part
@@ -130,6 +165,7 @@ function Ambience.start()
 
 	local shown: string? = nil
 	local fog = 0
+	local pond = WorldData.vector(WorldData.landmarks.glow_pond.position) + Vector3.new(0, 0.25, 0)
 	-- On the camera, not in Lighting (Graphics takes over Lighting's colour corrections).
 	local flash = Instance.new("ColorCorrectionEffect")
 	flash.Name = "LvLightning"
@@ -164,6 +200,12 @@ function Ambience.start()
 		local night = if LIVELY[theme] then DayNight.night else nil
 		Audio.setAmbient("birds", if night then 1 - night else 0)
 		Audio.setAmbient("crickets", night or 0)
+		local fromPond = Vector3.new(root.Position.X - pond.X, 0, root.Position.Z - pond.Z).Magnitude
+		Audio.setAmbient("frogs", math.clamp(1 - (fromPond - 15) / POND_HEAR, 0, 1))
+		if fromPond <= RIPPLE_SEEN and Settings.get("effects") ~= "low" and math.random() < RIPPLE_CHANCE then
+			local angle, distance = math.random() * math.pi * 2, math.sqrt(math.random()) * RIPPLE_SPREAD
+			ripple(pond + Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance))
+		end
 		local strike = math.floor(now / LIGHTNING_EVERY)
 		if wet >= 1 and lastStrike and strike ~= lastStrike then
 			if Settings.get("flashes") then

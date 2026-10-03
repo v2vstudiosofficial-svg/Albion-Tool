@@ -907,6 +907,30 @@ local function onUpgrade(who: Player, tier: number)
 	end
 end
 
+-- A newly equipped main weapon flashes in the hand with a chime (the server swaps the model a
+-- moment after the attribute changes).
+local function weaponGlint()
+	local character = player.Character
+	local weapon = character and character:FindFirstChild("Weapon")
+	local orb = weapon and weapon:FindFirstChild("Glow") :: BasePart?
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local position = (orb and orb.Position) or (weapon and weapon:IsA("Model") and weapon:GetPivot().Position) or (root and root.Position)
+	if not position then
+		return
+	end
+	local flash = newPart({
+		Name = "WeaponGlint",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * 0.6,
+		CFrame = CFrame.new(position),
+		Color = Color3.fromRGB(255, 250, 220),
+		Material = Enum.Material.Neon,
+	})
+	fadeOut(flash, 0.35, { Size = Vector3.one * 3.5 })
+	Effects.burst(position, GOLD, 18, 7)
+	Audio.play("purify", 1.35)
+end
+
 -- Creature decorations the server marked with LvAnim (EnemyModels.animate) move here, on this
 -- screen only: ears flap, runes circle, bubbles rise, flames flicker. Only creatures near the camera
 -- are animated, and nothing moves with the "Low" effects setting.
@@ -1135,6 +1159,15 @@ function Effects.start()
 	billboards = Instance.new("Folder")
 	billboards.Name = "EnemyBillboards"
 	billboards.Parent = player:WaitForChild("PlayerGui")
+
+	local shownWeapon = player:GetAttribute("Weapon")
+	player:GetAttributeChangedSignal("Weapon"):Connect(function()
+		local weaponId = player:GetAttribute("Weapon")
+		if shownWeapon ~= nil and weaponId ~= shownWeapon then
+			task.delay(0.15, weaponGlint)
+		end
+		shownWeapon = weaponId
+	end)
 
 	fxRemote.OnClientEvent:Connect(function(kind, ...)
 		local handler = handlers[kind]

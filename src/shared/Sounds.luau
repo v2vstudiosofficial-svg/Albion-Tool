@@ -29,6 +29,7 @@ return {
 	heartbeat = { id = "rbxassetid://9043365727", volume = 0.35 }, -- HEARTBEAT 01 96BPM (APM, 60 s loop)
 	birds = { id = "rbxassetid://9116970949", volume = 0.22 }, -- Morning Forest Birds 6 (75 s)
 	crickets = { id = "rbxassetid://9112765304", volume = 0.18 }, -- Crickets Night 1 (56 s loop)
+	frogs = { id = "rbxassetid://9125615469", volume = 0.3 }, -- Kenyan Frogs CU Deep Throaty Croaking (54 s)
 	-- Music by place (MusicLogic.theme), APM tracks, looped; one plays at a time.
 	music = {
 		volume = 0.25,
