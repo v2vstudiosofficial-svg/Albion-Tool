@@ -735,6 +735,28 @@ function Hud.start()
 
 	toastFunction = showToast
 
+	-- A kind of creature purified for the first time joins the Codex (not the ones the save brought).
+	local knownKinds: { [string]: boolean }? = nil
+	local function checkCodex()
+		if player:GetAttribute("DataState") ~= "ready" then
+			return
+		end
+		local met = {}
+		for kind, count in Attrs.pairs("Bestiary") do
+			if count > 0 then
+				met[kind] = true
+				local stats = Balance.enemies[kind]
+				if knownKinds and not knownKinds[kind] and stats then
+					showToast(Strings.get("notice_codex_new", Strings.get(stats.nameKey)), colors.xp)
+				end
+			end
+		end
+		knownKinds = met
+	end
+	player:GetAttributeChangedSignal("Bestiary"):Connect(checkCodex)
+	player:GetAttributeChangedSignal("DataState"):Connect(checkCodex)
+	checkCodex()
+
 	local bannerToken = 0
 	-- style: "celebrate" (gold rays), "danger" (purple ribbon) or nil (plain ribbon).
 	local function showBanner(title: string, subtitle: string?, style: string?)

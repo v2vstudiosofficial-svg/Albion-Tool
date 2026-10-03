@@ -561,6 +561,7 @@ local texts = {
 	codex_next = "Next: %s  (+%s coins)",
 	codex_done = "Every reward found!",
 	notice_codex_tier = "%s codex: %s friends made! +%s coins",
+	notice_codex_new = "📖 New in the Codex: %s!",
 	log_progress = "%s / %s",
 	log_claim = "Claim!",
 	log_done = "Done!",

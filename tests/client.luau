@@ -2845,6 +2845,14 @@ test("creature codex: the Adventure Log tab shows counts, hides unmet creatures 
 	assert(not shownText(Strings.get(Balance.enemies.ShadowKing.nameKey)), "and not named")
 	setAttributes({ Bestiary = "Gloomling:50,Warden:1,Mudling:1000" })
 	assert(shownText(Strings.get("codex_count", 50)), "the tab follows the count while open")
+	assert(not shownText(Strings.get("notice_codex_new", Strings.get(Balance.enemies.Gloomling.nameKey))), "more of a known kind is not news")
+	setAttributes({ Bestiary = "Gloomling:50,Warden:1,Mudling:1000,Frostling:1" })
+	local news = false
+	for _ = 1, 16 do -- (the level-up banner from the start of this test holds toasts back for a moment)
+		advance(0.25)
+		news = news or shownText(Strings.get("notice_codex_new", Strings.get(Balance.enemies.Frostling.nameKey)))
+	end
+	assert(news, "a first Frostling joins the Codex")
 	click(findButton(Strings.get("log_tab_goals")))
 	assert(not shownText(Strings.get("codex_count", 50)), "back to the goals")
 	setAttributes({ Bestiary = "" })
