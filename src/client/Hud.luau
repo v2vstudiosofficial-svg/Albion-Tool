@@ -41,6 +41,10 @@ local HURT_ARROW_FADE = 0.6
 local MAX_HURT_ARROWS = 4
 -- Level-up banner lines for the abilities (they also name the key); other unlocks say "Unlocked: X".
 local ABILITY_NOTICES = { wave_button = "notice_wave_unlocked", ability_star = "notice_star_unlocked", ability_heal = "notice_heal_unlocked" }
+-- A boss falls: the colour drains from the world for a moment (as if time stood still), then floods
+-- back, with a zoom kick.
+local BOSS_DOWN_HOLD = 0.45
+local BOSS_DOWN_RETURN = 1.2
 -- Confetti for the biggest moments (the top level, a rebirth): pieces at High effects, fewer below.
 local CONFETTI_PIECES = 70
 local CONFETTI_COLORS = { Color3.fromRGB(255, 215, 110), Color3.fromRGB(255, 130, 170), Color3.fromRGB(140, 210, 255), Color3.fromRGB(150, 235, 150), Color3.fromRGB(200, 160, 255) }
@@ -992,6 +996,19 @@ function Hud.start()
 			showDialog(npc, Strings.get(key, table.unpack(translateArgs(...))))
 		end
 	end)
+	local stillness = UiKit.create("ColorCorrectionEffect", { Name = "LvBossDown" }, workspace.CurrentCamera)
+	local stillToken = 0
+	local function bossDownMoment()
+		stillToken += 1
+		local token = stillToken
+		stillness.Saturation, stillness.Contrast = -1, 0.2
+		CameraRig.punch(8)
+		task.delay(BOSS_DOWN_HOLD, function()
+			if stillToken == token then
+				UiKit.tween(stillness, BOSS_DOWN_RETURN, { Saturation = 0, Contrast = 0 }, Enum.EasingStyle.Quad)
+			end
+		end)
+	end
 	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, first, second, ...)
 		local purified = if kind == "purify" and typeof(second) == "string" then Balance.enemies[second] else nil
 		if purified and purified.isBoss and typeof(first) == "Vector3" then
@@ -999,6 +1016,7 @@ function Hud.start()
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if root and (root.Position - first).Magnitude <= purified.leashRadius + 30 then
 				showBanner(Strings.get("banner_boss_down", Strings.get(purified.nameKey)), Strings.get("banner_boss_down_sub"), "celebrate")
+				bossDownMoment()
 			end
 		elseif kind == "towerFloor" and typeof(first) == "number" and typeof(second) == "number" then
 			local bossKey = select(1, ...)
