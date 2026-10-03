@@ -666,6 +666,7 @@ local texts = {
 	title_hide = "Hide",
 	daily_gift_button = "Daily gift",
 	notice_daily_ready = "Your daily gift is ready!",
+	daily_next = "Next gift\n%dh %02dm",
 	notice_daily_gift = "Daily gift: +%s coins. See you tomorrow!",
 	daily_gift_title = "Daily Gift",
 	notice_title_new = "New title: %s! Pick it in your Bag.",

@@ -1,5 +1,6 @@
 -- The daily gift button: appears left of the mini map (same region) while today's gift is waiting (the server
--- replicates DailyReady). Taking it is validated on the server; nothing is lost by skipping a day.
+-- replicates DailyReady). Taking it is validated on the server; nothing is lost by skipping a day. Once
+-- it is taken, a quiet countdown in its place says when the next one comes (gifts follow UTC days).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -13,6 +14,7 @@ local Minimap = require(script.Parent.Minimap)
 local UiKit = require(script.Parent.UiKit)
 
 local player = Players.LocalPlayer
+local DAY_SECONDS = 24 * 60 * 60
 local claimDaily = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ClaimDailyGift") :: RemoteEvent
 
 local DailyGift = {}
@@ -38,10 +40,27 @@ function DailyGift.start()
 	end)
 	button.Name = "DailyGiftButton"
 	UiKit.withIcon(button, Strings.get("icon_gift"), 24)
+	local countdown = UiKit.label({
+		Name = "NextGift",
+		Size = UDim2.fromOffset(Minimap.giftWidth, 44),
+		BackgroundColor3 = UiKit.colors.panel,
+		BackgroundTransparency = 0.35,
+		TextSize = 13,
+		TextWrapped = true,
+		TextColor3 = UiKit.colors.muted,
+		Visible = false,
+	}, region)
+	UiKit.corner(countdown, 10)
 	local announced = false
 	local function refresh()
 		local ready = player:GetAttribute("DataState") == "ready" and player:GetAttribute("DailyReady") == true
 		button.Visible = ready and not Cinematic.playing()
+		local waiting = player:GetAttribute("DataState") == "ready" and player:GetAttribute("DailyReady") == false
+		countdown.Visible = waiting and not Cinematic.playing()
+		if countdown.Visible then
+			local left = DAY_SECONDS - workspace:GetServerTimeNow() % DAY_SECONDS
+			countdown.Text = Strings.get("daily_next", math.floor(left / 3600), math.floor(left % 3600 / 60))
+		end
 		if ready and not announced then
 			announced = true
 			Hud.toast(Strings.get("notice_daily_ready"), UiKit.colors.coin)
