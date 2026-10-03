@@ -408,6 +408,7 @@ local texts = {
 	hud_team_bonus = "Team bonus +%d%%",
 	notice_pouch_full = "Your pouch is full! Bring crystals to the Great Lantern.",
 	notice_deposit = "Crystals turned into %d coins!",
+	deposit_popup = "+%s coins",
 
 	upgrade_power_name = "Weapon Power",
 	upgrade_power_desc = "All weapons hit harder.",

@@ -1090,6 +1090,23 @@ test("crystal pouch on the HUD; a full pouch guides back to the Great Lantern", 
 	assert(Vector3.new(at.X - plaza.X, 0, at.Z - plaza.Z).Magnitude < 1, "full pouch guides to the lantern")
 	remotes.Fx.OnClientEvent:Fire("crystals", plaza + Vector3.new(0, 0, -20), 5)
 	remotes.Fx.OnClientEvent:Fire("deposit", plaza, 60)
+	-- The crystals arc from the hero into the lamp, then the coins earned pop up over it.
+	advance(0.15)
+	local shards = 0
+	for _, part in workspace.ClientFx:GetChildren() do
+		if part.Name == "DepositShard" then
+			shards += 1
+		end
+	end
+	assert(shards > 0, "crystals fly to the lantern")
+	advance(1.1)
+	local popped = false
+	for _, label in workspace.ClientFx:GetDescendants() do
+		if label:IsA("TextLabel") and label.Text == Strings.get("deposit_popup", "60") then
+			popped = true
+		end
+	end
+	assert(popped, "the coins earned pop up")
 	advance(1)
 	setAttributes({ Crystals = 0 })
 	eq(icon:FindFirstChild("Pulse"), nil, "emptied: calm again")

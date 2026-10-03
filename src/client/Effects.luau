@@ -835,10 +835,52 @@ local function onDespawn(position: Vector3)
 	Effects.burst(position, RIFT_COLOR, 12, 6)
 end
 
-local function onDeposit(lantern: Vector3, _coins: number)
-	Effects.burst(lantern + Vector3.new(0, 6, 0), GOLD, 40, 12)
-	Effects.burst(lantern + Vector3.new(0, 6, 0), CRYSTAL_COLOR, 20, 10)
-	Audio.play("levelUp")
+-- Crystals handed in at the Great Lantern (`lantern` is the plaza point under it): they arc from
+-- the hero into the lamp one after another, then the lamp bursts, a gold ring spreads over the
+-- plaza and the coins earned pop up over the hero (the lamp is often up behind the quest panel).
+local DEPOSIT_SHARDS = 12
+local DEPOSIT_GAP = 0.05
+local DEPOSIT_LEG = 0.28
+
+local function onDeposit(lantern: Vector3, coins: number?)
+	local lamp = lantern + Vector3.new(0, 6, 0)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local count = 0
+	if root then
+		local wanted = math.clamp(math.floor((coins or 0) / 5) + 4, 4, DEPOSIT_SHARDS)
+		count = math.max(3, math.floor(wanted * SettingsData.effectDensity[Settings.get("effects")] + 0.5))
+		local from = root.Position
+		for index = 1, count do
+			task.delay((index - 1) * DEPOSIT_GAP, function()
+				local start = from + Vector3.new((math.random() - 0.5) * 2.5, 1.5, (math.random() - 0.5) * 2.5)
+				local peak = (start + lamp) / 2 + Vector3.new(0, 5, 0)
+				local tilt = CFrame.Angles(0, math.random() * math.pi, math.rad(45))
+				local shard = newPart({
+					Name = "DepositShard",
+					Size = Vector3.new(0.5, 0.5, 0.5),
+					CFrame = CFrame.new(start) * tilt,
+					Color = CRYSTAL_COLOR,
+					Material = Enum.Material.Neon,
+				})
+				UiKit.tween(shard, DEPOSIT_LEG, { CFrame = CFrame.new(peak) * tilt }, Enum.EasingStyle.Sine)
+				task.delay(DEPOSIT_LEG, function()
+					UiKit.tween(shard, DEPOSIT_LEG, { CFrame = CFrame.new(lamp) * tilt, Size = Vector3.new(0.2, 0.2, 0.2) }, Enum.EasingStyle.Sine)
+					Debris:AddItem(shard, DEPOSIT_LEG + 0.02)
+				end)
+			end)
+		end
+	end
+	task.delay(if count > 0 then (count - 1) * DEPOSIT_GAP + DEPOSIT_LEG * 2 else 0, function()
+		Effects.burst(lamp, GOLD, 40, 12)
+		Effects.burst(lamp, CRYSTAL_COLOR, 20, 10)
+		groundRing(lantern + Vector3.new(0, 0.3, 0), 14, GOLD, 0.9)
+		if typeof(coins) == "number" and coins > 0 then
+			local over = if root and root.Parent then root.Position + Vector3.new(0, 3, 0) else lamp
+			Effects.popup(over, Strings.get("deposit_popup", Format.short(coins)), GOLD, 34)
+		end
+		Audio.play("levelUp")
+	end)
 end
 
 -- A rebirth at the Great Lantern: a big golden and crystal burst for everyone nearby.
