@@ -2678,6 +2678,7 @@ test("shadow tower: floor banner; a card with floor, best, boss distance, shadow
 	remotes.Fx.OnClientEvent:Fire("towerFloor", 3, 8)
 	advance(0.2)
 	assert(shownText(Strings.get("tower_floor", 3)), "floor banner")
+	assert(workspace.ClientFx:FindFirstChild("FloorLight"), "a column of light rises in the arena")
 	assert(shownText(Strings.get("tower_floor_sub", 8)), "creature count under it")
 	remotes.Fx.OnClientEvent:Fire("towerFloor", 10, 2, "enemy_bogmother_name")
 	advance(0.2)

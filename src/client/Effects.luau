@@ -11,6 +11,7 @@ local Strings = require(Shared:WaitForChild("Strings"))
 local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local Progression = require(Shared:WaitForChild("Progression"))
 local Format = require(Shared:WaitForChild("Format"))
+local WorldData = require(Shared:WaitForChild("WorldData"))
 local CombatFeel = require(Shared:WaitForChild("CombatFeel"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
@@ -1113,6 +1114,24 @@ local CONFETTI = {
 	Color3.fromRGB(150, 230, 150),
 }
 
+-- A new Shadow Tower floor: a column of violet light shoots up from the middle of the arena and a
+-- ring spreads over the floor as the shadows arrive.
+local function onTowerFloor()
+	local center = WorldData.vector(WorldData.areas.tower.center)
+	local column = newPart({
+		Name = "FloorLight",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(40, 7, 7),
+		CFrame = CFrame.new(center + Vector3.new(0, 20, 0)) * UPRIGHT,
+		Color = RIFT_COLOR,
+		Material = Enum.Material.Neon,
+		Transparency = 0.25,
+	})
+	fadeOut(column, 1.3, { Size = Vector3.new(60, 0.6, 0.6) })
+	groundRing(center + Vector3.new(0, 0.3, 0), 16, RIFT_COLOR, 1.1)
+	Effects.burst(center + Vector3.new(0, 3, 0), RIFT_COLOR, 40, 16)
+end
+
 local function onQuestComplete()
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -1150,6 +1169,7 @@ local handlers = {
 	levelUp = onLevelUp,
 	upgrade = onUpgrade,
 	questComplete = onQuestComplete,
+	towerFloor = onTowerFloor,
 }
 
 function Effects.start()
