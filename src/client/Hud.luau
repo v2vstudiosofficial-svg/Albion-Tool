@@ -206,6 +206,33 @@ function Hud.start()
 	local pouchFill = UiKit.create("Frame", { Name = "PouchFill", Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.fromRGB(150, 210, 255), BorderSizePixel = 0 }, pouchBar)
 	UiKit.corner(pouchFill, 2)
 
+	-- On a computer, hovering a part of the card says what it is (new players ask about crystals).
+	if not isTouch then
+		local cardTip = UiKit.label({
+			Name = "CardTip",
+			Position = UDim2.fromOffset(0, 116),
+			Size = UDim2.fromOffset(232, 44),
+			BackgroundColor3 = colors.panel,
+			BackgroundTransparency = 0.05,
+			TextSize = 14,
+			TextWrapped = true,
+			ZIndex = 10,
+			Visible = false,
+		}, topLeft)
+		UiKit.corner(cardTip, 10)
+		UiKit.create("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, cardTip)
+		local CARD_TIPS = { [badge] = "tip_level", [hpBack] = "tip_health", [xpBack] = "tip_xp", [coinIcon] = "tip_coins", [coinsLabel] = "tip_coins", [crystalIcon] = "tip_crystals", [crystalsLabel] = "tip_crystals" }
+		for target, key in CARD_TIPS do
+			target.MouseEnter:Connect(function()
+				cardTip.Text = Strings.get(key)
+				cardTip.Visible = true
+			end)
+			target.MouseLeave:Connect(function()
+				cardTip.Visible = false
+			end)
+		end
+	end
+
 	-- Team bonus: shown while other players are close by (the server applies the same rule).
 	local teamLabel = UiKit.label({
 		Position = UDim2.fromOffset(4, 118),

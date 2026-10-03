@@ -2463,6 +2463,16 @@ test("creature labels: tinted by the level gap, bars keep a trail of the last hi
 end)
 
 if not touchMode then
+	test("player card: hovering a part says what it is", function()
+		local icon = playerGui:FindFirstChild("CrystalIcon", true)
+		icon.MouseEnter:Fire()
+		advance(0.1)
+		assert(shownText(Strings.get("tip_crystals")), "crystals explained")
+		icon.MouseLeave:Fire()
+		advance(0.1)
+		assert(not shownText(Strings.get("tip_crystals")), "gone when the mouse leaves")
+	end)
+
 	test("ability tooltips on hover say what it does and when it is ready", function()
 		local bar = playerGui.Controls:FindFirstChild("AbilityBar")
 		local star = bar:FindFirstChild("star")
