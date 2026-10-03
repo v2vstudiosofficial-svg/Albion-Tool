@@ -2,7 +2,7 @@
 -- the music (MusicLogic.theme): pollen in the village, drifting leaves in the woods, green spores
 -- in the marsh, snow on the peaks, embers at the citadel and violet motes in the Shadow Tower.
 -- Now and then it rains in the marsh (DayCycle.rain, the same for everyone), with little splashes
--- at your feet and the sound of rain on water; between the showers a blizzard blows over the peaks
+-- at your feet and the sound of rain on water (and lightning while it pours); between the showers a blizzard blows over the peaks
 -- (more snow, driven sideways, a whistling wind and a cold white haze). Only this screen draws them; "Low" effects turns them off.
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -28,6 +28,11 @@ local STORM_WIND = Vector3.new(16, -2, 5)
 local STORM_FOG = 0.25
 local STORM_HAZE = Color3.fromRGB(225, 235, 250)
 local FOG_STEP = 0.1 -- per update, so the haze takes a few seconds to come and go
+-- While it pours in the marsh, lightning strikes every LIGHTNING_EVERY seconds of server time (the
+-- same moment for everyone): the sky flickers (not with Screen flashes off) and thunder follows.
+local LIGHTNING_EVERY = 17
+local THUNDER_DELAY = 1.4
+local FLICKER = { { 0, 0.35 }, { 0.08, 0 }, { 0.16, 0.25 }, { 0.3, 0.1 }, { 0.45, 0 } } -- (seconds, brightness)
 -- Unlit, so the rain still shows at night.
 local RAIN_COLOR = Color3.fromRGB(170, 195, 225)
 
@@ -121,6 +126,11 @@ function Ambience.start()
 
 	local shown: string? = nil
 	local fog = 0
+	-- On the camera, not in Lighting (Graphics takes over Lighting's colour corrections).
+	local flash = Instance.new("ColorCorrectionEffect")
+	flash.Name = "LvLightning"
+	flash.Parent = workspace.CurrentCamera
+	local lastStrike: number? = nil
 	local since = UPDATE_SECONDS
 	RunService.Heartbeat:Connect(function(dt)
 		since += dt
@@ -147,6 +157,20 @@ function Ambience.start()
 		-- Weather is heard even with Low effects (only the drops and flakes are not drawn).
 		Audio.setAmbient("rain", wet)
 		Audio.setAmbient("wind", storm)
+		local strike = math.floor(now / LIGHTNING_EVERY)
+		if wet >= 1 and lastStrike and strike ~= lastStrike then
+			if Settings.get("flashes") then
+				for _, step in FLICKER do
+					task.delay(step[1], function()
+						flash.Brightness = step[2]
+					end)
+				end
+			end
+			task.delay(THUNDER_DELAY, function()
+				Audio.play("thunder")
+			end)
+		end
+		lastStrike = strike
 		fog += math.clamp(storm - fog, -FOG_STEP, FOG_STEP)
 		local haze = Lighting:FindFirstChildOfClass("Atmosphere")
 		if haze then

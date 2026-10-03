@@ -982,7 +982,13 @@ test("crystal pouch on the HUD; a full pouch guides back to the Great Lantern", 
 	setAttributes({ Upgrades = "pouch:1" })
 	assert(capacityWith({ pouch = 1 }) > capacity, "upgrade adds room")
 	assert(shownText(Strings.get("hud_crystals", 12, capacityWith({ pouch = 1 }))), "capacity follows the upgrade")
+	local icon = playerGui:FindFirstChild("CrystalIcon", true)
+	local fill = playerGui:FindFirstChild("PouchFill", true)
+	assert(math.abs(fill.Size.X.Scale - 12 / capacityWith({ pouch = 1 })) < 1e-6, "the bar shows how full the pouch is")
+	eq(icon:FindFirstChild("Pulse"), nil, "a pouch with room is calm")
 	setAttributes({ Upgrades = "", Crystals = capacity })
+	eq(fill.Size.X.Scale, 1, "full bar")
+	assert(icon:FindFirstChild("Pulse"), "a full pouch beats")
 	advance(0.5)
 	local anchorPart = nil
 	for _, child in playerGui:GetChildren() do
@@ -998,6 +1004,7 @@ test("crystal pouch on the HUD; a full pouch guides back to the Great Lantern", 
 	remotes.Fx.OnClientEvent:Fire("deposit", plaza, 60)
 	advance(1)
 	setAttributes({ Crystals = 0 })
+	eq(icon:FindFirstChild("Pulse"), nil, "emptied: calm again")
 end)
 
 test("skill cards: open on a new offer, pick sends the card, later hides, button reopens", function()
@@ -1985,6 +1992,41 @@ test("ambience: particles match the place (pollen, leaves, snow...), marsh showe
 	setAttributes({ Pref_quality = "auto", Pref_effects = "high" })
 	teleport(vec(WorldData.spawn, 3))
 	advance(0.6)
+end)
+
+test("marsh lightning: while it pours the sky flickers and thunder follows; no flicker with flashes off", function()
+	local DayCycle = H.loadModule("src/shared/DayCycle.luau")
+	local Sounds = H.loadModule("src/shared/Sounds.luau")
+	local flash = workspace.CurrentCamera:FindFirstChild("LvLightning")
+	assert(flash, "the flash effect")
+	local thunder = 0
+	H.localSound = function(sound)
+		if sound.SoundId == Sounds.thunder.id then
+			thunder += 1
+		end
+	end
+	teleport(vec(WorldData.areas.marsh.center, 3))
+	local into = workspace:GetServerTimeNow() % DayCycle.RAIN_EVERY
+	H.advance((DayCycle.RAIN_EVERY - into + DayCycle.RAIN_FADE + 2) % DayCycle.RAIN_EVERY, 0.5)
+	local brightest = 0
+	for _ = 1, 25 / 0.05 do
+		advance(0.05)
+		brightest = math.max(brightest, flash.Brightness)
+	end
+	assert(brightest > 0.2, "the sky flickers")
+	assert(thunder >= 1, "thunder follows")
+	setAttributes({ Pref_flashes = false })
+	brightest, thunder = 0, 0
+	for _ = 1, 25 / 0.05 do
+		advance(0.05)
+		brightest = math.max(brightest, flash.Brightness)
+	end
+	eq(brightest, 0, "flashes off: no flicker")
+	assert(thunder >= 1, "but the thunder is still heard")
+	setAttributes({ Pref_flashes = true })
+	H.localSound = nil
+	teleport(vec(WorldData.spawn, 3))
+	advance(1)
 end)
 
 test("see-through: map parts between the camera and the player fade, then come back", function()

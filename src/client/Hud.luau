@@ -169,8 +169,10 @@ function Hud.start()
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, card)
 
-	-- Light Crystal pouch: carried / capacity; turns into coins at the Great Lantern.
+	-- Light Crystal pouch: carried / capacity; turns into coins at the Great Lantern. A thin bar shows
+	-- how full it is, and a full pouch makes the crystal beat until it is emptied.
 	local crystalIcon = UiKit.create("Frame", {
+		Name = "CrystalIcon",
 		Position = UDim2.fromOffset(82, 91),
 		Size = UDim2.fromOffset(15, 15),
 		Rotation = 45,
@@ -184,6 +186,15 @@ function Hud.start()
 		TextColor3 = Color3.fromRGB(150, 210, 255),
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, card)
+	local pouchBar = UiKit.create("Frame", {
+		Position = UDim2.fromOffset(104, 107),
+		Size = UDim2.fromOffset(110, 3),
+		BackgroundColor3 = Color3.fromRGB(30, 26, 48),
+		BorderSizePixel = 0,
+	}, card)
+	UiKit.corner(pouchBar, 2)
+	local pouchFill = UiKit.create("Frame", { Name = "PouchFill", Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.fromRGB(150, 210, 255), BorderSizePixel = 0 }, pouchBar)
+	UiKit.corner(pouchFill, 2)
 
 	-- Team bonus: shown while other players are close by (the server applies the same rule).
 	local teamLabel = UiKit.label({
@@ -446,6 +457,7 @@ function Hud.start()
 	-- Behaviour -----------------------------------------------------------------------------
 	local shownLevel: number? = nil
 	local shownCoins: number? = nil
+	local shownCrystals: number? = nil
 	local function refreshStats()
 		local xp = player:GetAttribute("XP") or 0
 		local level, into, span = Progression.levelProgress(xp)
@@ -471,7 +483,15 @@ function Hud.start()
 		local capacity = Attrs.stats().pouchCapacity
 		local crystals = player:GetAttribute("Crystals") or 0
 		crystalsLabel.Text = Strings.get("hud_crystals", Format.short(crystals), Format.short(capacity))
-		crystalsLabel.TextColor3 = if crystals >= capacity then colors.bad else Color3.fromRGB(150, 210, 255)
+		local full = crystals >= capacity
+		crystalsLabel.TextColor3 = if full then colors.bad else Color3.fromRGB(150, 210, 255)
+		UiKit.tween(pouchFill, 0.25, { Size = UDim2.fromScale(math.clamp(crystals / math.max(capacity, 1), 0, 1), 1) })
+		pouchFill.BackgroundColor3 = if full then colors.bad else Color3.fromRGB(150, 210, 255)
+		if shownCrystals and crystals > shownCrystals then
+			UiKit.pop(crystalsLabel)
+		end
+		shownCrystals = crystals
+		UiKit.setPulse(crystalIcon, full)
 	end
 
 	-- Shadow Tower: inside, this card takes the quest panel's place - the floor, the best floor, how

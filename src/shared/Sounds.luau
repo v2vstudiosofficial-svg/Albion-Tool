@@ -24,6 +24,7 @@ return {
 	-- Looped backgrounds (Audio.setAmbient).
 	rain = { id = "rbxassetid://9112854469", volume = 0.35 }, -- Rain On Water 1 (61 s loop)
 	wind = { id = "rbxassetid://9114057128", volume = 0.4 }, -- Desert Wind Whistley Light Gusts 2 (92 s)
+	thunder = { id = "rbxassetid://9120016488", volume = 0.55 }, -- Thunder Distant Boom Thud Rapid Hits 6
 	-- Music by place (MusicLogic.theme), APM tracks, looped; one plays at a time.
 	music = {
 		volume = 0.25,
