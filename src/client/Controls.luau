@@ -25,6 +25,12 @@ local requestAbility = Remotes:WaitForChild("RequestAbility") :: RemoteEvent
 local player = Players.LocalPlayer
 local colors = UiKit.colors
 
+-- A ready ability that would help right now beats gently: Lantern Glow at or below this share of
+-- health, Light Wave with at least this many creatures in its reach (checked a few times a second).
+local HEAL_HINT_SHARE = 0.4
+local WAVE_HINT_CREATURES = 3
+local HINT_CHECK_SECONDS = 0.25
+
 -- Last cast per ability (local prediction; the server keeps its own).
 local lastUse: { [string]: number } = {}
 -- The ability buttons' containers, hidden while a full scene plays (they would sit under Skip).
@@ -66,17 +72,40 @@ local function ready(id: string): boolean
 	return os.clock() - (lastUse[id] or -math.huge) >= cooldownOf(id)
 end
 
--- The nearest living creature within `range` of `from` (what Star Fall would hit).
-local function hasTargetNear(from: Vector3, range: number): boolean
+-- How many living creatures are within `range` of `from` (counting stops at `enough`).
+local function creaturesNear(from: Vector3, range: number, enough: number): number
+	local count = 0
 	local enemies = workspace:FindFirstChild("Enemies")
 	for _, model in if enemies then enemies:GetChildren() else {} do
 		local body = model:FindFirstChild("Body") :: BasePart?
 		if body and model:GetAttribute("Alive") then
 			local offset = body.CFrame.Position - from
 			if Vector3.new(offset.X, 0, offset.Z).Magnitude <= range then
-				return true
+				count += 1
+				if count >= enough then
+					break
+				end
 			end
 		end
+	end
+	return count
+end
+
+-- Whether there is a living creature Star Fall could hit.
+local function hasTargetNear(from: Vector3, range: number): boolean
+	return creaturesNear(from, range, 1) > 0
+end
+
+-- Whether a ready ability would clearly help right now (its button beats).
+local function worthUsing(id: string): boolean
+	local root, humanoid = localCharacter()
+	if not root or not humanoid then
+		return false
+	end
+	if id == "heal" then
+		return humanoid.Health <= humanoid.MaxHealth * HEAL_HINT_SHARE
+	elseif id == "wave" then
+		return creaturesNear(root.Position, waveStats().radius, WAVE_HINT_CREATURES) >= WAVE_HINT_CREATURES
 	end
 	return false
 end
@@ -467,8 +496,13 @@ function Controls.start()
 	end)
 	refreshHint()
 
+	local nextHintCheck = 0
 	RunService.Heartbeat:Connect(function()
 		local now = os.clock()
+		local checkHints = now >= nextHintCheck
+		if checkHints then
+			nextHintCheck = now + HINT_CHECK_SECONDS
+		end
 		local level = Attrs.get("Level", 1)
 		local inScene = Cinematic.blocking()
 		for _, container in hideDuringScenes do
@@ -495,6 +529,9 @@ function Controls.start()
 					readyRing(view)
 				end
 				view.wasReady = isReady
+				if checkHints then
+					UiKit.setPulse(view.root, isReady and not inScene and worthUsing(ability.id))
+				end
 			end
 		end
 	end)

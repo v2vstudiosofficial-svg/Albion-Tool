@@ -2572,6 +2572,40 @@ test("the creature the hero's weapon is hitting wears an outline that fades when
 end)
 
 if not touchMode then
+	test("a ready ability that would help beats: Lantern Glow when hurt, Light Wave in a crowd", function()
+		local bar = playerGui.Controls:FindFirstChild("AbilityBar")
+		local function beating(id: string): boolean
+			return bar:FindFirstChild(id):FindFirstChild("Pulse", true) ~= nil
+		end
+		local heroLevel = hero:GetAttribute("Level")
+		setAttributes({ Level = Balance.abilities.heal.unlockLevel })
+		local spot = vec(WorldData.spawn, 3)
+		teleport(spot)
+		advance(31) -- any earlier cast has cooled down
+		local humanoid = hero.Character:FindFirstChildOfClass("Humanoid")
+		local health = humanoid.Health
+		eq(beating("heal"), false, "calm at full health")
+		humanoid.Health = humanoid.MaxHealth * 0.3
+		advance(0.5)
+		assert(beating("heal"), "hurt: Lantern Glow beats")
+		humanoid.Health = health
+		advance(0.5)
+		eq(beating("heal"), false, "healed: calm again")
+		eq(beating("wave"), false, "no crowd: Light Wave calm")
+		local crowd = {}
+		for index = 1, 3 do
+			table.insert(crowd, addEnemy("Gloomling", spot + Vector3.new(index * 2, 0, 3)))
+		end
+		advance(0.5)
+		assert(beating("wave"), "a crowd: Light Wave beats")
+		for _, creature in crowd do
+			creature:Destroy()
+		end
+		advance(0.5)
+		eq(beating("wave"), false, "crowd gone: calm")
+		setAttributes({ Level = heroLevel })
+	end)
+
 	test("player card: hovering a part says what it is", function()
 		local icon = playerGui:FindFirstChild("CrystalIcon", true)
 		icon.MouseEnter:Fire()
