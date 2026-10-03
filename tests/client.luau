@@ -1298,6 +1298,28 @@ test("hit squash: a creature is marked squashing for a moment, then springs back
 	assert((body.Size - size).Magnitude < 0.001, "back to its size")
 end)
 
+test("sounds heard often wobble in pitch, so repeats do not sound mechanical", function()
+	local Sounds = H.loadModule("src/shared/Sounds.luau")
+	local victim = enemies[1]
+	local pitches = {}
+	H.localSound = function(sound)
+		if sound.SoundId == Sounds.hit.id then
+			pitches[sound.PlaybackSpeed] = true
+		end
+	end
+	for _ = 1, 6 do
+		remotes.Fx.OnClientEvent:Fire("hit", victim, H.read(victim.Body, "Position"), 12, false)
+		advance(0.3)
+	end
+	H.localSound = nil
+	local distinct = 0
+	for pitch in pitches do
+		distinct += 1
+		assert(math.abs(pitch - 1) <= Sounds.hit.vary + 1e-6, "within the wobble: " .. pitch)
+	end
+	assert(distinct >= 3, "different pitches: " .. distinct)
+end)
+
 test("story scenes: the talking NPC nods and the camera shot follows the speaker", function()
 	local village = workspace.LanternValleyMap.Village
 	local head = village.Elder.Head

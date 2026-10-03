@@ -578,6 +578,7 @@ test("sound entries are silent or use an explicit asset scheme", function()
 			end
 		else
 			assert(valid(entry.id), "bad sound id for " .. key)
+			assert(entry.vary == nil or (entry.vary > 0 and entry.vary <= 0.15), key .. ": a small pitch wobble only")
 		end
 	end
 end)

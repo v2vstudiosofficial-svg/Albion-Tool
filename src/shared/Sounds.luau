@@ -1,12 +1,13 @@
 -- Sound ids by gameplay event. Empty strings are silent. The ids are Creator Store sounds from
 -- ProSoundEffects and APM (Roblox's licensed libraries, free in any experience) and Roblox's own uploads.
 -- `pitch` (PlaybackSpeed, default 1) lets one file serve several events; `length` plays only the
--- first that many seconds of a long file.
+-- first that many seconds of a long file; `vary` shifts the pitch a little at random on every play
+-- (sounds heard many times a minute), so repeats never sound like a machine.
 return {
-	attack = { id = "rbxassetid://9120742729", volume = 0.35 }, -- Whoosh Thick Quick
-	hit = { id = "rbxassetid://9113487341", volume = 0.4 }, -- Body Hit
-	purify = { id = "rbxassetid://9116394545", volume = 0.5 }, -- Magic Glows Chiming Hits
-	pickup = { id = "rbxassetid://9113849492", volume = 0.45 }, -- Coins Or Keys Jingle
+	attack = { id = "rbxassetid://9120742729", volume = 0.35, vary = 0.07 }, -- Whoosh Thick Quick
+	hit = { id = "rbxassetid://9113487341", volume = 0.4, vary = 0.1 }, -- Body Hit
+	purify = { id = "rbxassetid://9116394545", volume = 0.5, vary = 0.05 }, -- Magic Glows Chiming Hits
+	pickup = { id = "rbxassetid://9113849492", volume = 0.45, vary = 0.08 }, -- Coins Or Keys Jingle
 	wave = { id = "rbxassetid://9125647212", volume = 0.5 }, -- Magic Whooshes Metallic Shimmering
 	levelUp = { id = "rbxassetid://9116395089", volume = 0.6 }, -- Magic Glows Chiming Hits 4
 	questComplete = { id = "rbxassetid://15675043410", volume = 0.6 }, -- Roblox UI Tonal Stinger

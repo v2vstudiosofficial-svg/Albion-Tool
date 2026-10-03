@@ -33,9 +33,9 @@ local fade = 0 -- 0..1, how loud `music` is right now
 local AMBIENT_FADE = 1.5 -- seconds from silent to full
 local ambient: { [string]: { sound: Sound, level: number, target: number } } = {}
 
--- Pitch and, for long files, the part of the file that plays.
+-- Pitch (with its random `vary`) and, for long files, the part of the file that plays.
 local function shape(sound: Sound, entry)
-	sound.PlaybackSpeed = entry.pitch or 1
+	sound.PlaybackSpeed = (entry.pitch or 1) * (1 + (math.random() * 2 - 1) * (entry.vary or 0))
 	sound.PlaybackRegionsEnabled = entry.length ~= nil
 	if entry.length then
 		sound.PlaybackRegion = NumberRange.new(0, entry.length)
