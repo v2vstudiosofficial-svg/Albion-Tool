@@ -103,7 +103,7 @@ function Chatter.start()
 			TextColor3 = BUBBLE_COLOR,
 		}, pill)
 		UiKit.pop(pill)
-		World.greet(name)
+		World.chat(name, SHOW_SECONDS)
 		bubble = gui
 		task.delay(SHOW_SECONDS, function()
 			if bubble ~= gui then

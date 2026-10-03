@@ -1831,6 +1831,15 @@ test("day cycle: a long day, golden dusk, a short night, shared by everyone thro
 	eq(DayCycle.rain(DayCycle.RAIN_LENGTH + 1), 0, "dry")
 	eq(DayCycle.rain(DayCycle.RAIN_EVERY + 60), DayCycle.rain(60), "repeats")
 	assert(DayCycle.RAIN_LENGTH < DayCycle.RAIN_EVERY / 2, "dry more often than wet")
+	-- Peak blizzards keep the same rhythm, between the marsh showers (never both at once).
+	local stormy = 0
+	for second = 0, DayCycle.RAIN_EVERY - 1 do
+		assert(DayCycle.rain(second) == 0 or DayCycle.blizzard(second) == 0, "rain and blizzard overlap at " .. second)
+		if DayCycle.blizzard(second) == 1 then
+			stormy += 1
+		end
+	end
+	assert(stormy > 100, "a real blizzard: " .. stormy)
 	-- Clock time never jumps between neighbouring seconds (except the wrap at midnight).
 	for second = 0, L - 1 do
 		local a, b = DayCycle.clock(second), DayCycle.clock(second + 1)

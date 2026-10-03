@@ -462,6 +462,8 @@ end
 local NPC_LOOK_DISTANCE = 16
 -- The NPC in a story scene nods along while talking, and hops once when the scene starts.
 local speakingNpc: string? = nil
+-- Villagers chatting to themselves (client/Chatter) nod along until this time.
+local chattingUntil: { [string]: number } = {}
 local greeted: { [string]: number } = {}
 local GREET_SECONDS = 0.45
 local FACE_PARTS = { "Head", "Hat", "Eye1", "Eye2" }
@@ -472,6 +474,12 @@ end
 
 function World.greet(npcName: string)
 	greeted[npcName] = os.clock()
+end
+
+-- A short line of chatter: a hop, then nodding while it lasts.
+function World.chat(npcName: string, seconds: number)
+	greeted[npcName] = os.clock()
+	chattingUntil[npcName] = os.clock() + seconds
 end
 
 local function animateNpcs()
@@ -525,7 +533,7 @@ local function animateNpcs()
 			-- Talking: the head bobs and tilts a little (the face parts are re-placed from the body
 			-- every frame so the motion never accumulates).
 			local body = npc.model.PrimaryPart :: BasePart
-			local talking = speakingNpc == npc.name
+			local talking = speakingNpc == npc.name or (chattingUntil[npc.name] or 0) > now
 			local nod = if talking then math.abs(math.sin(now * 9)) * 0.16 else 0
 			local tilt = if talking then math.sin(now * 4.5) * math.rad(5) else 0
 			for _, face in npc.face do

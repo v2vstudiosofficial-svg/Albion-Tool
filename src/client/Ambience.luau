@@ -2,7 +2,9 @@
 -- the music (MusicLogic.theme): pollen in the village, drifting leaves in the woods, green spores
 -- in the marsh, snow on the peaks, embers at the citadel and violet motes in the Shadow Tower.
 -- Now and then it rains in the marsh (DayCycle.rain, the same for everyone), with little splashes
--- at your feet and the sound of rain on water. Only this screen draws them; "Low" effects turns them off.
+-- at your feet and the sound of rain on water; between the showers a blizzard blows over the peaks
+-- (more snow, driven sideways, a whistling wind and a cold white haze). Only this screen draws them; "Low" effects turns them off.
+local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -12,6 +14,7 @@ local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local MusicLogic = require(Shared:WaitForChild("MusicLogic"))
 local SettingsData = require(Shared:WaitForChild("SettingsData"))
 local Audio = require(script.Parent.Audio)
+local Graphics = require(script.Parent.Graphics)
 local Settings = require(script.Parent.Settings)
 
 local player = Players.LocalPlayer
@@ -19,6 +22,12 @@ local player = Players.LocalPlayer
 local UPDATE_SECONDS = 0.5
 local RAIN_RATE = 550 -- drops per second at full rain and High effects
 local SPLASH_RATE = 140
+-- Blizzard: extra snow (times the place's own rate), a push on the flakes, and thicker, colder haze.
+local STORM_SNOW = 3
+local STORM_WIND = Vector3.new(16, -2, 5)
+local STORM_FOG = 0.25
+local STORM_HAZE = Color3.fromRGB(225, 235, 250)
+local FOG_STEP = 0.1 -- per update, so the haze takes a few seconds to come and go
 -- Unlit, so the rain still shows at night.
 local RAIN_COLOR = Color3.fromRGB(170, 195, 225)
 
@@ -111,6 +120,7 @@ function Ambience.start()
 	emitter.Parent = holder
 
 	local shown: string? = nil
+	local fog = 0
 	local since = UPDATE_SECONDS
 	RunService.Heartbeat:Connect(function(dt)
 		since += dt
@@ -131,9 +141,18 @@ function Ambience.start()
 		local theme = MusicLogic.theme(root.Position.X, root.Position.Z)
 		local look = LOOKS[theme]
 		local density = SettingsData.effectDensity[Settings.get("effects")] or 1
-		local wet = if theme == "marsh" then DayCycle.rain(workspace:GetServerTimeNow()) else 0
-		-- The rain is heard even with Low effects (only the drops are not drawn).
+		local now = workspace:GetServerTimeNow()
+		local wet = if theme == "marsh" then DayCycle.rain(now) else 0
+		local storm = if theme == "peaks" then DayCycle.blizzard(now) else 0
+		-- Weather is heard even with Low effects (only the drops and flakes are not drawn).
 		Audio.setAmbient("rain", wet)
+		Audio.setAmbient("wind", storm)
+		fog += math.clamp(storm - fog, -FOG_STEP, FOG_STEP)
+		local haze = Lighting:FindFirstChildOfClass("Atmosphere")
+		if haze then
+			haze.Density = Graphics.HAZE.density + STORM_FOG * fog
+			haze.Color = Graphics.HAZE.color:Lerp(STORM_HAZE, fog)
+		end
 		if not look or Settings.get("effects") == "low" then
 			emitter.Rate, rain.Rate, splash.Rate = 0, 0, 0
 			shown = nil
@@ -147,12 +166,12 @@ function Ambience.start()
 			emitter.Size = look.size
 			emitter.Lifetime = look.lifetime
 			emitter.Speed = look.speed
-			emitter.Acceleration = look.acceleration
 			emitter.LightEmission = look.light
 			emitter.Rotation = look.rotation or NumberRange.new(0)
 			emitter.RotSpeed = if look.rotation then NumberRange.new(-90, 90) else NumberRange.new(0)
 		end
-		emitter.Rate = look.rate * density
+		emitter.Rate = look.rate * density * (1 + STORM_SNOW * storm)
+		emitter.Acceleration = look.acceleration + STORM_WIND * storm
 	end)
 end
 

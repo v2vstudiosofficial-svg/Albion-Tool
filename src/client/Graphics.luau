@@ -5,6 +5,9 @@ local Lighting = game:GetService("Lighting")
 
 local Graphics = {}
 
+-- The haze when the atmosphere is on (client/Ambience thickens it in a blizzard).
+Graphics.HAZE = { density = 0.28, color = Color3.fromRGB(255, 218, 178) }
+
 -- Roblox QualityLevel for each `detail` choice.
 local QUALITY_LEVELS = { low = 3, medium = 5, high = 8, ultra = 10 }
 
@@ -45,9 +48,9 @@ function Graphics.apply(choices: { shadows: boolean, bloom: boolean, atmosphere:
 		local haze = effect("Atmosphere", "LvAtmosphere")
 		-- (An Atmosphere is always drawn while it exists, so a disabled one is taken away.)
 		if choices.atmosphere then
-			haze.Density = 0.28
+			haze.Density = Graphics.HAZE.density
 			haze.Offset = 0.2
-			haze.Color = Color3.fromRGB(255, 218, 178)
+			haze.Color = Graphics.HAZE.color
 			haze.Decay = Color3.fromRGB(160, 130, 120)
 			haze.Glare = 0.1
 			haze.Haze = 1.2

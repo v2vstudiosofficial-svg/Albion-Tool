@@ -1,4 +1,4 @@
--- The valley's day and night, and the marsh rain (pure; client/DayNight and client/Ambience apply
+-- The valley's day and night, the marsh rain and the blizzards on the peaks (pure; client/DayNight and client/Ambience apply
 -- them). Everyone sees the same sky: the time comes from the server clock. Days are long, dusk is golden, and the short night is blue
 -- and bright enough to play - the lanterns and fireflies are what make it night.
 local DayCycle = {}
@@ -61,6 +61,11 @@ function DayCycle.rain(serverTime: number): number
 		return 0
 	end
 	return math.min(into, DayCycle.RAIN_LENGTH - into, DayCycle.RAIN_FADE) / DayCycle.RAIN_FADE
+end
+
+-- How hard the blizzard blows on the peaks (0-1): the same rhythm as the rain, half a cycle later.
+function DayCycle.blizzard(serverTime: number): number
+	return DayCycle.rain(serverTime + DayCycle.RAIN_EVERY / 2)
 end
 
 return DayCycle

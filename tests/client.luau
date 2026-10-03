@@ -1933,6 +1933,24 @@ test("ambience: particles match the place (pollen, leaves, snow...), marsh showe
 	H.advance(DayCycle.RAIN_EVERY - DayCycle.RAIN_LENGTH, 0.5)
 	advance(0.6)
 	assert(rain.Rate > 0, "and comes back")
+	-- Between the showers a blizzard sweeps the peaks: more snow, wind, a colder and thicker haze.
+	local Lighting = H.game:GetService("Lighting")
+	local Graphics = H.loadModule("src/client/Graphics.luau")
+	teleport(vec(WorldData.areas.peaks.center, 3))
+	advance(0.6)
+	local calmSnow = emitter.Rate
+	into = (workspace:GetServerTimeNow() + DayCycle.RAIN_EVERY / 2) % DayCycle.RAIN_EVERY
+	H.advance((DayCycle.RAIN_EVERY - into + DayCycle.RAIN_LENGTH / 2) % DayCycle.RAIN_EVERY + 0.1, 0.5)
+	advance(6)
+	assert(emitter.Rate > calmSnow * 2, "a blizzard: " .. emitter.Rate .. " vs " .. calmSnow)
+	local wind = H.game:GetService("SoundService"):FindFirstChild("Ambient_wind")
+	assert(wind and wind.Playing and wind.Volume > 0, "the wind howls")
+	local haze = Lighting:FindFirstChildOfClass("Atmosphere")
+	assert(haze and haze.Density > Graphics.HAZE.density + 0.1, "the haze thickens")
+	teleport(vec(WorldData.spawn, 3))
+	advance(6)
+	assert(math.abs(haze.Density - Graphics.HAZE.density) < 1e-3, "back to the usual haze off the peaks")
+	assert(not wind.Playing, "no wind in the village")
 	setAttributes({ Pref_quality = "custom", Pref_effects = "low" })
 	advance(0.6)
 	eq(emitter.Rate, 0, "nothing with Low effects")
@@ -2421,6 +2439,17 @@ test("villagers chat: a bubble pops over one the hero walks past, not up close o
 	teleport(elder + Vector3.new(0, 0, 18))
 	local line = nextLine(20)
 	assert(line and table.find(elderLines, line), "the Elder says one of her lines as the hero passes")
+	-- She nods along while the bubble shows.
+	local head = workspace.LanternValleyMap.Village.Elder.Head
+	local function headHeight(): number
+		return H.read(head, "Position").Y - H.read(elderBody, "Position").Y
+	end
+	local low, high = math.huge, -math.huge
+	for _ = 1, 20 do
+		advance(0.05)
+		low, high = math.min(low, headHeight()), math.max(high, headHeight())
+	end
+	assert(high - low > 0.05, "her head nods while she talks: " .. (high - low))
 	advance(5)
 	eq(bubble(), nil, "the bubble goes away")
 	teleport(elder + Vector3.new(0, 0, 60))
