@@ -20,14 +20,15 @@ local claimDaily = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Claim
 local DailyGift = {}
 
 function DailyGift.start()
-	-- Shares the mini map's region (left edge), so the two scale together and never overlap.
+	-- Shares the mini map's region (where the map says), so the two scale together and never overlap.
 	local region = Minimap.region
 	if not region then
 		return
 	end
 	local coinsBefore: number? = nil
 	local button = UiKit.button({
-		Position = UDim2.fromOffset(0, 0),
+		AnchorPoint = Minimap.giftAnchor,
+		Position = Minimap.giftPosition,
 		Size = UDim2.fromOffset(Minimap.giftWidth, 56),
 		Text = Strings.get("daily_gift_button"),
 		TextSize = 17,
@@ -42,6 +43,8 @@ function DailyGift.start()
 	UiKit.withIcon(button, Strings.get("icon_gift"), 24)
 	local countdown = UiKit.label({
 		Name = "NextGift",
+		AnchorPoint = Minimap.giftAnchor,
+		Position = Minimap.giftPosition,
 		Size = UDim2.fromOffset(Minimap.giftWidth, 44),
 		BackgroundColor3 = UiKit.colors.panel,
 		BackgroundTransparency = 0.35,

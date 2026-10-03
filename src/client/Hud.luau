@@ -29,6 +29,7 @@ local HIT_FLASH_FROM = 0.06
 local HP_HIGH = Color3.fromRGB(110, 220, 120)
 local HP_LOW = Color3.fromRGB(255, 90, 90)
 local MAX_TOASTS = 4
+local MAX_TOASTS_TOUCH = 3
 -- The first time each boss joins a fight this session, the camera glides over to it for a moment.
 local BOSS_INTRO_SECONDS = 1.4
 local RAY_COUNT = 8 -- bars through the center, so twice as many rays
@@ -446,9 +447,11 @@ function Hud.start()
 	UiKit.corner(bossFill, 7)
 
 	-- Toasts, banner, dialog ----------------------------------------------------------------
+	-- On a phone the space under the quest panel is where the hero stands, so toasts lie over the
+	-- quest panel for their few seconds instead (and fewer of them at once).
 	local toasts = UiKit.create("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 134),
+		Position = UDim2.new(0.5, 0, 0, if isTouch then 0 else 134),
 		Size = UDim2.fromOffset(440, 170),
 		BackgroundTransparency = 1,
 	}, topCenter)
@@ -774,7 +777,7 @@ function Hud.start()
 		}, pill)
 		local entry = { text = text, pill = pill, label = label, count = 1, token = 0 }
 		table.insert(liveToasts, entry)
-		while #liveToasts > MAX_TOASTS do
+		while #liveToasts > (if isTouch then MAX_TOASTS_TOUCH else MAX_TOASTS) do
 			dropToast(liveToasts[1])
 		end
 		UiKit.pop(pill)
@@ -973,7 +976,11 @@ function Hud.start()
 
 	-- Purify streak: chained purifications count up under the player, warmer with every milestone;
 	-- the counter leaves once the chain breaks (cosmetic, nothing is rewarded for it).
-	local streakRegion = UiKit.region(gui, Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -120), Vector2.new(220, 70))
+	-- On a phone (short screen) under the hero covers the hero, and the bottom edge is where the
+	-- waypoint marker sits when the goal is behind; there it shows left of the hero instead.
+	local streakRegion = if isTouch
+		then UiKit.region(gui, Vector2.new(0.5, 0.5), UDim2.fromScale(0.3, 0.5), Vector2.new(220, 70))
+		else UiKit.region(gui, Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -120), Vector2.new(220, 70))
 	local streakCount = UiKit.label({
 		Name = "StreakCount",
 		Size = UDim2.new(1, 0, 0, 46),

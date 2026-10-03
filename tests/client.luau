@@ -2227,8 +2227,13 @@ test("glow pond: rings spread on the water and frogs croak nearby, nothing far a
 		return count
 	end
 	teleport(pond + Vector3.new(0, 3, 14))
-	advance(3)
-	assert(ripples() > 0, "rings on the water")
+	-- Rings are random (most updates) and short-lived, so look throughout rather than at one moment.
+	local seen = false
+	for _ = 1, 12 do
+		advance(0.25)
+		seen = seen or ripples() > 0
+	end
+	assert(seen, "rings on the water")
 	local frogs = H.game:GetService("SoundService"):FindFirstChild("Ambient_frogs")
 	assert(frogs and frogs.Playing and frogs.Volume > 0, "frogs croak by the pond")
 	teleport(vec(WorldData.spawn, 3))
@@ -2599,6 +2604,51 @@ if not touchMode then
 end
 
 if touchMode then
+	test("touch: the mini map sits left of the Menu button, the daily gift under it, all in the top corner", function()
+		-- Both regions hang from the same top-right corner at the same scale, so their contents can be
+		-- compared as rectangles measured from that corner (x to the left is negative).
+		local function rect(item): { number }
+			local width = item.Parent.Size.X.Offset
+			local left = (item.Position.X.Scale - 1) * width + item.Position.X.Offset - item.AnchorPoint.X * item.Size.X.Offset
+			local top = item.Position.Y.Offset - item.AnchorPoint.Y * item.Size.Y.Offset
+			return { left, top, left + item.Size.X.Offset, top + item.Size.Y.Offset }
+		end
+		local function apart(a, b): boolean
+			return a[3] <= b[1] or b[3] <= a[1] or a[4] <= b[2] or b[4] <= a[2]
+		end
+		local menu = { -100, 0, 0, 48 } -- the grid's right-aligned first cell
+		local map = rect(playerGui.Minimap:FindFirstChild("Map", true))
+		local region = playerGui.Minimap:FindFirstChild("Map", true).Parent
+		eq(region.Position.Y.Offset, 12, "the map's region starts in the top row")
+		for _, name in { "DailyGiftButton", "NextGift" } do
+			local gift = rect(region:FindFirstChild(name))
+			assert(apart(gift, menu) and apart(gift, map), `{name} clear of the Menu button and the map`)
+			assert(gift[4] <= map[4] + 22, `{name} no lower than the map`)
+		end
+		assert(apart(map, menu), "the map clear of the Menu button")
+	end)
+
+	test("touch: toasts and the purify streak keep clear of the hero and the controls", function()
+		advance(4) -- earlier toasts and banners leave
+		for index = 1, 5 do
+			remotes.Notice.OnClientEvent:Fire("notice_streak", index * 10)
+		end
+		advance(0.1)
+		local shown = 0
+		local holder
+		for _, toast in playerGui.Hud:GetDescendants() do
+			if toast.Name == "Toast" and isShown(toast) then
+				shown += 1
+				holder = toast.Parent
+			end
+		end
+		eq(shown, 3, "three toasts at most on a phone")
+		eq(holder.Position.Y.Offset, 0, "they start at the top, over the quest panel")
+		local streak = playerGui.Hud:FindFirstChild("StreakCount", true).Parent
+		assert(streak.Position.X.Scale <= 0.35 and streak.Position.Y.Scale == 0.5 and streak.AnchorPoint == Vector2.new(0.5, 0.5), "the streak sits left of the hero")
+		advance(5)
+	end)
+
 	test("touch: one Menu button opens big tiles; a tile opens its window; badges show on Menu", function()
 		local hub = findButton(Strings.get("menu_hub"))
 		assert(hub and isShown(hub), "Menu button in the corner")

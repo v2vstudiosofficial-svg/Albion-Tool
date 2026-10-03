@@ -30,6 +30,11 @@ local SIZE = 132
 local TOP_OFFSET = 272
 local GIFT_GAP = 8
 local GIFT_WIDTH = 96
+-- Touch screens keep a single Menu button (100x48) in the top-right corner: the map sits left of it
+-- and the daily gift under it (on a phone the computer's place, below the button grid and with the
+-- gift beside the map, was over the jump button and too wide for the top row).
+local TOUCH_MENU_SPACE = 108
+local TOUCH_GIFT_TOP = 56
 local REFRESH_SECONDS = 0.1
 local MAX_OTHERS = 12
 local MAX_RIFTS = 4
@@ -57,9 +62,11 @@ local BANDS = {
 
 local Minimap = {}
 
--- The region the map lives in (set by start); the daily gift button sits at its left edge.
+-- The region the map lives in (set by start) and where the daily gift button sits in it.
 Minimap.region = nil :: Frame?
 Minimap.giftWidth = GIFT_WIDTH
+Minimap.giftAnchor = Vector2.new(0, 0)
+Minimap.giftPosition = UDim2.fromOffset(0, 0)
 
 local function bandColor(level: number): Color3
 	for _, band in BANDS do
@@ -86,12 +93,23 @@ function Minimap.start()
 	local gui = UiKit.create("ScreenGui", { Name = "Minimap", ResetOnSpawn = false, DisplayOrder = 3 }, player:WaitForChild("PlayerGui"))
 	-- One region for the map and the daily gift button beside it, so they scale together and never
 	-- overlap; it starts below the top-right button grid even at the largest interface size.
-	local region = UiKit.region(gui, Vector2.new(1, 0), UDim2.new(1, -12, 0, TOP_OFFSET), Vector2.new(SIZE + GIFT_GAP + GIFT_WIDTH, SIZE + 22))
+	local touch = UiKit.isTouch()
+	local menuSpace = if touch then TOUCH_MENU_SPACE else 0
+	local region = UiKit.region(
+		gui,
+		Vector2.new(1, 0),
+		UDim2.new(1, -12, 0, if touch then 12 else TOP_OFFSET),
+		Vector2.new(if touch then menuSpace + SIZE else SIZE + GIFT_GAP + GIFT_WIDTH, SIZE + 22)
+	)
+	if touch then
+		Minimap.giftAnchor = Vector2.new(1, 0)
+		Minimap.giftPosition = UDim2.new(1, 0, 0, TOUCH_GIFT_TOP)
+	end
 	Minimap.region = region
 	local mode = "near"
 	local map = UiKit.button({
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromScale(1, 0),
+		Position = UDim2.new(1, -menuSpace, 0, 0),
 		Size = UDim2.fromOffset(SIZE, SIZE),
 		Text = "",
 		BackgroundColor3 = Color3.fromRGB(24, 30, 44),
@@ -187,7 +205,7 @@ function Minimap.start()
 	local placeLabel = UiKit.label({
 		Name = "Place",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, SIZE + 2),
+		Position = UDim2.new(1, -menuSpace, 0, SIZE + 2),
 		Size = UDim2.fromOffset(SIZE, 18),
 		TextSize = 14,
 		TextColor3 = colors.text,
