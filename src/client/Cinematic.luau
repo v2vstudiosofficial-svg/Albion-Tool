@@ -74,7 +74,9 @@ local function setControls(enabled: boolean)
 end
 
 -- Where the camera looks and stands for one line. NPCs are filmed from the front (the way they
--- face), the hero from just ahead of the player, the narrator from a wide shot of the focus.
+-- face: toward a nearby hero, as World turns them, else their usual way) and well to the side
+-- (about 50 degrees), so a hero standing in front of them sits at the edge of the frame instead of
+-- in front of their face; the hero from just ahead of the player, the narrator from a wide shot.
 local function shotFor(speaker: string, focusName: string, progress: number): CameraRig.Shot?
 	local _, root = localRoot()
 	local dolly = 1 - progress * 0.18 -- a slow push-in over the scene
@@ -82,10 +84,16 @@ local function shotFor(speaker: string, focusName: string, progress: number): Ca
 	if npc then
 		local position = WorldData.vector(npc.position)
 		local facing = (WorldData.vector(npc.lookAt) - position) * Vector3.new(1, 0, 1)
+		if root then
+			local toHero = (root.Position - position) * Vector3.new(1, 0, 1)
+			if toHero.Magnitude > 0.5 and toHero.Magnitude < World.NPC_LOOK_DISTANCE then
+				facing = toHero
+			end
+		end
 		facing = if facing.Magnitude > 0.1 then facing.Unit else Vector3.new(0, 0, 1)
 		local right = facing:Cross(Vector3.new(0, 1, 0))
 		local focus = position + Vector3.new(0, 2.4, 0)
-		return { from = focus + (facing * 9 + right * 2.6) * dolly + Vector3.new(0, 0.8, 0), focus = focus, fov = FOV }
+		return { from = focus + (facing * 6 + right * 7) * dolly + Vector3.new(0, 1.4, 0), focus = focus, fov = FOV }
 	end
 	if speaker == "Hero" and root then
 		local focus = root.Position + Vector3.new(0, 1.8, 0)

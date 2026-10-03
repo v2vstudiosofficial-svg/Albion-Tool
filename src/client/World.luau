@@ -443,6 +443,15 @@ local function refreshMarkers()
 	if gateMarker then
 		gateMarker.Enabled = Attrs.get("Level", 1) >= Balance.tower.minLevel and Attrs.get("TowerBest", 0) == 0 and Attrs.get("TowerFloor", 0) == 0
 	end
+	-- The Great Lantern's Rebirth prompt stands in the middle of the plaza, the first prompt a new
+	-- player walked into; it shows only to players who can rebirth (the server checks again).
+	local map = workspace:FindFirstChild("LanternValleyMap")
+	local village = map and map:FindFirstChild("Village")
+	local post = village and village:FindFirstChild("LanternPost")
+	local rebirthPrompt = post and post:FindFirstChild("RebirthPrompt")
+	if rebirthPrompt and rebirthPrompt:IsA("ProximityPrompt") then
+		rebirthPrompt.Enabled = Attrs.get("Level", 1) >= Progression.MAX_LEVEL
+	end
 	local affordable = canAffordUpgrade() and isCompleted("first_purify")
 	local smith = markers.Smith
 	if smith then
@@ -471,6 +480,7 @@ end
 -- NPC idle life: a gentle breathing bob and turning toward a nearby local player (local only).
 
 local NPC_LOOK_DISTANCE = 16
+World.NPC_LOOK_DISTANCE = NPC_LOOK_DISTANCE
 -- The NPC in a story scene nods along while talking, and hops once when the scene starts.
 local speakingNpc: string? = nil
 -- Villagers chatting to themselves (client/Chatter) nod along until this time.

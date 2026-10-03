@@ -1387,6 +1387,11 @@ test("story scenes: the talking NPC nods and the camera shot follows the speaker
 	local function headHeight(): number
 		return H.read(head, "Position").Y - H.read(body, "Position").Y
 	end
+	-- The hero stands behind the Elder's usual facing: she turns to them, and the camera must film
+	-- her face from that side (it used to stay on her usual side and show the back of her head).
+	local elder = WorldData.vector(WorldData.npcs.Elder.position)
+	local usual = (WorldData.vector(WorldData.npcs.Elder.lookAt) - elder) * Vector3.new(1, 0, 1)
+	teleport(elder - usual.Unit * 6 + Vector3.new(0, 3, 0))
 	advance(0.5)
 	local resting = headHeight()
 	remotes.Cinematic.OnClientEvent:Fire("first_purify")
@@ -1397,8 +1402,9 @@ test("story scenes: the talking NPC nods and the camera shot follows the speaker
 	end
 	assert(highest > resting + 0.05, "the Elder's head bobs while she talks")
 	local camera = workspace.CurrentCamera
-	local elder = WorldData.vector(WorldData.npcs.Elder.position)
-	assert((H.read(camera, "CFrame").Position - elder).Magnitude < 25, "the camera moved in on the Elder: " .. (H.read(camera, "CFrame").Position - elder).Magnitude)
+	local eye = H.read(camera, "CFrame").Position
+	assert((eye - elder).Magnitude < 25, "the camera moved in on the Elder: " .. (eye - elder).Magnitude)
+	assert((eye - elder):Dot(-usual) > 0, "filmed from the side she faces (the hero's)")
 	click(findButton(Strings.get("cinematic_skip")))
 	advance(1)
 	local after = headHeight()
@@ -2515,6 +2521,17 @@ test("creature labels: near the player, tinted by the level gap, health in numbe
 	advance(1)
 	assert(trail.Size.X.Scale < 0.45, "then drains")
 	enemy:Destroy()
+	setAttributes({ Level = heroLevel })
+end)
+
+test("the Great Lantern's Rebirth prompt shows only to players who can rebirth", function()
+	local Progression = H.loadModule("src/shared/Progression.luau")
+	local prompt = workspace.LanternValleyMap.Village.LanternPost.RebirthPrompt
+	local heroLevel = hero:GetAttribute("Level")
+	setAttributes({ Level = 1 })
+	eq(prompt.Enabled, false, "a new player walks past it")
+	setAttributes({ Level = Progression.MAX_LEVEL })
+	eq(prompt.Enabled, true, "at the top level it offers a rebirth")
 	setAttributes({ Level = heroLevel })
 end)
 
