@@ -1,6 +1,6 @@
 -- Lantern Valley's own loading screen. ReplicatedFirst runs before anything else, so this script
 -- builds its own small UI (the client's UiKit is not there yet): a night-blue valley sky with
--- rising sparks, a glowing lantern, the title, rotating tips and a progress bar. It fades out once
+-- twinkling stars (and now and then a shooting star), rising sparks, a glowing lantern, the title, rotating tips and a progress bar. It fades out once
 -- the world has loaded and the player's save is ready, or after MAX_SECONDS; a Skip button shows
 -- up when loading takes long.
 local ContentProvider = game:GetService("ContentProvider")
@@ -16,6 +16,8 @@ local SKIP_AFTER = 8
 local TIP_SECONDS = 4
 local TIPS = { "loading_tip_1", "loading_tip_2", "loading_tip_3", "loading_tip_4", "loading_tip_5", "loading_tip_6", "loading_tip_7", "loading_tip_8" }
 local SPARKS = 28
+local STARS = 45 -- in the upper part of the sky
+local SHOOTING_EVERY = { 2.5, 5 } -- seconds between shooting stars
 local FONT = Enum.Font.FredokaOne
 local GOLD = Color3.fromRGB(255, 215, 110)
 local CREAM = Color3.fromRGB(255, 248, 230)
@@ -52,8 +54,43 @@ local gui = create("ScreenGui", { Name = "LoadingScreen", IgnoreGuiInset = true,
 local root = create("CanvasGroup", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(12, 14, 40), BorderSizePixel = 0 }, gui)
 create("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(46, 36, 96), Color3.fromRGB(8, 10, 28)) }, root)
 
--- Gold sparks drifting up the screen, each at its own pace and sway.
 local random = Random.new()
+
+-- Stars that twinkle in place, each at its own pace.
+local stars = {}
+for _ = 1, STARS do
+	local size = random:NextInteger(2, 4)
+	local star = create("Frame", {
+		Name = "Star",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(random:NextNumber(), random:NextNumber(0, 0.6)),
+		Size = UDim2.fromOffset(size, size),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BorderSizePixel = 0,
+	}, root)
+	round(star, size)
+	table.insert(stars, { frame = star, speed = random:NextNumber(1, 3), phase = random:NextNumber(0, math.pi * 2) })
+end
+
+-- A shooting star: a thin streak that slides down across the sky and fades.
+local function shootingStar()
+	local x, y = random:NextNumber(0.1, 0.7), random:NextNumber(0.05, 0.3)
+	local streak = create("Frame", {
+		Name = "ShootingStar",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(x, y),
+		Size = UDim2.fromOffset(70, 2),
+		Rotation = 20,
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BorderSizePixel = 0,
+	}, root)
+	create("UIGradient", { Transparency = NumberSequence.new(1, 0) }, streak)
+	tween(streak, 0.7, { Position = UDim2.fromScale(x + 0.22, y + 0.08), BackgroundTransparency = 1 }).Completed:Connect(function()
+		streak:Destroy()
+	end)
+end
+
+-- Gold sparks drifting up the screen, each at its own pace and sway.
 local sparks = {}
 for index = 1, SPARKS do
 	local size = random:NextInteger(3, 7)
@@ -189,6 +226,7 @@ local tipShownAt = -math.huge
 local progress = 0
 local closing = false
 local connection: RBXScriptConnection? = nil
+local nextShooting = random:NextNumber(1, SHOOTING_EVERY[1])
 
 local function close()
 	if closing then
@@ -211,6 +249,13 @@ connection = RunService.RenderStepped:Connect(function(dt)
 	local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1000, 560)
 	middleScale.Scale = math.clamp(math.min(viewport.X / 900, viewport.Y / 560), 0.55, 1.3)
 
+	for _, star in stars do
+		star.frame.BackgroundTransparency = 0.25 + 0.6 * (math.sin(elapsed * star.speed + star.phase) * 0.5 + 0.5)
+	end
+	if elapsed >= nextShooting then
+		nextShooting = elapsed + random:NextNumber(SHOOTING_EVERY[1], SHOOTING_EVERY[2])
+		shootingStar()
+	end
 	for _, spark in sparks do
 		spark.y -= spark.speed * dt
 		if spark.y < -0.05 then

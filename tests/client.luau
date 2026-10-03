@@ -978,6 +978,19 @@ test("chests menu: slots by level, one unlock at a time, timers, open and reward
 	assert(shownText(Strings.get("chest_reward_weapon", Strings.get("weapon_bow_name"), Strings.get("rarity_common"))), "weapon line")
 	assert(shownText(Strings.get("chest_reward_slot", Strings.get("bag_main"), 3, 1)), "slot line")
 	assert(shownText(Strings.get("chest_continue")), "Continue at the end")
+	local function motes(): number
+		local count = 0
+		for _, descendant in playerGui.ChestReveal:GetDescendants() do
+			if descendant.Name == "Mote" then
+				count += 1
+			end
+		end
+		return count
+	end
+	eq(motes(), 0, "a wooden chest has no motes")
+	remotes.Fx.OnClientEvent:Fire("chestOpened", { chest = "mystic", coins = 500, slots = {} })
+	advance(3)
+	assert(motes() > 5, "light rises from a mystic chest: " .. motes())
 	remotes.Fx.OnClientEvent:Fire("chestOpened", { chest = "wood", coins = 10, weapon = "bow", rarity = "common", duplicate = true, star = 2, slots = {} })
 	advance(0.2)
 	assert(not shownText(Strings.get("chest_reward_coins", 33)), "a new chest starts over")
@@ -985,6 +998,8 @@ test("chests menu: slots by level, one unlock at a time, timers, open and reward
 	assert(shownText(Strings.get("chest_reward_star", Strings.get("weapon_bow_name"), 2, 5)), "star line for a repeat")
 	click(findButton(Strings.get("chest_continue")))
 	assert(not playerGui.ChestReveal.Enabled, "Continue closes it")
+	advance(3)
+	eq(motes(), 0, "the motes are gone once it is closed")
 	click(findButton("X"))
 	setAttributes({ Level = 3, Chests = "" })
 end)
@@ -1842,7 +1857,19 @@ test("loading screen: title, tips and a bar until the save is ready, then it fad
 	local fill = screen:FindFirstChild("Fill", true)
 	assert(fill.Size.X.Scale > 0.3 and fill.Size.X.Scale < 0.95, "the bar moves but is not full yet")
 	assert(not shownText(Strings.get("loading_skip")), "no Skip at first")
-	advance(8)
+	local stars = 0
+	for _, descendant in screen:GetDescendants() do
+		if descendant.Name == "Star" then
+			stars += 1
+		end
+	end
+	assert(stars >= 30, "a starry sky: " .. stars)
+	local shooting = false
+	for _ = 1, 32 do
+		advance(0.25)
+		shooting = shooting or screen:FindFirstChild("ShootingStar", true) ~= nil
+	end
+	assert(shooting, "now and then a shooting star")
 	assert(shownText(Strings.get("loading_skip")), "Skip appears when it takes long")
 	assert(playerGui:FindFirstChild("LoadingScreen"), "still waiting for the save")
 	remotes.Cinematic.OnClientEvent:Fire("first_purify")

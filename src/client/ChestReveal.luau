@@ -1,12 +1,14 @@
 -- The chest opening moment: the screen dims, the chest drops in and shakes, the lid bursts open
 -- in a flash with light rays behind it, then each reward pops in one after another (coins count
--- up, a new weapon glows in its rarity color). "Continue" closes it. Purely cosmetic: the reward
+-- up, a new weapon glows in its rarity color). Rarer chests send motes of light rising behind
+-- the open chest. "Continue" closes it. Purely cosmetic: the reward
 -- itself was already granted by the server (Fx "chestOpened").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local SettingsData = require(Shared:WaitForChild("SettingsData"))
 local ChestData = require(Shared:WaitForChild("ChestData"))
 local Format = require(Shared:WaitForChild("Format"))
 local Strings = require(Shared:WaitForChild("Strings"))
@@ -21,12 +23,17 @@ local colors = UiKit.colors
 local RAY_BARS = 8
 local LINE_GAP = 0.35 -- seconds between reward lines
 local COUNT_SECONDS = 0.6 -- coins count up this long
+-- Rising motes per second once the lid is open (none for wood; gifts without a chest get a few).
+local MOTES = { silver = 4, gold = 9, mystic = 16 }
+local GIFT_MOTES = 5
 
 local ChestReveal = {}
 
 local gui: ScreenGui? = nil
 local parts: { [string]: any } = {}
 local playToken = 0
+local moteRate = 0 -- motes per second right now (0 until the lid opens)
+local moteColor = Color3.new(1, 1, 1)
 
 local function darker(color: Color3, by: number): Color3
 	return Color3.new(color.R * by, color.G * by, color.B * by)
@@ -102,9 +109,34 @@ local function build()
 		list = list,
 		continueButton = continueButton,
 	}
+	local moteDue = 0
 	RunService.Heartbeat:Connect(function(dt)
 		if gui and gui.Enabled and rays.Visible then
 			rays.Rotation = (rays.Rotation + dt * 20) % 360
+		end
+		if not (gui and gui.Enabled) or moteRate <= 0 then
+			moteDue = 0
+			return
+		end
+		moteDue += dt * moteRate
+		while moteDue >= 1 do
+			moteDue -= 1
+			local size = math.random(8, 14)
+			local x = 260 + math.random(-110, 110)
+			local mote = UiKit.create("Frame", {
+				Name = "Mote",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromOffset(x, 230),
+				Size = UDim2.fromOffset(size, size),
+				BackgroundColor3 = moteColor,
+				BorderSizePixel = 0,
+				ZIndex = 3, -- in front of the rays and the chest, like dust in the light
+			}, stage)
+			UiKit.corner(mote, size)
+			local rise = 1.6 + math.random() * 0.9
+			UiKit.tween(mote, rise, { Position = UDim2.fromOffset(x + math.random(-30, 30), math.random(0, 70)), BackgroundTransparency = 1 }, Enum.EasingStyle.Sine).Completed:Connect(function()
+				mote:Destroy()
+			end)
 		end
 	end)
 end
@@ -115,6 +147,7 @@ end
 
 function ChestReveal.close()
 	playToken += 1
+	moteRate = 0
 	if gui then
 		gui.Enabled = false
 	end
@@ -156,6 +189,8 @@ function ChestReveal.show(reward: { [string]: any })
 	end
 	parts.flash.BackgroundTransparency = 1
 	parts.continueButton.Visible = false
+	moteRate = 0
+	moteColor = color:Lerp(Color3.new(1, 1, 1), 0.75)
 	gui.Enabled = true
 
 	local function alive(): boolean
@@ -202,6 +237,7 @@ function ChestReveal.show(reward: { [string]: any })
 			UiKit.tween(parts.flash, 0.45, { BackgroundTransparency = 1 })
 		end
 		parts.rays.Visible = true
+		moteRate = (if data then MOTES[reward.chest] or 0 else GIFT_MOTES) * (SettingsData.effectDensity[Settings.get("effects")] or 1)
 		UiKit.pop(parts.chest)
 		Audio.play("levelUp")
 		task.wait(0.35)
