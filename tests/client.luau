@@ -1994,6 +1994,37 @@ test("ambience: particles match the place (pollen, leaves, snow...), marsh showe
 	advance(0.6)
 end)
 
+test("idle camera: left alone it slowly circles the hero, any input brings it straight back", function()
+	local UIS = H.services.UserInputService
+	local function nudge()
+		UIS.InputBegan:Fire({ KeyCode = Enum.KeyCode.Unknown, UserInputType = Enum.UserInputType.Keyboard }, false)
+	end
+	local function heading(): number
+		local look = H.read(workspace.CurrentCamera, "CFrame").LookVector
+		return math.deg(math.atan2(look.X, -look.Z))
+	end
+	nudge()
+	advance(1)
+	local usual = heading()
+	local function turned(): number
+		return math.abs((heading() - usual + 180) % 360 - 180)
+	end
+	advance(20)
+	assert(turned() < 1, "not yet after 20 s")
+	-- A hit while standing still counts as playing.
+	local humanoid = hero.Character:FindFirstChildOfClass("Humanoid")
+	local health = humanoid.Health
+	humanoid.Health = health - 1
+	advance(10)
+	assert(turned() < 1, "not while fighting")
+	humanoid.Health = health
+	advance(30)
+	assert(turned() > 5, "circling after a while: " .. turned())
+	nudge()
+	advance(1)
+	assert(turned() < 1, "back to the usual view on any input: " .. turned())
+end)
+
 test("marsh lightning: while it pours the sky flickers and thunder follows; no flicker with flashes off", function()
 	local DayCycle = H.loadModule("src/shared/DayCycle.luau")
 	local Sounds = H.loadModule("src/shared/Sounds.luau")

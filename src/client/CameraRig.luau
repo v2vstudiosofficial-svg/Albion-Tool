@@ -1,6 +1,7 @@
 -- Angled top-down follow camera (mobile action-RPG style) and the local weapon range ring.
--- Mouse wheel / pinch zooms between fixed limits; the angle never changes, so movement always
--- feels the same (the default controls move relative to the camera).
+-- Mouse wheel / pinch zooms between fixed limits; the angle never changes while you play, so
+-- movement always feels the same (the default controls move relative to the camera). Left alone
+-- for a while, the camera slowly circles the hero and comes straight back on any input.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -22,6 +23,10 @@ local MAX_DISTANCE = 70
 local FOLLOW_SPEED = 10
 local FIELD_OF_VIEW = 50
 local RING_WIDTH = 0.35
+local IDLE_AFTER = 25 -- seconds without moving or any input before the camera starts to circle
+local ORBIT_SPEED = math.rad(6) -- per second
+local ORBIT_IN = 3 -- seconds to ease into the circling
+local ORBIT_OUT = 0.5 -- seconds to swing back once the player is active again
 
 local CameraRig = {}
 
@@ -36,6 +41,10 @@ local settle = 0 -- 1 right after a shot ends, fading to 0 as the follow view ta
 local leftCFrame: CFrame? = nil
 local leftFov = FIELD_OF_VIEW
 local punchDegrees = 0 -- a brief zoom-in (level-ups, big moments) that fades on its own
+local activeAt = os.clock() -- the last time the player moved, touched a control or was hit
+local lastHealth = math.huge
+local orbit = 0 -- how far the idle camera has circled (radians)
+local orbitBlend = 0 -- 0 = the normal view, 1 = fully circling
 
 function CameraRig.setShot(newShot: Shot?)
 	local camera = workspace.CurrentCamera
@@ -57,8 +66,10 @@ function CameraRig.punch(degrees: number)
 	punchDegrees = math.max(punchDegrees, degrees)
 end
 
-function CameraRig.cframeFor(target: Vector3, distance: number): CFrame
-	return CFrame.lookAt(target + VIEW_DIRECTION * distance, target)
+-- The follow view of `target`; `turn` (radians) swings it around the target.
+function CameraRig.cframeFor(target: Vector3, distance: number, turn: number?): CFrame
+	local direction = if turn and turn ~= 0 then CFrame.Angles(0, turn, 0):VectorToWorldSpace(VIEW_DIRECTION) else VIEW_DIRECTION
+	return CFrame.lookAt(target + direction * distance, target)
 end
 
 function CameraRig.zoom(delta: number)
@@ -87,7 +98,24 @@ local function updateCamera(dt: number)
 		camera.FieldOfView += (shot.fov - camera.FieldOfView) * glide
 		return
 	end
-	local _, root = character()
+	local humanoid, root = character()
+	local ok, moving = pcall(function()
+		return humanoid ~= nil and humanoid.MoveDirection.Magnitude > 0.05
+	end)
+	local health = if humanoid then humanoid.Health else math.huge
+	-- Standing still in a fight is not idle.
+	if (ok and moving) or health < lastHealth then
+		activeAt = os.clock()
+	end
+	lastHealth = health
+	if os.clock() - activeAt >= IDLE_AFTER then
+		orbitBlend = math.min(1, orbitBlend + dt / ORBIT_IN)
+	else
+		orbitBlend = math.max(0, orbitBlend - dt / ORBIT_OUT)
+	end
+	orbit = if orbitBlend > 0 then orbit + ORBIT_SPEED * dt * orbitBlend else 0
+	-- Back the shortest way round.
+	local turn = ((orbit + math.pi) % (2 * math.pi) - math.pi) * orbitBlend
 	if root then
 		local goal = root.Position
 		focus = if focus and (focus - goal).Magnitude < 60 then focus:Lerp(goal, math.clamp(dt * FOLLOW_SPEED, 0, 1)) else goal
@@ -95,7 +123,7 @@ local function updateCamera(dt: number)
 	punchDegrees *= math.exp(-dt * 6)
 	local fov = Settings.get("fov") - punchDegrees
 	if focus then
-		local follow = CameraRig.cframeFor(focus, CameraRig.distance)
+		local follow = CameraRig.cframeFor(focus, CameraRig.distance, turn)
 		if settle > 0 and leftCFrame then
 			settle = math.max(0, settle - dt * 2.5)
 			local eased = 1 - settle * settle
@@ -158,7 +186,13 @@ function CameraRig.start()
 	local folder = UiKit.create("Folder", { Name = "ClientRing" }, workspace)
 	local edge, fill = buildRing(folder)
 
+	UserInputService.InputBegan:Connect(function()
+		activeAt = os.clock()
+	end)
 	UserInputService.InputChanged:Connect(function(input, processed)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.MouseWheel then
+			activeAt = os.clock()
+		end
 		if not processed and input.UserInputType == Enum.UserInputType.MouseWheel then
 			CameraRig.zoom(-input.Position.Z * 4)
 		end
