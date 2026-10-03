@@ -17,6 +17,7 @@ local FIXED_CLOCK = 15.5 -- the afternoon kept when the cycle is off
 local UPDATE_SECONDS = 0.25
 local LIGHT_SCAN_SECONDS = 20
 local LIGHT_BOOST = 1.6 -- added to a lantern's brightness at full night
+local LIGHT_FLICKER = 0.15 -- after dark each flame wavers this share of its boost, on its own rhythm
 local FIREFLY_RATE = 30 -- per second around the player at full night
 
 local DAY = {
@@ -52,14 +53,16 @@ function DayNight.apply(clock: number): number
 	Lighting.Ambient = DAY.ambient:Lerp(DUSK_AMBIENT, dusk):Lerp(NIGHT.ambient, night)
 	Lighting.OutdoorAmbient = DAY.outdoor:Lerp(NIGHT.outdoor, night)
 	Lighting.ColorShift_Top = DAY.top:Lerp(DUSK_TOP, dusk):Lerp(NIGHT.top, night)
-	for _, light in lights do
+	local now = os.clock()
+	for index, light in lights do
 		if light.Parent then
 			local base = light:GetAttribute("LvBaseBrightness")
 			if typeof(base) ~= "number" then
 				base = light.Brightness
 				light:SetAttribute("LvBaseBrightness", base)
 			end
-			light.Brightness = base + LIGHT_BOOST * night
+			local waver = (math.sin(now * 7 + index * 1.7) + math.sin(now * 12.3 + index * 2.9)) * 0.5
+			light.Brightness = base + LIGHT_BOOST * night * (1 + LIGHT_FLICKER * waver)
 		end
 	end
 	return night
