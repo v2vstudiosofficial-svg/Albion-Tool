@@ -14,6 +14,7 @@ local WorldData = require(Shared:WaitForChild("WorldData"))
 local WeaponData = require(Shared:WaitForChild("WeaponData"))
 local ChestData = require(Shared:WaitForChild("ChestData"))
 local Format = require(Shared:WaitForChild("Format"))
+local Stats = require(Shared:WaitForChild("Stats"))
 local AchievementData = require(Shared:WaitForChild("AchievementData"))
 local StoreData = require(Shared:WaitForChild("StoreData"))
 local CosmeticData = require(Shared:WaitForChild("CosmeticData"))
@@ -1681,8 +1682,19 @@ function Menus.start()
 	end
 
 	-- Forge (the Smith's shop) ------------------------------------------------------------
-	-- One row per upgrade: level, what it does and the price of the next level.
-	local shop, shopBody = modal("shop_title", 420)
+	-- One row per upgrade: level, what it does, what the next level changes (now -> next) and the
+	-- price of the next level with a coin.
+	local EFFECT_KEYS = {
+		power = { "upgrade_effect_power", "upgrade_effect_power_max" },
+		pouch = { "upgrade_effect_pouch", "upgrade_effect_pouch_max" },
+		health = { "upgrade_effect_health", "upgrade_effect_health_max" },
+		regen = { "upgrade_effect_regen", "upgrade_effect_regen_max" },
+		crit = { "upgrade_effect_crit", "upgrade_effect_crit_max" },
+	}
+	local function effectNumber(value: number): string
+		return (string.gsub(string.format("%.1f", value), "%.0$", ""))
+	end
+	local shop, shopBody = modal("shop_title", 500)
 	UiKit.create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, shopBody)
 	local upgradeRows = {}
 	local function upgradeLevel(stat: string): number
@@ -1695,7 +1707,7 @@ function Menus.start()
 		local upgrade = Balance.upgrades[stat]
 		local row = UiKit.create("Frame", {
 			LayoutOrder = order,
-			Size = UDim2.new(1, 0, 0, 62),
+			Size = UDim2.new(1, 0, 0, 78),
 			BackgroundColor3 = colors.panelLight,
 			BorderSizePixel = 0,
 		}, shopBody)
@@ -1707,12 +1719,20 @@ function Menus.start()
 			TextXAlignment = Enum.TextXAlignment.Left,
 		}, row)
 		UiKit.label({
-			Position = UDim2.fromOffset(12, 32),
-			Size = UDim2.new(1, -140, 0, 24),
+			Position = UDim2.fromOffset(12, 30),
+			Size = UDim2.new(1, -140, 0, 20),
 			Text = Strings.get(upgrade.descKey),
 			TextSize = 14,
 			TextWrapped = true,
 			TextColor3 = colors.muted,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+		local effect = UiKit.label({
+			Name = "Effect",
+			Position = UDim2.fromOffset(12, 51),
+			Size = UDim2.new(1, -140, 0, 20),
+			TextSize = 15,
+			TextColor3 = colors.xp,
 			TextXAlignment = Enum.TextXAlignment.Left,
 		}, row)
 		local button = UiKit.button({
@@ -1723,7 +1743,19 @@ function Menus.start()
 		}, row, function()
 			upgradeStaff:FireServer(stat)
 		end)
-		upgradeRows[stat] = { name = name, button = button }
+		-- A gold coin before the price, like the one on the player card.
+		UiKit.create("UIPadding", { PaddingLeft = UDim.new(0, 22) }, button)
+		local coin = UiKit.create("Frame", {
+			Name = "Coin",
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, -12, 0.5, 0),
+			Size = UDim2.fromOffset(16, 16),
+			BackgroundColor3 = colors.coin,
+			BorderSizePixel = 0,
+		}, button)
+		UiKit.corner(coin, 8)
+		UiKit.create("UIStroke", { Color = Color3.fromRGB(170, 110, 20), Thickness = 2 }, coin)
+		upgradeRows[stat] = { name = name, button = button, effect = effect, coin = coin }
 	end
 
 	local function refreshShop()
@@ -1733,6 +1765,16 @@ function Menus.start()
 			local level = upgradeLevel(stat)
 			view.name.Text = Strings.get(upgrade.nameKey) .. "  " .. Strings.get("upgrade_level", level, upgrade.maxLevel)
 			local cost = Progression.upgradeCost(stat, level)
+			local now, nextValue = Stats.upgradeEffect({
+				xp = Attrs.get("XP", 0),
+				staffUpgrade = Attrs.get("StaffTier", 0),
+				upgrades = Attrs.pairs("Upgrades"),
+			}, stat)
+			local keys = EFFECT_KEYS[stat]
+			view.effect.Text = if nextValue
+				then Strings.get(keys[1], effectNumber(now), effectNumber(nextValue))
+				else Strings.get(keys[2], effectNumber(now))
+			view.coin.Visible = cost ~= nil
 			if not cost then
 				view.button.Text = Strings.get("upgrade_max")
 				view.button.BackgroundColor3 = colors.panel

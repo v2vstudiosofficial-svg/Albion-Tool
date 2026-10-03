@@ -3336,6 +3336,8 @@ test("forge opens from the server with every upgrade, buys, and closes when walk
 		local level = if stat == "power" then 3 elseif stat == "pouch" then 2 else 0
 		assert(shownText(Strings.get(upgrade.nameKey) .. "  " .. Strings.get("upgrade_level", level, upgrade.maxLevel)), stat .. " row")
 	end
+	assert(shownText(Strings.get("upgrade_effect_power", "30", "40")), "what the next power level gives (now -> next)")
+	assert(shownText(Strings.get("upgrade_effect_crit", "0", "1.5")), "lucky hits with one decimal")
 	click(findButton(Strings.get("hud_coins", Progression.upgradeCost("pouch", 2))))
 	eq(sent("BuyUpgrade", function(args)
 		return args[1] == "pouch"

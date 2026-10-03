@@ -95,4 +95,24 @@ function Stats.of(input: Input): PlayerStats
 	}
 end
 
+-- What one forge upgrade gives this player now and after one more level, in the units the forge
+-- shows: power, health and lucky-hit chance as a percentage, the pouch in crystals, healing per
+-- second. The second value is nil at the top level.
+function Stats.upgradeEffect(input: Input, stat: string): (number, number?)
+	local spec = Balance.upgrades[stat]
+	local level = if stat == "power" then math.clamp(input.staffUpgrade or 0, 0, spec.maxLevel) else upgrade(input, stat)
+	local function valueAt(count: number): number
+		if stat == "pouch" then
+			local changed = table.clone(input)
+			changed.upgrades = table.clone(input.upgrades or {})
+			changed.upgrades.pouch = count
+			return Stats.of(changed).pouchCapacity
+		elseif stat == "regen" then
+			return spec.perLevel * count
+		end
+		return math.floor(spec.perLevel * count * 1000 + 0.5) / 10 -- a percentage, to one decimal
+	end
+	return valueAt(level), if level < spec.maxLevel then valueAt(level + 1) else nil
+end
+
 return Stats

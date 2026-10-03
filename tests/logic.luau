@@ -1010,6 +1010,23 @@ test("pouch: crystals up to capacity, lantern turns them into coins one to one",
 	eq(Profile.depositCrystals(p), 0, "empty pouch gives nothing")
 end)
 
+test("stats: the forge shows each upgrade's effect now and after one more level", function()
+	local fresh = { xp = 0, staffUpgrade = 0 }
+	local now, nextValue = Stats.upgradeEffect(fresh, "power")
+	eq(now, 0)
+	eq(nextValue, Balance.upgrades.power.perLevel * 100, "the first power level, in percent")
+	now, nextValue = Stats.upgradeEffect(fresh, "pouch")
+	eq(now, Balance.pouch.baseCapacity, "the pouch in crystals")
+	eq(nextValue, Balance.pouch.baseCapacity + Balance.upgrades.pouch.perLevel)
+	now, nextValue = Stats.upgradeEffect({ xp = 0, staffUpgrade = 0, upgrades = { crit = 2 } }, "crit")
+	eq(now, Balance.upgrades.crit.perLevel * 200, "lucky hits in percent, to one decimal")
+	eq(nextValue, Balance.upgrades.crit.perLevel * 300)
+	now, nextValue = Stats.upgradeEffect({ xp = 0, staffUpgrade = 0, upgrades = { regen = 1 } }, "regen")
+	eq(now, Balance.upgrades.regen.perLevel, "healing per second")
+	now, nextValue = Stats.upgradeEffect({ xp = 0, staffUpgrade = Balance.upgrades.power.maxLevel }, "power")
+	eq(nextValue, nil, "nothing after the top level")
+end)
+
 test("stats: upgrades and skill cards change the right numbers, within their caps", function()
 	local base = Stats.of({ xp = 0, staffUpgrade = 0 })
 	eq(base.damageMultiplier, 1)
