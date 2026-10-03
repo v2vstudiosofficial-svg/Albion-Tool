@@ -238,6 +238,20 @@ function SettingsMenu.build(body: Frame, send: (any) -> ()): () -> ()
 			Audio.play("ui")
 		end)
 	end
+	-- A small star marks the preset Auto would pick on this device.
+	local star = UiKit.label({
+		Name = "Recommended",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -4, 0, 4),
+		Size = UDim2.fromOffset(18, 18),
+		BackgroundColor3 = colors.accent,
+		BackgroundTransparency = 0,
+		Text = Strings.get("settings_recommended"),
+		TextSize = 12,
+		TextColor3 = colors.panel,
+		ZIndex = 3,
+	}, presetButtons[SettingsData.resolveQuality("auto", UiKit.isTouch())])
+	UiKit.corner(star, 9)
 	qualityNote = UiKit.label({
 		Position = UDim2.fromOffset(0, 42),
 		Size = UDim2.new(1, 0, 0, 20),

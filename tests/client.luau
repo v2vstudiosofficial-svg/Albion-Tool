@@ -1455,6 +1455,8 @@ test("settings window: pages, presets, single options make it Custom, reset, not
 	click(findButton(Strings.get("menu_settings")))
 	assert(shownText(Strings.get("settings_reset")), "window open")
 	assert(shownText(Strings.get("settings_auto_note", Strings.get(({ medium = "opt_medium", high = "opt_high" })[device]))), "Auto says what it picked")
+	local recommended = findButton(Strings.get(({ medium = "opt_medium", high = "opt_high" })[device])):FindFirstChild("Recommended")
+	assert(recommended and isShown(recommended), "a star on the preset this device should use")
 	for _, key in { "set_detail", "set_shadows", "set_effects", "set_bloom", "set_atmosphere", "set_fov" } do
 		assert(shownText(Strings.get(key)), "graphics row " .. key)
 	end

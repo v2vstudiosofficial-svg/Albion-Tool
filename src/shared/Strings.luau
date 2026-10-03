@@ -690,6 +690,7 @@ local texts = {
 	settings_cat_interface = "Interface",
 	settings_reset = "Reset this page",
 	settings_saved = "✓ Saved",
+	settings_recommended = "★",
 	icon_cat_graphics = "🎨",
 	icon_cat_audio = "🔊",
 	icon_cat_gameplay = "🎮",
