@@ -1403,6 +1403,20 @@ test("settings window: pages, presets, single options make it Custom, reset, not
 	-- Music has its own volume; every row and page has an icon; "Saved" once the server keeps it.
 	assert(shownText(Strings.get("icon_cat_audio")) and shownText(Strings.get("icon_set_music")), "page and row icons")
 	advance(2)
+	-- A saved effects volume plays a sample at the new level.
+	local Sounds = H.loadModule("src/shared/Sounds.luau")
+	local samples = 0
+	H.localSound = function(sound)
+		if sound.SoundId == Sounds.pickup.id then
+			samples += 1
+		end
+	end
+	click(rowButton(settingsRow("set_sfx"), "-"))
+	setAttributes({ Pref_sfx = 90 })
+	eq(samples, 1, "a sample at the new effects volume")
+	H.localSound = nil
+	setAttributes({ Pref_sfx = 100 })
+	advance(2)
 	click(rowButton(settingsRow("set_music"), "-"))
 	eq(lastChanges().music, 90, "music volume")
 	assert(not shownText(Strings.get("settings_saved")), "not saved until the server keeps it")

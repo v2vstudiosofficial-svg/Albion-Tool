@@ -53,6 +53,8 @@ local ICON_KEYS = {
 local ROW_HEIGHT = 58
 local SAVED_SECONDS = 1.6 -- how long "Saved" stays after the server keeps a change
 local SAVE_WAIT = 3 -- a change the server has not echoed by then is not confirmed any more
+-- A saved volume plays a sample at its new level (music can already be heard).
+local VOLUME_SAMPLES = { master = "pickup", sfx = "pickup" }
 
 type Row = { key: string, refresh: () -> () }
 
@@ -315,7 +317,11 @@ function SettingsMenu.build(body: Frame, send: (any) -> ()): () -> ()
 			return
 		end
 		local row = containers[pendingKey]
+		local sample = VOLUME_SAMPLES[pendingKey]
 		pendingKey = nil
+		if sample then
+			Audio.play(sample)
+		end
 		if row then
 			row.BackgroundColor3 = colors.accent:Lerp(colors.panelLight, 0.55)
 			UiKit.tween(row, 0.5, { BackgroundColor3 = colors.panelLight })

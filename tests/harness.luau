@@ -181,7 +181,12 @@ roblox.implementMethod("Workspace", "GetServerTimeNow", function()
 	return Harness.EPOCH + Harness.now()
 end)
 roblox.implementMethod("DataStoreOptions", "SetExperimentalFeatures", function() end)
-roblox.implementMethod("SoundService", "PlayLocalSound", function() end)
+-- Tests may set Harness.localSound(sound) to see which sounds play on the local screen.
+roblox.implementMethod("SoundService", "PlayLocalSound", function(_self, sound)
+	if Harness.localSound then
+		Harness.localSound(sound)
+	end
+end)
 roblox.implementMethod("Sound", "Play", function() end)
 roblox.implementMethod("Sound", "Stop", function(sound)
 	sound.Playing = false
