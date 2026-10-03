@@ -1238,6 +1238,26 @@ function Hud.start()
 		table.insert(edges, edge)
 	end
 	local liveArrows = 0
+	-- The hero flashes red for a moment on every hit (creatures flash white when struck). One
+	-- highlight is reused; a new character gets a new one.
+	local hurtFlash: Highlight? = nil
+	local function flashHero(character: Model)
+		local flash = hurtFlash
+		local onHero = flash ~= nil and pcall(function()
+			assert((flash :: Highlight).Parent == character)
+		end)
+		if not flash or not onHero then
+			flash = Instance.new("Highlight")
+			flash.Name = "HurtFlash"
+			flash.FillColor = Color3.fromRGB(255, 60, 60)
+			flash.OutlineTransparency = 1
+			flash.DepthMode = Enum.HighlightDepthMode.Occluded
+			flash.Parent = character
+			hurtFlash = flash
+		end
+		flash.FillTransparency = 0.35
+		UiKit.tween(flash, 0.3, { FillTransparency = 1 })
+	end
 	Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(kind, from, sourceKind, sourceLevel)
 		if kind == "hurt" and typeof(sourceKind) == "string" and typeof(sourceLevel) == "number" then
 			lastHit = { kind = sourceKind, level = sourceLevel, at = os.clock() }
@@ -1245,6 +1265,9 @@ function Hud.start()
 		local camera = workspace.CurrentCamera
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if kind == "hurt" and character then
+			flashHero(character)
+		end
 		if kind ~= "hurt" or typeof(from) ~= "Vector3" or not camera or not root or liveArrows >= MAX_HURT_ARROWS then
 			return
 		end

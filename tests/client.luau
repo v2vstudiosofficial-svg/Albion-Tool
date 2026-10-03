@@ -2021,6 +2021,8 @@ test("player card: health bar, red screen edges on a hit and at low health, toas
 	advance(0.05)
 	local arrow = edges:FindFirstChild("HurtArrow")
 	assert(arrow and isShown(arrow), "a chevron points at the hit")
+	local flash = hero.Character:FindFirstChild("HurtFlash")
+	assert(flash and flash:IsA("Highlight") and flash.FillColor.G < 0.5, "the hero flashes red")
 	assert(math.abs(arrow.Rotation - 90) < 1, "to the right of the view: " .. arrow.Rotation)
 	assert(arrow.Position.X.Offset > 0 and math.abs(arrow.Position.Y.Offset) < 1, "on the hero's right")
 	remotes.Fx.OnClientEvent:Fire("hurt", root.Position - right * 10)
@@ -2032,6 +2034,13 @@ test("player card: health bar, red screen edges on a hit and at low health, toas
 		end
 	end
 	eq(behind, 1, "a hit from the left points left")
+	local flashes = 0
+	for _, child in hero.Character:GetChildren() do
+		if child.Name == "HurtFlash" then
+			flashes += 1
+		end
+	end
+	eq(flashes, 1, "one flash reused for every hit")
 	remotes.Fx.OnClientEvent:Fire("hurt", "x")
 	advance(1.2)
 	eq(edges:FindFirstChild("HurtArrow"), nil, "chevrons fade away")
@@ -2366,6 +2375,19 @@ test("prompts: drawn in the game's look with the key, action and target", functi
 	assert(shownText("E"), "the key to press")
 	Prompts.hide(prompt)
 	assert(not shownText("Test Friend"), "gone when Roblox hides it")
+	-- The pill goes under the thing while the hero stands beyond it (higher on screen), so it
+	-- never covers the hero; with the hero in front it floats over the thing.
+	local eye = H.read(workspace.CurrentCamera, "CFrame").Position
+	local heroAt = H.read(hero.Character.HumanoidRootPart, "Position")
+	local towardCamera = ((eye - heroAt) * Vector3.new(1, 0, 1)).Unit
+	part.Position = heroAt + towardCamera * 6
+	Prompts.show(prompt, Enum.ProximityPromptInputType.Keyboard)
+	assert(playerGui.LvPrompt.StudsOffset.Y < 0, "the hero beyond it: the pill goes under it")
+	Prompts.hide(prompt)
+	part.Position = heroAt - towardCamera * 6
+	Prompts.show(prompt, Enum.ProximityPromptInputType.Keyboard)
+	assert(playerGui.LvPrompt.StudsOffset.Y > 0, "the hero in front of it: over it")
+	Prompts.hide(prompt)
 	local tag = Instance.new("BillboardGui")
 	tag.Name = "NameTag"
 	tag.Parent = part
