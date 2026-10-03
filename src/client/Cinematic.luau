@@ -203,10 +203,13 @@ function Cinematic.start()
 			task.wait(0.1)
 		end
 		currentScene = sceneId
-		-- A quest's closing scene opens on the first villager in it (the giver) cheering.
+		-- A quest's closing scene opens on the first villager in it (the giver) cheering; their name
+		-- in the caption carries a heart too, for when they are far away.
+		local cheering: string? = nil
 		if string.sub(sceneId, -4) == "_end" then
 			for _, line in scene.lines do
 				if WorldData.npcs[line.speaker] then
+					cheering = line.speaker
 					World.cheer(line.speaker)
 					break
 				end
@@ -241,6 +244,11 @@ function Cinematic.start()
 			local speaker = StoryData.speakers[line.speaker]
 			local npc = WorldData.npcs[line.speaker]
 			nameLabel.Text = if speaker and speaker.nameKey then Strings.get(speaker.nameKey) else ""
+			if line.speaker == cheering then
+				nameLabel.Text ..= "  " .. Strings.get("icon_heart")
+				UiKit.pop(nameLabel)
+				cheering = nil
+			end
 			local color = if speaker then UiKit.rgb(speaker.color) else colors.text
 			nameLabel.TextColor3 = color
 			textLabel.TextColor3 = if line.speaker == "Narrator" then colors.muted else colors.text

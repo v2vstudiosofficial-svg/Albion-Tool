@@ -1303,7 +1303,7 @@ test("story scenes: typewriter caption, tap to continue, Skip, soft captions, qu
 	remotes.Cinematic.OnClientEvent:Fire("first_purify_end")
 	advance(0.3)
 	assert(not barsVisible(), "no bars in a soft scene")
-	assert(shownText(Strings.get("npc_elder_name")), "soft scene caption")
+	assert(shownText(Strings.get("npc_elder_name") .. "  " .. Strings.get("icon_heart")), "soft scene caption (a closing scene: the giver's name has a heart)")
 	advance(12)
 	assert(not shownText(Strings.get("cinematic_skip")), "a soft scene ends on its own")
 	-- Scenes that arrive while one is playing wait their turn; unknown scenes are ignored.
@@ -2156,6 +2156,7 @@ test("a quest's closing scene opens on its giver cheering with floating hearts",
 	remotes.Cinematic.OnClientEvent:Fire("marsh_scouts_end")
 	advance(1)
 	assert(hearts() >= 2, "hearts over Ranger Wren, who gave the quest: " .. hearts())
+	assert(shownText(Strings.get("npc_wren_name") .. "  " .. Strings.get("icon_heart")), "and a heart by her name in the caption")
 	eq(workspace.LanternValleyMap.Village.Elder.Head:FindFirstChild("Heart"), nil, "not over the Elder")
 	advance(3)
 	eq(hearts(), 0, "the hearts float away")
