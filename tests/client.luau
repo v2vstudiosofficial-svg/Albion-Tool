@@ -1181,6 +1181,14 @@ test("story scenes: typewriter caption, tap to continue, Skip, soft captions, qu
 	assert(not shownText(Strings.get("cinematic_skip")), "no Skip button between scenes")
 	-- A full scene: letterbox, speaker name, the caption types itself, taps go on.
 	local scene = StoryData.scenes.first_purify
+	-- The speaker babbles in little pops at their own pitch while the caption types.
+	local Sounds = H.loadModule("src/shared/Sounds.luau")
+	local pops = {}
+	H.localSound = function(sound)
+		if sound.SoundId == Sounds.voice.id then
+			table.insert(pops, sound.PlaybackSpeed)
+		end
+	end
 	remotes.Cinematic.OnClientEvent:Fire("first_purify")
 	advance(0.25)
 	assert(shownText(Strings.get("npc_elder_name")), "speaker name shown")
@@ -1200,6 +1208,12 @@ test("story scenes: typewriter caption, tap to continue, Skip, soft captions, qu
 	assert(not shownText(first) or #first < 40, "typing takes time")
 	advance(6)
 	assert(shownText(first), "the whole line appears")
+	H.localSound = nil
+	local voice = StoryData.speakers[scene.lines[1].speaker].voice
+	assert(#pops >= 3, "voice pops while typing: " .. #pops)
+	for _, pitch in pops do
+		assert(math.abs(pitch - voice) <= voice * 0.1, "at the speaker's pitch: " .. pitch)
+	end
 	assert(shownText(Strings.get("cinematic_continue")), "tap hint")
 	tapCaption()
 	advance(0.1)

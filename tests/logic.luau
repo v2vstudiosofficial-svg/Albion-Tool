@@ -2215,6 +2215,7 @@ test("story: every scene is well formed, every quest has its scene, blessing and
 	assert(spoken >= 50, "a real story, not a stub: " .. spoken .. " lines")
 	for name, speaker in StoryData.speakers do
 		assert(speaker.nameKey == nil or Strings.has(speaker.nameKey), name .. " name")
+		assert(name == "Narrator" or (speaker.voice and speaker.voice >= 0.5 and speaker.voice <= 2), name .. " has a voice")
 		assert(name == "Narrator" or name == "Hero" or WorldData.npcs[name], name .. " is a real NPC")
 	end
 	assert(StoryData.scenes.prologue, "the story starts somewhere")

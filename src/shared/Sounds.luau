@@ -21,6 +21,7 @@ return {
 	bossCharge = { id = "rbxassetid://9113973128", volume = 0.6 }, -- Creature Growls Lion
 	ui = { id = "rbxassetid://15675059323", volume = 0.4 }, -- Roblox UI Bright Click
 	uiClose = { id = "rbxassetid://15675059323", volume = 0.3, pitch = 0.8 }, -- the same click, lower and softer
+	voice = { id = "rbxassetid://15675055424", volume = 0.22 }, -- Roblox UI Cute Pop (story captions, pitched per speaker)
 	-- Looped backgrounds (Audio.setAmbient).
 	rain = { id = "rbxassetid://9112854469", volume = 0.35 }, -- Rain On Water 1 (61 s loop)
 	wind = { id = "rbxassetid://9114057128", volume = 0.4 }, -- Desert Wind Whistley Light Gusts 2 (92 s)

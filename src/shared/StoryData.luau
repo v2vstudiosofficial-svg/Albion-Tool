@@ -7,13 +7,15 @@
 -- Every scene may be skipped with the Skip button; nothing in a scene is needed for progress.
 local StoryData = {}
 
+-- `voice`: the pitch of the little pops that babble along while a caption types (the narrator
+-- is silent).
 StoryData.speakers = {
-	Elder = { nameKey = "npc_elder_name", color = { 150, 175, 255 } },
-	Smith = { nameKey = "npc_smith_name", color = { 255, 170, 100 } },
-	Wren = { nameKey = "npc_wren_name", color = { 140, 220, 150 } },
+	Elder = { nameKey = "npc_elder_name", color = { 150, 175, 255 }, voice = 1.15 },
+	Smith = { nameKey = "npc_smith_name", color = { 255, 170, 100 }, voice = 0.75 },
+	Wren = { nameKey = "npc_wren_name", color = { 140, 220, 150 }, voice = 1.3 },
 	Narrator = { nameKey = nil, color = { 235, 225, 200 } },
-	Kael = { nameKey = "npc_kael_name", color = { 255, 215, 120 } },
-	Hero = { nameKey = "story_hero_name", color = { 255, 225, 120 } },
+	Kael = { nameKey = "npc_kael_name", color = { 255, 215, 120 }, voice = 0.9 },
+	Hero = { nameKey = "story_hero_name", color = { 255, 225, 120 }, voice = 1.05 },
 }
 
 StoryData.scenes = {

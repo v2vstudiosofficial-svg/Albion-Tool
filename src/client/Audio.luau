@@ -59,7 +59,8 @@ local function soundFor(key: string): Sound?
 	return sound
 end
 
-function Audio.play(key: string)
+-- `pitch` (PlaybackSpeed) replaces the entry's own for this play.
+function Audio.play(key: string, pitch: number?)
 	if not enabled then
 		return
 	end
@@ -67,6 +68,9 @@ function Audio.play(key: string)
 	if sound then
 		sound.Volume = Sounds[key].volume * masterVolume * sfxVolume
 		shape(sound, Sounds[key])
+		if pitch then
+			sound.PlaybackSpeed = pitch
+		end
 		SoundService:PlayLocalSound(sound)
 	end
 end

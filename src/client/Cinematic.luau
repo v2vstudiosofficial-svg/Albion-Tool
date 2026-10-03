@@ -22,6 +22,8 @@ local player = Players.LocalPlayer
 local colors = UiKit.colors
 
 local CHARS_PER_SECOND = 48
+local VOICE_EVERY = 3 -- letters per voice pop while a caption types
+local VOICE_WOBBLE = 0.08 -- random pitch spread, so the babble does not sound like a metronome
 local BAR_HEIGHT = 0.11 -- letterbox bar, as a fraction of the screen
 local SOFT_MIN_SECONDS = 3.2
 local SOFT_SECONDS_PER_CHAR = 0.045
@@ -246,6 +248,7 @@ function Cinematic.start()
 			advanceRequested = false
 			hint.Visible = false
 			local shown = 0
+			local voiced = 0
 			local started = os.clock()
 			while shown < #text and not skipRequested do
 				if advanceRequested then
@@ -255,8 +258,9 @@ function Cinematic.start()
 					shown = math.min(#text, math.floor((os.clock() - started) * CHARS_PER_SECOND) + 1)
 				end
 				textLabel.Text = string.sub(text, 1, shown)
-				if shown % 4 == 0 then
-					Audio.play("ui")
+				if speaker and speaker.voice and shown - voiced >= VOICE_EVERY and shown < #text then
+					voiced = shown
+					Audio.play("voice", speaker.voice * (1 + (math.random() * 2 - 1) * VOICE_WOBBLE))
 				end
 				task.wait(0.03)
 			end
