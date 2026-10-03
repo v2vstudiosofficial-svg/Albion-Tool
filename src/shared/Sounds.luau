@@ -26,6 +26,8 @@ return {
 	wind = { id = "rbxassetid://9114057128", volume = 0.4 }, -- Desert Wind Whistley Light Gusts 2 (92 s)
 	thunder = { id = "rbxassetid://9120016488", volume = 0.55 }, -- Thunder Distant Boom Thud Rapid Hits 6
 	heartbeat = { id = "rbxassetid://9043365727", volume = 0.35 }, -- HEARTBEAT 01 96BPM (APM, 60 s loop)
+	birds = { id = "rbxassetid://9116970949", volume = 0.22 }, -- Morning Forest Birds 6 (75 s)
+	crickets = { id = "rbxassetid://9112765304", volume = 0.18 }, -- Crickets Night 1 (56 s loop)
 	-- Music by place (MusicLogic.theme), APM tracks, looped; one plays at a time.
 	music = {
 		volume = 0.25,

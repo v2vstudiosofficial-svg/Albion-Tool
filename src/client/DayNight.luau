@@ -38,6 +38,9 @@ local NIGHT = {
 
 local DayNight = {}
 
+-- How much it is night right now (0-1), for other effects (client/Ambience).
+DayNight.night = 0
+
 local lights: { PointLight } = {}
 
 -- Sets the sky for one clock time; returns how much it is night (0-1).
@@ -114,6 +117,7 @@ function DayNight.start()
 		sinceUpdate = 0
 		local clock = if Settings.get("dayNight") then DayCycle.clock(workspace:GetServerTimeNow()) else FIXED_CLOCK
 		local night = DayNight.apply(clock)
+		DayNight.night = night
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if root then

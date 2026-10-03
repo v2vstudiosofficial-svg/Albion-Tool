@@ -1935,10 +1935,20 @@ test("ambience: particles match the place (pollen, leaves, snow...), marsh showe
 	teleport(vec(WorldData.spawn, 3))
 	advance(0.6)
 	assert(emitter.Rate > 0, "village pollen")
+	-- Birdsong in the village by day (the afternoon with Day & night off), crickets after dark.
+	setAttributes({ Pref_dayNight = false })
+	advance(2)
+	local SoundService = H.game:GetService("SoundService")
+	local birds = SoundService:FindFirstChild("Ambient_birds")
+	assert(birds and birds.Playing and birds.Volume > 0, "birds by day")
+	local crickets = SoundService:FindFirstChild("Ambient_crickets")
+	assert(not (crickets and crickets.Playing), "no crickets by day")
+	setAttributes({ Pref_dayNight = true })
 	local villageColor = emitter.Color.Keypoints[1].Value
 	teleport(vec(WorldData.areas.peaks.center, 3))
-	advance(0.6)
+	advance(2)
 	assert(emitter.Rate > 0 and emitter.Color.Keypoints[1].Value ~= villageColor, "snow on the peaks looks different")
+	assert(not birds.Playing, "no birds on the peaks")
 	-- Rain in the marsh now and then, the same for everyone (server time).
 	local DayCycle = H.loadModule("src/shared/DayCycle.luau")
 	local rain = workspace.LvRain.Rain

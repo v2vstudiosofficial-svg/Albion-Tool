@@ -3,7 +3,8 @@
 -- in the marsh, snow on the peaks, embers at the citadel and violet motes in the Shadow Tower.
 -- Now and then it rains in the marsh (DayCycle.rain, the same for everyone), with little splashes
 -- at your feet and the sound of rain on water (and lightning while it pours); between the showers a blizzard blows over the peaks
--- (more snow, driven sideways, a whistling wind and a cold white haze). Only this screen draws them; "Low" effects turns them off.
+-- (more snow, driven sideways, a whistling wind and a cold white haze). The village and the woods
+-- have birdsong by day and crickets by night. Only this screen draws them; "Low" effects turns them off.
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +15,7 @@ local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local MusicLogic = require(Shared:WaitForChild("MusicLogic"))
 local SettingsData = require(Shared:WaitForChild("SettingsData"))
 local Audio = require(script.Parent.Audio)
+local DayNight = require(script.Parent.DayNight)
 local Graphics = require(script.Parent.Graphics)
 local Settings = require(script.Parent.Settings)
 
@@ -30,6 +32,8 @@ local STORM_HAZE = Color3.fromRGB(225, 235, 250)
 local FOG_STEP = 0.1 -- per update, so the haze takes a few seconds to come and go
 -- While it pours in the marsh, lightning strikes every LIGHTNING_EVERY seconds of server time (the
 -- same moment for everyone): the sky flickers (not with Screen flashes off) and thunder follows.
+-- Places with birds by day and crickets by night.
+local LIVELY = { village = true, wilds = true }
 local LIGHTNING_EVERY = 17
 local THUNDER_DELAY = 1.4
 local FLICKER = { { 0, 0.35 }, { 0.08, 0 }, { 0.16, 0.25 }, { 0.3, 0.1 }, { 0.45, 0 } } -- (seconds, brightness)
@@ -157,6 +161,9 @@ function Ambience.start()
 		-- Weather is heard even with Low effects (only the drops and flakes are not drawn).
 		Audio.setAmbient("rain", wet)
 		Audio.setAmbient("wind", storm)
+		local night = if LIVELY[theme] then DayNight.night else nil
+		Audio.setAmbient("birds", if night then 1 - night else 0)
+		Audio.setAmbient("crickets", night or 0)
 		local strike = math.floor(now / LIGHTNING_EVERY)
 		if wet >= 1 and lastStrike and strike ~= lastStrike then
 			if Settings.get("flashes") then
