@@ -129,6 +129,12 @@ H.services.UserInputService = {
 	GetFocusedTextBox = function()
 		return nil
 	end,
+	-- Tests switch it to a gamepad and fire LastInputTypeChanged.
+	lastInputType = if touchMode then Enum.UserInputType.Touch else Enum.UserInputType.Keyboard,
+	GetLastInputType = function(self)
+		return self.lastInputType
+	end,
+	LastInputTypeChanged = H.Signal.new(),
 	InputChanged = H.Signal.new(),
 	InputBegan = H.Signal.new(),
 	InputEnded = H.Signal.new(),
@@ -2136,7 +2142,7 @@ test("idle camera: left alone it slowly circles the hero, any input brings it st
 	assert(turned() < 1, "back to the usual view on any input: " .. turned())
 end)
 
-test("a finished quest: its giver hops and hearts float up over their head", function()
+test("a quest's closing scene opens on its giver cheering with floating hearts", function()
 	local head = workspace.LanternValleyMap.Village.Wren.Head
 	local function hearts(): number
 		local count = 0
@@ -2147,12 +2153,14 @@ test("a finished quest: its giver hops and hearts float up over their head", fun
 		end
 		return count
 	end
-	remotes.Fx.OnClientEvent:Fire("questComplete", "marsh_scouts")
-	advance(0.8)
+	remotes.Cinematic.OnClientEvent:Fire("marsh_scouts_end")
+	advance(1)
 	assert(hearts() >= 2, "hearts over Ranger Wren, who gave the quest: " .. hearts())
 	eq(workspace.LanternValleyMap.Village.Elder.Head:FindFirstChild("Heart"), nil, "not over the Elder")
 	advance(3)
 	eq(hearts(), 0, "the hearts float away")
+	click(findButton(Strings.get("cinematic_skip")))
+	advance(1)
 end)
 
 test("glow pond: rings spread on the water and frogs croak nearby, nothing far away", function()
@@ -2482,6 +2490,29 @@ test("menu windows: hotkeys, key caps, a dim backdrop that closes them, blur exc
 	local bagButton = findButton(Strings.get("menu_bag"))
 	eq(bagButton:FindFirstChild("KeyCap") ~= nil, not touchMode, "key cap only on a keyboard")
 	eq(findButton(Strings.get("menu_settings")):FindFirstChild("KeyCap"), nil, "Settings has no hotkey")
+	-- With a gamepad in hand: no keyboard letters on the menus, the ability badges name pad buttons.
+	if not touchMode then
+		local UIS = H.services.UserInputService
+		local function hints(): { string }
+			local found = {}
+			for _, descendant in playerGui:GetDescendants() do
+				if descendant.Name == "KeyHint" and isShown(descendant) then
+					table.insert(found, descendant.Text)
+				end
+			end
+			table.sort(found)
+			return found
+		end
+		eq(table.concat(hints(), ","), "F,Q,R", "keyboard hints on the ability bar")
+		UIS.lastInputType = Enum.UserInputType.Gamepad1
+		UIS.LastInputTypeChanged:Fire(Enum.UserInputType.Gamepad1)
+		eq(bagButton.KeyCap.Visible, false, "no keyboard letters with a gamepad")
+		eq(table.concat(hints(), ","), "LB,RB,RT", "pad buttons on the ability bar")
+		UIS.lastInputType = Enum.UserInputType.Keyboard
+		UIS.LastInputTypeChanged:Fire(Enum.UserInputType.Keyboard)
+		eq(bagButton.KeyCap.Visible, true, "letters again on the keyboard")
+		eq(table.concat(hints(), ","), "F,Q,R")
+	end
 	H.services.UserInputService.InputBegan:Fire({ KeyCode = Enum.KeyCode.B }, false)
 	advance(0.4)
 	assert(windowOpen("bag_title"), "B opens the bag")

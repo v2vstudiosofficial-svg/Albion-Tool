@@ -207,6 +207,12 @@ function Menus.start()
 					TextColor3 = colors.text,
 				}, button)
 				UiKit.corner(cap, 6)
+				-- Menus have no gamepad buttons of their own: no keyboard letters while one is in use.
+				local function showCap()
+					cap.Visible = not UiKit.usingGamepad()
+				end
+				UiKit.onInputKindChanged(showCap)
+				showCap()
 			end
 		end
 		return button

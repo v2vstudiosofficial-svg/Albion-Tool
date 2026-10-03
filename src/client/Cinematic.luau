@@ -203,6 +203,15 @@ function Cinematic.start()
 			task.wait(0.1)
 		end
 		currentScene = sceneId
+		-- A quest's closing scene opens on the first villager in it (the giver) cheering.
+		if string.sub(sceneId, -4) == "_end" then
+			for _, line in scene.lines do
+				if WorldData.npcs[line.speaker] then
+					World.cheer(line.speaker)
+					break
+				end
+			end
+		end
 		-- With "camera scenes" turned off in Settings every scene is just captions.
 		local full = scene.mode == "full" and Settings.get("cinematics")
 		local humanoid = select(1, localRoot())

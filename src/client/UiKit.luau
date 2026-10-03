@@ -205,6 +205,36 @@ function UiKit.setPulse(button: GuiObject, on: boolean)
 	end
 end
 
+-- Gamepad or not: the key hints on screen follow the controller the player last touched.
+local inputKindListeners: { () -> () } = {}
+local wasGamepad: boolean? = nil
+
+function UiKit.usingGamepad(): boolean
+	local ok, gamepad = pcall(function()
+		return string.sub(UserInputService:GetLastInputType().Name, 1, 7) == "Gamepad"
+	end)
+	return ok and gamepad == true
+end
+
+-- Runs `listener` whenever the player switches between a gamepad and anything else.
+function UiKit.onInputKindChanged(listener: () -> ())
+	table.insert(inputKindListeners, listener)
+	if wasGamepad == nil then
+		wasGamepad = UiKit.usingGamepad()
+		pcall(function()
+			UserInputService.LastInputTypeChanged:Connect(function()
+				local now = UiKit.usingGamepad()
+				if now ~= wasGamepad then
+					wasGamepad = now
+					for _, each in inputKindListeners do
+						each()
+					end
+				end
+			end)
+		end)
+	end
+end
+
 function UiKit.pop(instance: GuiObject)
 	local scale = instance:FindFirstChildOfClass("UIScale") or UiKit.create("UIScale", nil, instance)
 	scale.Scale = 0.6

@@ -111,12 +111,13 @@ function Controls.heal()
 	requestAbility:FireServer("heal")
 end
 
-type Ability = { id: string, action: string, keys: { Enum.KeyCode }, key: string, nameKey: string, descKey: string, icon: string, color: Color3, cast: () -> () }
+-- `key` is the keyboard hint, `pad` the gamepad one (shown while a gamepad is in use).
+type Ability = { id: string, action: string, keys: { Enum.KeyCode }, key: string, pad: string, nameKey: string, descKey: string, icon: string, color: Color3, cast: () -> () }
 
 local ABILITIES: { Ability } = {
-	{ id = "wave", action = "LvLightWave", keys = { Enum.KeyCode.Q, Enum.KeyCode.ButtonL2, Enum.KeyCode.ButtonR2 }, key = "Q", nameKey = "wave_button", descKey = "ability_wave_desc", icon = "✨", color = colors.xp, cast = Controls.wave },
-	{ id = "star", action = "LvStarFall", keys = { Enum.KeyCode.R, Enum.KeyCode.ButtonR1 }, key = "R", nameKey = "ability_star", descKey = "ability_star_desc", icon = "⭐", color = Color3.fromRGB(255, 205, 90), cast = Controls.star },
-	{ id = "heal", action = "LvLanternGlow", keys = { Enum.KeyCode.F, Enum.KeyCode.ButtonL1 }, key = "F", nameKey = "ability_heal", descKey = "ability_heal_desc", icon = "💚", color = Color3.fromRGB(120, 230, 150), cast = Controls.heal },
+	{ id = "wave", action = "LvLightWave", keys = { Enum.KeyCode.Q, Enum.KeyCode.ButtonL2, Enum.KeyCode.ButtonR2 }, key = "Q", pad = "RT", nameKey = "wave_button", descKey = "ability_wave_desc", icon = "✨", color = colors.xp, cast = Controls.wave },
+	{ id = "star", action = "LvStarFall", keys = { Enum.KeyCode.R, Enum.KeyCode.ButtonR1 }, key = "R", pad = "RB", nameKey = "ability_star", descKey = "ability_star_desc", icon = "⭐", color = Color3.fromRGB(255, 205, 90), cast = Controls.star },
+	{ id = "heal", action = "LvLanternGlow", keys = { Enum.KeyCode.F, Enum.KeyCode.ButtonL1 }, key = "F", pad = "LB", nameKey = "ability_heal", descKey = "ability_heal_desc", icon = "💚", color = Color3.fromRGB(120, 230, 150), cast = Controls.heal },
 }
 
 -- Ability visuals ---------------------------------------------------------------------------
@@ -171,7 +172,14 @@ local function decorate(button: GuiObject, ability: Ability, showKey: boolean): 
 		}, face)
 		UiKit.corner(badge, 6)
 		UiKit.create("UIStroke", { Color = ability.color, Thickness = 1.5 }, badge)
-		UiKit.label({ Size = UDim2.fromScale(1, 1), Text = ability.key, TextSize = 15, ZIndex = z + 6 }, badge)
+		local keyLabel = UiKit.label({ Name = "KeyHint", Size = UDim2.fromScale(1, 1), TextSize = 15, ZIndex = z + 6 }, badge)
+		local function showHint()
+			local gamepad = UiKit.usingGamepad()
+			keyLabel.Text = if gamepad then ability.pad else ability.key
+			badge.Size = UDim2.fromOffset(if gamepad then 30 else 24, 24)
+		end
+		UiKit.onInputKindChanged(showHint)
+		showHint()
 		UiKit.label({
 			AnchorPoint = Vector2.new(0.5, 0),
 			Position = UDim2.new(0.5, 0, 1, 4),
@@ -239,7 +247,7 @@ local function attachTooltip(button: GuiButton, ability: Ability, bar: GuiObject
 	local desc = UiKit.label({ Position = UDim2.fromOffset(12, 28), Size = UDim2.new(1, -24, 0, 34), TextSize = 14, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, tip)
 	local footer = UiKit.label({ Position = UDim2.fromOffset(12, 62), Size = UDim2.new(1, -24, 0, 16), TextSize = 13, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Left }, tip)
 	button.MouseEnter:Connect(function()
-		title.Text = Strings.get(ability.nameKey) .. "  [" .. ability.key .. "]"
+		title.Text = Strings.get(ability.nameKey) .. "  [" .. (if UiKit.usingGamepad() then ability.pad else ability.key) .. "]"
 		desc.Text = Strings.get(ability.descKey)
 		local need = unlockLevel(ability.id)
 		footer.Text = if Attrs.get("Level", 1) < need then Strings.get("ability_unlocks", need) else Strings.get("ability_cooldown", math.ceil(cooldownOf(ability.id)))
