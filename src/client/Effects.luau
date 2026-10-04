@@ -1070,6 +1070,12 @@ local function onTelegraph(position: Vector3, radius: number, duration: number)
 	Debris:AddItem(outline, duration + 0.05)
 	Debris:AddItem(fill, duration + 0.05)
 	Audio.play("slamWarn")
+	-- A hero standing in the circle is told to move (heroes who stood still fell to every boss).
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root and ((root.Position - position) * Vector3.new(1, 0, 1)).Magnitude <= radius + 0.5 then
+		Effects.popup(root.Position + Vector3.new(0, 3, 0), Strings.get("hint_dodge"), WARN_COLOR, 30)
+	end
 end
 
 local function onSlam(position: Vector3, radius: number)

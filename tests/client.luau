@@ -639,6 +639,23 @@ test("a cancelled boss attack clears its warning circles", function()
 	advance(0.1)
 	eq(#workspace.ClientFx:GetChildren(), before - 4, "warnings removed")
 	advance(2)
+	-- A hero inside a warning circle is told to move; one outside is left alone.
+	local function moveShown(): boolean
+		for _, label in workspace.ClientFx:GetDescendants() do
+			if label:IsA("TextLabel") and label.Text == Strings.get("hint_dodge") then
+				return true
+			end
+		end
+		return false
+	end
+	local heroAt = H.read(hero.Character.HumanoidRootPart, "Position")
+	remotes.Fx.OnClientEvent:Fire("telegraph", heroAt + Vector3.new(20, -3, 0), 7, 1.4)
+	advance(0.1)
+	assert(not moveShown(), "a circle elsewhere: nothing to say")
+	remotes.Fx.OnClientEvent:Fire("telegraph", heroAt + Vector3.new(3, -3, 0), 7, 1.4)
+	advance(0.1)
+	assert(moveShown(), "inside a circle: Move!")
+	advance(2)
 end)
 
 test("creature decorations animate near the camera and stop with Low effects", function()

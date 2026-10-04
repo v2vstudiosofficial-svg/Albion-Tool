@@ -372,6 +372,7 @@ local texts = {
 	banner_quest_complete = "Quest complete!",
 	banner_boss = "%s woke up!",
 	banner_boss_sub = "Dodge the red rings, slip through the gap in the orbs!",
+	hint_dodge = "Move!",
 	banner_boss_down = "%s purified!",
 	banner_boss_down_sub = "Another Legendary Shadow is at peace!",
 	notice_respawn = "You respawned in the village. Nothing was lost!",
