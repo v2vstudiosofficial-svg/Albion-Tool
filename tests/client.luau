@@ -2669,6 +2669,28 @@ test("the Great Lantern's Rebirth prompt shows only to players who can rebirth",
 	setAttributes({ Level = heroLevel })
 end)
 
+test("full creature labels never pile up: the nearer one stays full, others turn slim", function()
+	local spot = vec(WorldData.spawn, 3)
+	teleport(spot)
+	local near = addEnemy("Rockling", spot + Vector3.new(6, 0, 0))
+	local far = addEnemy("Rockling", spot + Vector3.new(14, 0, 0))
+	advance(0.5)
+	local function nameShown(model): boolean
+		return model.Body.LvLabel.NameLabel.Visible
+	end
+	assert(nameShown(near) and nameShown(far), "apart on screen: both full")
+	fakeViewportPoint = Vector3.new(640, 300, 20) -- both labels land on the same spot
+	advance(0.3)
+	assert(nameShown(near), "the nearer creature keeps its full label")
+	eq(nameShown(far), false, "the one behind it turns into a slim bar")
+	fakeViewportPoint = nil
+	advance(0.3)
+	assert(nameShown(far), "apart again: full again")
+	near:Destroy()
+	far:Destroy()
+	advance(0.3)
+end)
+
 test("the quest panel turns see-through while a creature label is behind it", function()
 	local panel = playerGui.Hud:FindFirstChild("QuestPanel", true)
 	assert(isShown(panel), "quest panel up")

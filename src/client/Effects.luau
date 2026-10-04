@@ -50,18 +50,54 @@ local TARGET_COLOR = Color3.fromRGB(255, 240, 190)
 local Effects = {}
 
 local folder: Folder
--- Each creature label's "should it show right now" check, run a few times a second.
-local labelChecks: { [BillboardGui]: () -> () } = {}
+-- Each creature label's "should it show right now" check, run a few times a second. A shown label
+-- returns how it would like to look (full: name and numbers; or a slim bar), its place in the
+-- queue (lower goes first) and where it sits in the world.
+type LabelWish = { wantsFull: boolean, priority: number, at: Vector3, setFull: (boolean) -> () }
+local labelChecks: { [BillboardGui]: () -> LabelWish? } = {}
+-- A full label's size on screen: another full label closer than this either way would overlap it.
+local FULL_LABEL_SIZE = Vector2.new(160, 42)
 
--- A creature that is gone takes its label with it (even if its Destroying never fired).
 local function checkLabels()
+	local wishes: { LabelWish } = {}
 	for gui, check in labelChecks do
-		if not pcall(check) then
+		local ok, wish = pcall(check)
+		if not ok then
+			-- A creature that is gone takes its label with it (even if its Destroying never fired).
 			labelChecks[gui] = nil
 			pcall(function()
 				gui:Destroy()
 			end)
+		elseif wish then
+			table.insert(wishes, wish)
 		end
+	end
+	-- Full labels must not pile up (a waiting rift wave, a pack in a fight): in queue order, a label
+	-- whose spot on screen is already taken by a full one shows as a slim bar instead.
+	table.sort(wishes, function(a, b)
+		return a.priority < b.priority
+	end)
+	local camera = workspace.CurrentCamera
+	local taken: { Vector3 } = {}
+	for _, wish in wishes do
+		local full = wish.wantsFull
+		if full and camera then
+			local projected, point = pcall(function()
+				return camera:WorldToViewportPoint(wish.at)
+			end)
+			if projected and point.Z > 0 then
+				for _, other in taken do
+					if math.abs(other.X - point.X) < FULL_LABEL_SIZE.X and math.abs(other.Y - point.Y) < FULL_LABEL_SIZE.Y then
+						full = false
+						break
+					end
+				end
+				if full then
+					table.insert(taken, point)
+				end
+			end
+		end
+		wish.setFull(full)
 	end
 end
 local shakeUntil, shakeStrength, shakeLength = 0, 0, 1
@@ -1269,18 +1305,10 @@ local function attachEnemyUi(model: Instance)
 		end
 	end)
 	-- Shown near the player (measured from the hero, not the camera, which sits far behind).
-	-- In a fight creatures crowd together and full labels piled up unreadably: there only the hero's
-	-- target and elites keep name and numbers, the others a slim health bar.
+	-- In a fight only the hero's target and elites ask for the full label (others a slim health bar),
+	-- and checkLabels keeps full labels from piling up on screen.
 	local shownFull = true
-	labelChecks[gui] = function()
-		if not model.Parent then
-			error("gone")
-		end
-		local character = player.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		local range = if fighting then LABEL_DISTANCE_FIGHT else LABEL_DISTANCE_CALM
-		gui.Enabled = Settings.get("enemyBars") == true and root ~= nil and model:GetAttribute("Alive") ~= false and (body.Position - root.Position).Magnitude <= range
-		local full = not fighting or model == targetModel or model:GetAttribute("Elite") == true
+	local function setFull(full: boolean)
 		if full ~= shownFull then
 			shownFull = full
 			nameLabel.Visible = full
@@ -1288,6 +1316,27 @@ local function attachEnemyUi(model: Instance)
 			bar.Position = if full then UDim2.fromOffset(8, 21) else UDim2.new(0.15, 0, 0, 30)
 			bar.Size = if full then UDim2.new(1, -16, 0, 17) else UDim2.new(0.7, 0, 0, 7)
 		end
+	end
+	labelChecks[gui] = function(): LabelWish?
+		if not model.Parent then
+			error("gone")
+		end
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local range = if fighting then LABEL_DISTANCE_FIGHT else LABEL_DISTANCE_CALM
+		local distance = if root then (body.Position - root.Position).Magnitude else math.huge
+		gui.Enabled = Settings.get("enemyBars") == true and root ~= nil and model:GetAttribute("Alive") ~= false and distance <= range
+		if not gui.Enabled then
+			return nil
+		end
+		local isTarget = model == targetModel
+		local elite = model:GetAttribute("Elite") == true
+		return {
+			wantsFull = not fighting or isTarget or elite,
+			priority = if isTarget then -1e6 elseif elite then distance - 1e5 else distance,
+			at = body.Position + gui.StudsOffset,
+			setFull = setFull,
+		}
 	end
 	labelChecks[gui]()
 	model.Destroying:Connect(function()
