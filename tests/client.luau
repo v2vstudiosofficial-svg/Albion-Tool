@@ -1419,6 +1419,36 @@ test("hit squash: a creature is marked squashing for a moment, then springs back
 	assert((body.Size - size).Magnitude < 0.001, "back to its size")
 end)
 
+test("damage numbers: quick hits on one creature add up, a critical hit keeps its own number", function()
+	local victim = enemies[1]
+	local function numbers(text: string): number
+		local count = 0
+		for _, label in workspace.ClientFx:GetDescendants() do
+			if label:IsA("TextLabel") and label.Text == text then
+				count += 1
+			end
+		end
+		return count
+	end
+	setAttributes({ Pref_damageNumbers = true })
+	advance(1.5) -- earlier numbers are gone
+	local at = H.read(victim.Body, "Position")
+	for _ = 1, 3 do
+		remotes.Fx.OnClientEvent:Fire("hit", victim, at, 100, false)
+		advance(0.05)
+	end
+	eq(numbers("300"), 1, "three quick hits: one 300")
+	eq(numbers("100"), 0, "not three 100s")
+	remotes.Fx.OnClientEvent:Fire("hit", victim, at, 250, true)
+	advance(0.05)
+	eq(numbers("250!"), 1, "a critical hit keeps its own number")
+	advance(0.5)
+	remotes.Fx.OnClientEvent:Fire("hit", victim, at, 100, false)
+	advance(0.05)
+	eq(numbers("100"), 1, "a later hit starts a new number")
+	advance(1.5)
+end)
+
 test("sounds heard often wobble in pitch, so repeats do not sound mechanical", function()
 	local Sounds = H.loadModule("src/shared/Sounds.luau")
 	local victim = enemies[1]

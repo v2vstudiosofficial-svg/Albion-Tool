@@ -151,7 +151,7 @@ function Effects.burst(position: Vector3, color: Color3, count: number, speed: n
 	Debris:AddItem(anchor, 1.2)
 end
 
-function Effects.popup(position: Vector3, text: string, color: Color3, textSize: number?)
+function Effects.popup(position: Vector3, text: string, color: Color3, textSize: number?): TextLabel
 	local anchor = newPart({ Size = Vector3.new(0.2, 0.2, 0.2), Position = position, Transparency = 1 })
 	local gui = UiKit.create("BillboardGui", {
 		Size = UDim2.fromOffset(200, 44),
@@ -179,6 +179,7 @@ function Effects.popup(position: Vector3, text: string, color: Color3, textSize:
 		UiKit.tween(label, 0.5, { TextTransparency = 1, TextStrokeTransparency = 1 })
 	end)
 	Debris:AddItem(anchor, 1)
+	return label
 end
 
 function Effects.shake(strength: number, seconds: number)
@@ -576,6 +577,14 @@ function Effects.attack(attacker: Player?, weaponId: string, slot: number, origi
 end
 
 local CRIT_COLOR = Color3.fromRGB(255, 120, 90)
+-- Plain hits on one creature while its last number is this young add up in that number (floating
+-- weapons and the main weapon striking together piled numbers into an unreadable blob). Critical
+-- hits keep their own number.
+local HIT_MERGE_SECONDS = 0.3
+-- A creature's next numbers take turns in three lanes side by side (a share of the number's own
+-- width on screen, so it holds at any distance), so the ones still rising do not cover each other.
+local HIT_LANE_SHIFT = Vector2.new(0.28, 0.3)
+local hitNumbers: { [Instance]: { label: TextLabel, total: number, born: number, lane: number } } = setmetatable({}, { __mode = "k" }) :: any
 local CRYSTAL_COLOR = Color3.fromRGB(150, 210, 255)
 
 local function onHit(model: Model?, position: Vector3, amount: number, crit: boolean?)
@@ -601,7 +610,20 @@ local function onHit(model: Model?, position: Vector3, amount: number, crit: boo
 	if crit then
 		Effects.popup(position + jitter, Format.short(amount) .. "!", CRIT_COLOR, 34)
 	else
-		Effects.popup(position + jitter, Format.short(amount), GOLD, 24)
+		local recent = if model then hitNumbers[model] else nil
+		if recent and os.clock() - recent.born < HIT_MERGE_SECONDS and recent.label.Parent then
+			recent.total += amount
+			recent.label.Text = Format.short(recent.total)
+			UiKit.pop(recent.label)
+		else
+			local lane = if recent then (recent.lane + 1) % 3 else 0
+			local label = Effects.popup(position + jitter * 0.3, Format.short(amount), GOLD, 24)
+			local gui = label.Parent :: BillboardGui
+			gui.SizeOffset = Vector2.new((lane - 1) * HIT_LANE_SHIFT.X, (lane % 2) * HIT_LANE_SHIFT.Y)
+			if model then
+				hitNumbers[model] = { label = label, total = amount, born = os.clock(), lane = lane }
+			end
+		end
 	end
 	Audio.play("hit")
 end
