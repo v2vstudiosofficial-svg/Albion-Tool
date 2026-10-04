@@ -496,7 +496,8 @@ function Hud.start()
 	local function placeToasts()
 		local camera = workspace.CurrentCamera
 		toastsOnTop = isTouch or (camera ~= nil and camera.ViewportSize.Y < TOASTS_UNDER_PANEL_FROM)
-		toasts.Position = UDim2.new(0.5, 0, 0, if toastsOnTop then 0 else 134)
+		-- Never over the boss bar: its health is what matters in that fight.
+		toasts.Position = UDim2.new(0.5, 0, 0, if toastsOnTop and bossPanel.Visible then 54 elseif toastsOnTop then 0 else 134)
 	end
 	placeToasts()
 	if workspace.CurrentCamera then
@@ -1444,6 +1445,7 @@ function Hud.start()
 			if bossFighting ~= show then
 				bossFighting = show
 				refreshQuest()
+				placeToasts()
 			end
 			if show and boss then
 				local hp = boss:GetAttribute("Hp") or 0

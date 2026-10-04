@@ -3689,6 +3689,21 @@ test("boss bar and intro banner near an engaged boss", function()
 	local rays = playerGui.Hud:FindFirstChild("Rays", true)
 	assert(not isShown(rays), "a boss arriving is a danger banner: no celebration rays")
 	assert(shownText(Strings.get("enemy_label", 1, wardenName)), "boss bar name with level")
+	-- Toasts keep off the boss bar (on short screens they otherwise sit at the very top).
+	remotes.Notice.OnClientEvent:Fire("notice_pouch_full")
+	advance(0.1)
+	local toastLabel = nil
+	for _, label in playerGui.Hud:GetDescendants() do
+		if label:IsA("TextLabel") and string.find(label.Text, Strings.get("notice_pouch_full"), 1, true) then
+			toastLabel = label
+		end
+	end
+	assert(toastLabel, "a toast")
+	local toastList = toastLabel:FindFirstAncestorWhichIsA("Frame")
+	while toastList and not toastList:FindFirstChildOfClass("UIListLayout") do
+		toastList = toastList.Parent
+	end
+	assert(toastList and toastList.Position.Y.Offset >= 54, "toasts under the boss bar")
 	local maxHp = boss:GetAttribute("MaxHp")
 	boss:SetAttribute("Hp", maxHp * 0.5)
 	advance(0.6)
