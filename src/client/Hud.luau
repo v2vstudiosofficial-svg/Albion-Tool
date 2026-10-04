@@ -739,6 +739,10 @@ function Hud.start()
 				text = Strings.get("goal_all")
 			end
 		end
+		-- A full pouch comes first (the guide arrow turns home): say why, or the arrow seems wrong.
+		if title ~= "" and (player:GetAttribute("Crystals") or 0) >= Attrs.stats().pouchCapacity then
+			text = Strings.get("quest_pouch_full")
+		end
 		questTitle.Text = title
 		questLabel.Text = text
 		local goal = player:GetAttribute("QuestGoal") or 0
@@ -991,7 +995,7 @@ function Hud.start()
 	for _, name in { "XP", "Coins", "Crystals", "Upgrades" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshStats)
 	end
-	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState", "TowerFloor" } do
+	for _, name in { "QuestState", "QuestId", "QuestCount", "QuestGoal", "QuestNeedLevel", "DataState", "TowerFloor", "Crystals", "Upgrades" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshQuest)
 	end
 	local questMovedAt = os.clock()

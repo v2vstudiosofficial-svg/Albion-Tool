@@ -2251,6 +2251,13 @@ test("quest panel: a counting quest fills a bar that turns green when done", fun
 	assert(panel:FindFirstChild("Pulse"), "a stuck quest beats")
 	setAttributes({ QuestCount = 2 })
 	eq(panel:FindFirstChild("Pulse"), nil, "progress calms it")
+	-- A full pouch: the panel says to go home (the guide arrow points there too).
+	local crystals = hero:GetAttribute("Crystals")
+	setAttributes({ Crystals = 9999 })
+	assert(shownText(Strings.get("quest_pouch_full")), "pouch full on the panel")
+	setAttributes({ Crystals = 0 })
+	assert(not shownText(Strings.get("quest_pouch_full")), "gone once handed in")
+	setAttributes({ Crystals = crystals })
 	setAttributes(saved)
 end)
 

@@ -251,6 +251,7 @@ local texts = {
 	quest_begin_again_title = "Begin Again",
 	quest_begin_again_objective = "Rebirth at the Great Lantern: %d/%d",
 	quest_talk_to = "Talk to %s",
+	quest_pouch_full = "Pouch full - bring crystals to the Great Lantern",
 	quest_need_level = "Purify creatures to reach Level %d, then return to Elder Nora",
 	goal_title = "Story complete! Next goal",
 	goal_level = "Reach Level %d (now %d)",
