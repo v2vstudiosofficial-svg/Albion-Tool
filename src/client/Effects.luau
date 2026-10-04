@@ -198,6 +198,15 @@ local function flash(model: Instance, color: Color3, seconds: number, startTrans
 	if not model or not model.Parent then
 		return
 	end
+	-- Roblox draws one Highlight per model (the newest): a boss or the hero's target flashes in its
+	-- own outline, or a new flash on every hit would hide that outline for good.
+	local outline = model:FindFirstChild("BossOutline") or model:FindFirstChild("TargetMark")
+	if outline and outline:IsA("Highlight") then
+		outline.FillColor = color
+		outline.FillTransparency = startTransparency
+		UiKit.tween(outline, seconds, { FillTransparency = 1 })
+		return
+	end
 	local highlight = Instance.new("Highlight")
 	highlight.FillColor = color
 	highlight.OutlineTransparency = 1
@@ -496,7 +505,8 @@ local function markTarget(aim: Vector3)
 		targetMark = mark
 	end
 	mark.OutlineTransparency = 0.1
-	mark.Parent = best
+	-- A boss keeps its own outline (only one Highlight per model shows); the ring marks it.
+	mark.Parent = if best:GetAttribute("Boss") then nil else best
 	targetModel = best
 	local stroke = ringUnder(best:FindFirstChild("Body") :: BasePart)
 	stroke.Transparency = 0.15

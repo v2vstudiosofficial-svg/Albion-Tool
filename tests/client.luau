@@ -2938,6 +2938,14 @@ test("the creature the hero's weapon is hitting wears an outline and a ground ri
 	remotes.Fx.OnClientEvent:Fire("attack", hero, "staff", 0, spot, H.read(first.Body, "Position"), 0)
 	local mark = first:FindFirstChild("TargetMark")
 	assert(mark and mark.OutlineTransparency < 0.5, "the chosen creature is outlined")
+	remotes.Fx.OnClientEvent:Fire("hit", first, H.read(first.Body, "Position"), 10, false)
+	local highlights = 0
+	for _, child in first:GetChildren() do
+		if child:IsA("Highlight") then
+			highlights += 1
+		end
+	end
+	eq(highlights, 1, "a hit flashes in the outline (Roblox shows one Highlight per model)")
 	local ring = workspace.ClientFx:FindFirstChild("TargetRing")
 	assert(ring, "a ring on the ground under it")
 	local function under(model): boolean
@@ -3656,6 +3664,18 @@ end)
 test("boss bar and intro banner near an engaged boss", function()
 	local boss = enemies[wardenIndex]
 	assert(boss:FindFirstChild("BossOutline"), "the boss wears an outline (pale bosses vanished on snow)")
+	-- Roblox shows one Highlight per model: hits and targeting must not stack more on the boss.
+	local bossAt = H.read(boss.Body, "Position")
+	remotes.Fx.OnClientEvent:Fire("attack", hero, "staff", 0, bossAt + Vector3.new(0, 0, 8), bossAt, 0)
+	remotes.Fx.OnClientEvent:Fire("hit", boss, bossAt, 10, false)
+	advance(0.05)
+	local highlights = 0
+	for _, child in boss:GetChildren() do
+		if child:IsA("Highlight") then
+			highlights += 1
+		end
+	end
+	eq(highlights, 1, "only the boss outline, which flashes on hits")
 	H.setAttribute(boss, "Engaged", true)
 	teleport(vec(WorldData.areas.arena.center, 3) + Vector3.new(0, 0, 10))
 	advance(0.6)
