@@ -229,7 +229,8 @@ function Minimap.start()
 		others[index] = dot(map, 5, Color3.fromRGB(240, 240, 240), 3)
 		others[index].Name = "OtherPlayer"
 	end
-	local goalDot = dot(map, 8, Color3.fromRGB(255, 200, 60), 4)
+	-- Over the N (a goal due north sits on the top edge, right where the N is).
+	local goalDot = dot(map, 8, Color3.fromRGB(255, 200, 60), 7)
 	goalDot.Name = "Goal"
 	UiKit.create("UIStroke", { Color = Color3.fromRGB(120, 70, 20), Thickness = 1.5 }, goalDot)
 	local arrow = UiKit.label({

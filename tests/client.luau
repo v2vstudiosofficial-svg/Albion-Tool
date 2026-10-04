@@ -2691,6 +2691,8 @@ test("mini map: north mark, the place you are in, a title when you enter a new p
 	teleport(vec(WorldData.spawn, 3))
 	advance(0.5)
 	assert(shownText(Strings.get("map_north")), "N on the map")
+	local mapFrame = playerGui.Minimap:FindFirstChild("Map", true)
+	assert(mapFrame.Goal.ZIndex > mapFrame.North.ZIndex, "a goal due north shows over the N")
 	assert(shownText(Strings.get("place_village")), "the village named under the map")
 	teleport(vec(WorldData.areas.peaks.center, 3))
 	advance(0.3)
