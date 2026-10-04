@@ -1,8 +1,9 @@
 -- The chest opening moment: the screen dims, the chest drops in and shakes, the lid bursts open
 -- in a flash with light rays behind it, then each reward pops in one after another (coins count
 -- up, a new weapon glows in its rarity color). Rarer chests send motes of light rising behind
--- the open chest. "Continue" closes it. Purely cosmetic: the reward
--- itself was already granted by the server (Fx "chestOpened").
+-- the open chest. "Continue" closes it; a brand new weapon also shows its icon and offers "Equip"
+-- (the server checks the equip as always). The reward itself was already granted by the server
+-- (Fx "chestOpened").
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -19,6 +20,7 @@ local UiKit = require(script.Parent.UiKit)
 
 local player = Players.LocalPlayer
 local colors = UiKit.colors
+local equipWeapon = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("EquipWeapon") :: RemoteEvent
 
 local RAY_BARS = 8
 local LINE_GAP = 0.35 -- seconds between reward lines
@@ -92,6 +94,23 @@ local function build()
 	}, stage, function()
 		ChestReveal.close()
 	end)
+	-- Beside Continue for a brand new weapon: wear it right away (slot 0 = the main weapon).
+	local equipButton = UiKit.button({
+		Name = "Equip",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, -105, 1, 0),
+		Size = UDim2.fromOffset(200, 50),
+		Text = Strings.get("chest_equip"),
+		BackgroundColor3 = colors.good,
+		Visible = false,
+	}, stage, function()
+		local weaponId = parts.offeredWeapon
+		if weaponId then
+			equipWeapon:FireServer(0, weaponId)
+			Audio.play("ui")
+		end
+		ChestReveal.close()
+	end)
 
 	parts = {
 		dim = dim,
@@ -108,6 +127,8 @@ local function build()
 		flash = flash,
 		list = list,
 		continueButton = continueButton,
+		equipButton = equipButton,
+		offeredWeapon = nil :: string?,
 	}
 	local moteDue = 0
 	RunService.Heartbeat:Connect(function(dt)
@@ -189,6 +210,8 @@ function ChestReveal.show(reward: { [string]: any })
 	end
 	parts.flash.BackgroundTransparency = 1
 	parts.continueButton.Visible = false
+	parts.equipButton.Visible = false
+	parts.offeredWeapon = nil
 	moteRate = 0
 	moteColor = color:Lerp(Color3.new(1, 1, 1), 0.75)
 	gui.Enabled = true
@@ -271,7 +294,11 @@ function ChestReveal.show(reward: { [string]: any })
 			elseif reward.duplicate then
 				label = line(Strings.get("chest_reward_duplicate", Strings.get(weapon.nameKey)), colors.muted)
 			else
+				line(Strings.get(weapon.iconKey), rarityColor, 40).Name = "WeaponIcon"
 				label = line(Strings.get("chest_reward_weapon", Strings.get(weapon.nameKey), Strings.get(rarity.nameKey)), rarityColor, 26)
+				if player:GetAttribute("Weapon") ~= reward.weapon then
+					parts.offeredWeapon = reward.weapon
+				end
 				-- A brand new weapon reads in its rarity color with a deep outline of the same hue.
 				label.TextStrokeColor3 = darker(rarityColor, 0.3)
 				label.TextStrokeTransparency = 0
@@ -289,8 +316,14 @@ function ChestReveal.show(reward: { [string]: any })
 		end
 		task.wait(LINE_GAP)
 		if alive() then
+			local offer = parts.offeredWeapon ~= nil
+			parts.continueButton.Position = UDim2.new(0.5, if offer then 105 else 0, 1, 0)
 			parts.continueButton.Visible = true
+			parts.equipButton.Visible = offer
 			UiKit.pop(parts.continueButton)
+			if offer then
+				UiKit.pop(parts.equipButton)
+			end
 		end
 	end)
 end

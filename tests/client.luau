@@ -1040,6 +1040,19 @@ test("chests menu: slots by level, one unlock at a time, timers, open and reward
 	assert(shownText(Strings.get("chest_reward_weapon", Strings.get("weapon_bow_name"), Strings.get("rarity_common"))), "weapon line")
 	assert(shownText(Strings.get("chest_reward_slot", Strings.get("bag_main"), 3, 1)), "slot line")
 	assert(shownText(Strings.get("chest_continue")), "Continue at the end")
+	assert(shownText(Strings.get("icon_weapon_bow")), "the new weapon's icon")
+	local function equipsSent(): number
+		return sent("EquipWeapon", function(args)
+			return args[1] == 0 and args[2] == "bow"
+		end)
+	end
+	local equipsBefore = equipsSent()
+	click(findButton(Strings.get("chest_equip")))
+	eq(equipsSent() - equipsBefore, 1, "Equip wears the new weapon")
+	assert(not playerGui.ChestReveal.Enabled, "and closes the moment")
+	remotes.Fx.OnClientEvent:Fire("chestOpened", { chest = "wood", coins = 33, slots = {} })
+	advance(4)
+	assert(not shownText(Strings.get("chest_equip")), "no weapon: no Equip")
 	local function motes(): number
 		local count = 0
 		for _, descendant in playerGui.ChestReveal:GetDescendants() do

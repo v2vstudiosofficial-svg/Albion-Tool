@@ -433,6 +433,7 @@ local texts = {
 	upgrade_effect_regen_max = "Heals %s per second",
 	upgrade_effect_crit_max = "Lucky hits %s%%",
 	upgrade_level = "Lv %d/%d",
+	chest_equip = "Equip now",
 	log_reward_chest = "%s +%s",
 	upgrade_max = "MAX",
 
