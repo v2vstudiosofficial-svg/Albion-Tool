@@ -1833,6 +1833,11 @@ test("edge arrow: points from the screen edge toward an off-screen goal", functi
 	-- A panel along the top: the arrow for a goal straight ahead stops below it.
 	x, y, angle = MapLogic.edgeArrow(500, -900, true, 1000, 600, 40, 150)
 	eq(y, 150, "below the top panel")
+	-- Side columns: the arrow stays inside them, and a point within a column counts as off screen.
+	x = MapLogic.edgeArrow(-500, 300, true, 1000, 600, 40, nil, 160)
+	eq(x, 160, "inside the left column")
+	x = MapLogic.edgeArrow(100, 300, true, 1000, 600, 40, nil, 160)
+	eq(x, 160, "a point under the left column gets the arrow too")
 	eq(angle, -90)
 	x, y = MapLogic.edgeArrow(500, 1500, true, 1000, 600, 40, 150)
 	eq(y, 560, "the bottom edge keeps the usual margin")

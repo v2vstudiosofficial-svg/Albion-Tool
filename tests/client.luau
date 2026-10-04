@@ -3147,6 +3147,7 @@ test("menu windows: hotkeys, key caps, a dim backdrop that closes them, blur exc
 	end
 	local blur = workspace.CurrentCamera:FindFirstChild("LvMenuBlur")
 	assert(blur, "blur effect exists")
+	assert(backdrop.Position.Y.Offset < 0 and backdrop.Size.Y.Offset >= -backdrop.Position.Y.Offset, "the dim reaches over the top bar")
 	local bagButton = findButton(Strings.get("menu_bag"))
 	eq(bagButton:FindFirstChild("KeyCap") ~= nil, not touchMode, "key cap only on a keyboard")
 	eq(findButton(Strings.get("menu_settings")):FindFirstChild("KeyCap"), nil, "Settings has no hotkey")

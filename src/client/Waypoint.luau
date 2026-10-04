@@ -21,6 +21,8 @@ local HIDE_DISTANCE = 9
 local EDGE_MARGIN = 60 -- pixels between the edge arrow and the screen border
 -- Along the top the arrow stays below the HUD's quest panel (12 + 72 tall) so it never covers it.
 local EDGE_TOP = 12 + 72 + 34
+-- Along the sides it stays inside the HUD's button columns (it sat on the Emotes and Players buttons).
+local EDGE_SIDE_SHARE = 0.16
 
 local Waypoint = {}
 
@@ -204,7 +206,8 @@ function Waypoint.start()
 			return GuiService:GetGuiInset()
 		end)
 		local top = (if insetOk then inset.Y else 0) + EDGE_TOP * UiKit.screenScale()
-		local x, y, angle = MapLogic.edgeArrow(point.X, point.Y, inFront, viewport.X, viewport.Y, EDGE_MARGIN, top)
+		local side = math.max(EDGE_MARGIN, viewport.X * EDGE_SIDE_SHARE)
+		local x, y, angle = MapLogic.edgeArrow(point.X, point.Y, inFront, viewport.X, viewport.Y, EDGE_MARGIN, top, side)
 		edge.Visible = x ~= nil
 		-- One sign at a time: near the screen border both the marker and the arrow showed a distance.
 		diamond.Visible = x == nil

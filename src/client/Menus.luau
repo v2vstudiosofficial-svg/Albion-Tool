@@ -62,7 +62,9 @@ function Menus.start()
 	-- graphics changes can be judged while the window is open.
 	local backdrop = UiKit.create("TextButton", {
 		Name = "Backdrop",
-		Size = UDim2.fromScale(1, 1),
+		-- Up over the Roblox top bar too (the strip above the HUD stayed bright).
+		Position = UDim2.fromOffset(0, -80),
+		Size = UDim2.new(1, 0, 1, 80),
 		BackgroundColor3 = Color3.fromRGB(10, 8, 24),
 		BackgroundTransparency = 1,
 		Text = "",
