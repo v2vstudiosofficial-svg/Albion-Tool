@@ -232,6 +232,12 @@ test("props keep clear of the path and fight zones", function()
 		end
 	end
 	assert(checked >= 30, "forest props placed: " .. checked)
+	-- Thin lamp posts along the way out of the village never snag a walking hero.
+	for _, child in map.Village.Props:GetChildren() do
+		if string.match(child.Name, "^PathLampPost") then
+			eq(child.CanCollide, false, child.Name .. " does not block")
+		end
+	end
 	local arena = WorldData.areas.arena.center
 	for _, child in map.Ruins.Props:GetChildren() do
 		if string.match(child.Name, "^Rubble_") then

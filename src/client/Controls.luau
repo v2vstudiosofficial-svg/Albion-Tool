@@ -17,6 +17,7 @@ local Effects = require(script.Parent.Effects)
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
 local Cinematic = require(script.Parent.Cinematic)
+local Prompts = require(script.Parent.Prompts)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestWave = Remotes:WaitForChild("RequestWave") :: RemoteEvent
@@ -460,9 +461,12 @@ function Controls.start()
 		Visible = false,
 	}, gui)
 	local hintDone = false
+	-- Off while a prompt pill is up: on short screens the two sat on top of each other.
+	local hintWanted = false
 	local function refreshHint()
 		local onFirstQuest = Attrs.get("QuestId", "") == "first_purify" and Attrs.get("QuestState", "") == "active"
-		hint.Visible = onFirstQuest and not hintDone
+		hintWanted = onFirstQuest and not hintDone
+		hint.Visible = hintWanted and not Prompts.anyShown()
 		hint.Text = Strings.get("hint_auto")
 	end
 	for _, name in { "QuestId", "QuestState" } do
@@ -487,6 +491,7 @@ function Controls.start()
 				end
 				if ability.id == "wave" and not UiKit.isTouch() then
 					hint.Text = Strings.get("hint_wave_pc")
+					hintWanted = true
 					hint.Visible = true
 					task.delay(8, refreshHint)
 				end
@@ -505,6 +510,7 @@ function Controls.start()
 		end
 		local level = Attrs.get("Level", 1)
 		local inScene = Cinematic.blocking()
+		hint.Visible = hintWanted and not Prompts.anyShown()
 		for _, container in hideDuringScenes do
 			if container:IsA("ScreenGui") then
 				container.Enabled = not inScene

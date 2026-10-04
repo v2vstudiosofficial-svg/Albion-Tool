@@ -495,6 +495,26 @@ test("signposts: a ! over the Bounty Board with a bounty to claim and over the T
 	setAttributes({ Level = 1, TowerBest = 0, Bounties = "" })
 end)
 
+test("first quest hint: shown until the first purification, out of the way of a prompt pill", function()
+	local questId, questState = hero:GetAttribute("QuestId"), hero:GetAttribute("QuestState")
+	setAttributes({ QuestId = "first_purify", QuestState = "active" })
+	assert(shownText(Strings.get("hint_auto")), "the hint on the first quest")
+	local Prompts = H.loadModule("src/client/Prompts.luau")
+	local part = Instance.new("Part")
+	part.Parent = workspace
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Talk"
+	prompt.Parent = part
+	Prompts.show(prompt, Enum.ProximityPromptInputType.Keyboard)
+	advance(0.1)
+	assert(not shownText(Strings.get("hint_auto")), "hidden while a prompt pill is up")
+	Prompts.hide(prompt)
+	part:Destroy()
+	advance(0.1)
+	assert(shownText(Strings.get("hint_auto")), "back once it goes")
+	setAttributes({ QuestId = questId, QuestState = questState })
+end)
+
 test("server events render: rewards, notices, dialog, effects", function()
 	advance(2.5) -- let an earlier banner finish (banners hide toasts while they show)
 	remotes.RewardGranted.OnClientEvent:Fire("purify", 10, 5)
@@ -1193,6 +1213,15 @@ test("skill cards: open on a new offer, pick sends the card, later hides, button
 	assert(shownText(Strings.get("skill_coins_name")), "coin card")
 	setAttributes({ SkillOffer = "", PendingPicks = 0 })
 	assert(not shownText(Strings.get("skills_title")), "closed when nothing is left")
+	-- A level-up during a story scene: the cards wait until it ends.
+	remotes.Cinematic.OnClientEvent:Fire("first_purify")
+	advance(0.3)
+	setAttributes({ SkillOffer = "swift,sharp,wave", PendingPicks = 1 })
+	assert(not shownText(Strings.get("skills_title")), "not over the scene")
+	click(findButton(Strings.get("cinematic_skip")))
+	advance(1)
+	assert(shownText(Strings.get("skills_title")), "open once it ends")
+	setAttributes({ SkillOffer = "", PendingPicks = 0 })
 end)
 
 test("legends: silhouettes until purified; the waypoint picks a zone for the player's level", function()
@@ -1524,6 +1553,18 @@ test("story scenes: the talking NPC nods and the camera shot follows the speaker
 	advance(1)
 	local after = headHeight()
 	assert(math.abs(after - resting) < 0.2, "the head settles when the scene ends")
+	-- A hero pressed up against her steps back to a talking distance.
+	teleport(elder + usual.Unit * 0.8 + Vector3.new(0, 3, 0))
+	advance(0.5)
+	remotes.Cinematic.OnClientEvent:Fire("first_purify")
+	advance(0.3)
+	local root = hero.Character.HumanoidRootPart
+	local at = H.read(root, "CFrame")
+	local gap = (at.Position - elder) * Vector3.new(1, 0, 1)
+	assert(gap.Magnitude > 4 and gap.Magnitude < 5, "a step back: " .. gap.Magnitude)
+	-- (Facing is not checked: Lune builds CFrame.lookAt rotations differently from Roblox.)
+	click(findButton(Strings.get("cinematic_skip")))
+	advance(1)
 end)
 
 test("story journal: finished scenes can be replayed, the current one is marked, later ones hidden", function()
@@ -2841,13 +2882,22 @@ test("the quest panel turns see-through while a creature label is behind it", fu
 	assert(panel.BackgroundTransparency > 0.5, "holds a moment")
 	advance(1)
 	assert(panel.BackgroundTransparency < 0.2, "then solid again")
-	fakeScreenPoint = Vector3.new(700, 60, 20)
+	-- The guide marker counts too (it is drawn under the HUD like the labels).
+	local Waypoint = H.loadModule("src/client/Waypoint.luau")
+	local goal = Waypoint.goal()
+	assert(goal, "the guide shows a goal")
 	setAttributes({ Pref_enemyBars = false })
+	fakeScreenPoint = Vector3.new(700, 60, 20)
 	advance(0.5)
+	assert(panel.BackgroundTransparency > 0.5, "see-through with the guide marker behind it")
+	-- Standing at the goal (no marker) with labels hidden: nothing is behind it.
+	teleport(goal + Vector3.new(0, 3, 0))
+	advance(2)
 	assert(panel.BackgroundTransparency < 0.2, "hidden labels do not count")
 	setAttributes({ Pref_enemyBars = true })
 	fakeScreenPoint = nil
 	enemy:Destroy()
+	teleport(spot)
 	advance(1.5)
 end)
 

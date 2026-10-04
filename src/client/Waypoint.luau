@@ -132,6 +132,7 @@ function Waypoint.start()
 	anchor.Parent = workspace
 
 	local gui = UiKit.create("BillboardGui", {
+		Name = "WaypointMarker",
 		Size = UDim2.fromOffset(90, 80),
 		StudsOffset = Vector3.new(0, 7, 0),
 		AlwaysOnTop = true,

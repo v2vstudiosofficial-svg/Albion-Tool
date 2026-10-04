@@ -476,7 +476,8 @@ local function buildVillageProps(village: Instance)
 	for index, z in { -24, -42, -60 } do
 		local side = if index % 2 == 0 then -1 else 1
 		local base = Vector3.new(pathX(z) + side * 6, 0, z)
-		cylinder(props, "PathLampPost" .. index, 6, 0.4, base, COLOR.stoneDark)
+		-- Thin posts stopped a hero walking straight up from the plaza dead (like the trail's, no collision).
+		cylinder(props, "PathLampPost" .. index, 6, 0.4, base, COLOR.stoneDark, { CanCollide = false })
 		ballPart(props, "PathLamp" .. index, 1.3, base + Vector3.new(0, 6.5, 0), COLOR.lanternOff, {
 			Material = Enum.Material.Glass,
 			Transparency = 0.2,

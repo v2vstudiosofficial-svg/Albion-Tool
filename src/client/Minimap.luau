@@ -144,18 +144,21 @@ function Minimap.start()
 		{ dot = dot(map, 9, colors.accent, 2), point = WorldData.plaza },
 		{ dot = dot(map, 8, Color3.fromRGB(180, 120, 230), 2), point = WorldData.areas.tower.center },
 	}
-	-- North is always up; a small N on the top edge says so.
-	UiKit.label({
+	-- North is always up; a small N on the top edge says so (on a dark dot: zone labels pass under it).
+	local north = UiKit.label({
 		Name = "North",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 2),
-		Size = UDim2.fromOffset(16, 14),
+		Size = UDim2.fromOffset(16, 16),
+		BackgroundColor3 = Color3.fromRGB(20, 18, 34),
+		BackgroundTransparency = 0.1,
 		Text = Strings.get("map_north"),
 		TextSize = 12,
 		TextColor3 = colors.accent,
 		TextStrokeTransparency = 0.3,
 		ZIndex = 6,
 	}, map)
+	UiKit.corner(north, 8)
 	-- Open Shadow Rifts: purple dots that pulse.
 	local rifts = {}
 	for index = 1, MAX_RIFTS do

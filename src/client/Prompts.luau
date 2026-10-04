@@ -167,6 +167,10 @@ function Prompts.show(prompt: ProximityPrompt, inputType: Enum.ProximityPromptIn
 	end
 end
 
+function Prompts.anyShown(): boolean
+	return next(shown) ~= nil
+end
+
 function Prompts.hide(prompt: ProximityPrompt)
 	local gui = shown[prompt]
 	holds[prompt] = nil

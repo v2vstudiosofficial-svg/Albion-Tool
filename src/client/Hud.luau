@@ -404,8 +404,8 @@ function Hud.start()
 	local questFill = UiKit.create("Frame", { Name = "Fill", Size = UDim2.fromScale(0, 1), BackgroundColor3 = colors.accent, BorderSizePixel = 0 }, questBar)
 	UiKit.corner(questFill, 3)
 
-	-- Creature labels are drawn under the HUD, so one ahead of the hero can sit behind the quest
-	-- panel; while one does (and a moment after), the panel turns see-through.
+	-- Creature labels and the guide marker are drawn under the HUD, so one ahead of the hero can sit
+	-- behind the quest panel; while one does (and a moment after), the panel turns see-through.
 	local questGhosted, labelBehindAt = false, -math.huge
 	local function labelBehindQuest(): boolean
 		local camera = workspace.CurrentCamera
@@ -414,16 +414,24 @@ function Hud.start()
 			return false
 		end
 		local corner, size = quest.AbsolutePosition, quest.AbsoluteSize
+		local function behind(label: Instance?, part: Instance?): boolean
+			if not label or not label:IsA("BillboardGui") or not label.Enabled or not part or not part:IsA("BasePart") then
+				return false
+			end
+			local point, onScreen = camera:WorldToScreenPoint(part.Position + label.StudsOffset)
+			local half = label.Size
+			return onScreen and math.abs(point.X - (corner.X + size.X / 2)) < (size.X + half.X.Offset) / 2
+				and math.abs(point.Y - (corner.Y + size.Y / 2)) < (size.Y + half.Y.Offset) / 2
+		end
+		local playerGui = player:FindFirstChild("PlayerGui")
+		local marker = playerGui and playerGui:FindFirstChild("WaypointMarker") :: BillboardGui?
+		if marker and behind(marker, marker.Adornee) then
+			return true
+		end
 		for _, model in enemies:GetChildren() do
 			local body = model:FindFirstChild("Body")
-			local label = body and body:FindFirstChild("LvLabel")
-			if label and label:IsA("BillboardGui") and label.Enabled then
-				local point, onScreen = camera:WorldToScreenPoint((body :: BasePart).Position + label.StudsOffset)
-				local half = label.Size
-				if onScreen and math.abs(point.X - (corner.X + size.X / 2)) < (size.X + half.X.Offset) / 2
-					and math.abs(point.Y - (corner.Y + size.Y / 2)) < (size.Y + half.Y.Offset) / 2 then
-					return true
-				end
+			if behind(body and body:FindFirstChild("LvLabel"), body) then
+				return true
 			end
 		end
 		return false

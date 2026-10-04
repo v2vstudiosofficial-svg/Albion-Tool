@@ -112,6 +112,32 @@ local function shotFor(speaker: string, focusName: string, progress: number): Ca
 	return nil
 end
 
+-- A hero pressed up against the NPC they talk to hid the NPC's face in the shot: step them back to
+-- a talking distance, turned to the NPC (the camera cuts in at the same moment, hiding the move).
+local TALK_DISTANCE = 4.5
+local function standBack(scene)
+	local _, root = localRoot()
+	for _, line in scene.lines do
+		local npc = WorldData.npcs[line.speaker]
+		if npc then
+			if not root then
+				return
+			end
+			local position = WorldData.vector(npc.position)
+			local away = (root.Position - position) * Vector3.new(1, 0, 1)
+			if away.Magnitude >= TALK_DISTANCE or away.Magnitude >= World.NPC_LOOK_DISTANCE then
+				return
+			end
+			if away.Magnitude < 0.5 then
+				away = (WorldData.vector(npc.lookAt) - position) * Vector3.new(1, 0, 1)
+			end
+			local spot = Vector3.new(position.X, root.Position.Y, position.Z) + away.Unit * TALK_DISTANCE
+			root.CFrame = CFrame.lookAt(spot, Vector3.new(position.X, spot.Y, position.Z))
+			return
+		end
+	end
+end
+
 function Cinematic.start()
 	local gui = UiKit.create("ScreenGui", { Name = "Cinematic", ResetOnSpawn = false, DisplayOrder = 8, IgnoreGuiInset = true }, player:WaitForChild("PlayerGui"))
 
@@ -229,6 +255,7 @@ function Cinematic.start()
 		if full then
 			blockingControls = true
 			setControls(false)
+			standBack(scene)
 			setBars(true)
 			setHud(false)
 			-- Full scenes keep the caption above the letterbox bar.
