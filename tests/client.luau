@@ -2613,6 +2613,29 @@ test("the waypoint's edge arrow points the right way: ahead off screen at the to
 	advance(0.05)
 end)
 
+test("an empty lair says when its boss returns", function()
+	local function countdown(): BillboardGui?
+		for _, gui in workspace.ClientWorld:GetDescendants() do
+			if gui.Name == "BossReturns" and gui:IsA("BillboardGui") and gui.Enabled then
+				return gui
+			end
+		end
+		return nil
+	end
+	advance(0.6)
+	eq(countdown(), nil, "every boss at home: no countdown")
+	enemiesFolder:SetAttribute("BossBack_Warden", workspace:GetServerTimeNow() + 42)
+	advance(0.6)
+	local gui = countdown()
+	assert(gui, "the Warden's lair counts down")
+	local label = gui:FindFirstChildOfClass("TextLabel")
+	local name = Strings.get(Balance.enemies.Warden.nameKey)
+	assert(label.Text == Strings.get("boss_returns", name, 0, 42) or label.Text == Strings.get("boss_returns", name, 0, 41), "name and time left: " .. label.Text)
+	enemiesFolder:SetAttribute("BossBack_Warden", nil)
+	advance(0.6)
+	eq(countdown(), nil, "back: the countdown goes")
+end)
+
 test("the Great Lantern's Rebirth prompt shows only to players who can rebirth", function()
 	local Progression = H.loadModule("src/shared/Progression.luau")
 	local prompt = workspace.LanternValleyMap.Village.LanternPost.RebirthPrompt

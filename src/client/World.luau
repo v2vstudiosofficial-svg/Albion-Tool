@@ -780,10 +780,62 @@ local function refreshQuestVisuals()
 	refreshMarkers()
 end
 
+-- An empty lair says when its boss returns (the server sets BossBack_<kind> on the Enemies folder
+-- to the server time it comes back); without it a player arriving after someone else's win found
+-- an empty arena and no word why.
+local BOSS_COUNTDOWN_HEIGHT = 3
+
+local function bossCountdowns()
+	local enemies = workspace:WaitForChild("Enemies", 10)
+	if not enemies then
+		return
+	end
+	local countdowns = {}
+	for _, spawn in WorldData.spawns do
+		local stats = Balance.enemies[spawn.kind]
+		if stats and stats.isBoss then
+			local anchor = Instance.new("Part")
+			anchor.Name = "BossCountdownAnchor"
+			anchor.Anchored = true
+			anchor.CanCollide = false
+			anchor.CanQuery = false
+			anchor.CanTouch = false
+			anchor.Transparency = 1
+			anchor.Size = Vector3.new(0.2, 0.2, 0.2)
+			anchor.Position = WorldData.vector(spawn.position) + Vector3.new(0, BOSS_COUNTDOWN_HEIGHT, 0)
+			anchor.Parent = folder
+			local gui = UiKit.create("BillboardGui", {
+				Name = "BossReturns",
+				Adornee = anchor,
+				Size = UDim2.fromOffset(300, 40),
+				AlwaysOnTop = true,
+				MaxDistance = 150,
+				LightInfluence = 0,
+				Enabled = false,
+			}, anchor)
+			local label = UiKit.label({ Size = UDim2.fromScale(1, 1), TextSize = 22, TextColor3 = Color3.fromRGB(230, 170, 255), TextStrokeTransparency = 0.2 }, gui)
+			table.insert(countdowns, { kind = spawn.kind, nameKey = stats.nameKey, gui = gui, label = label })
+		end
+	end
+	while true do
+		local now = workspace:GetServerTimeNow()
+		for _, countdown in countdowns do
+			local back = enemies:GetAttribute("BossBack_" .. countdown.kind)
+			local left = if typeof(back) == "number" then math.ceil(back - now) else 0
+			countdown.gui.Enabled = left > 0
+			if left > 0 then
+				countdown.label.Text = Strings.get("boss_returns", Strings.get(countdown.nameKey), left // 60, left % 60)
+			end
+		end
+		task.wait(0.5)
+	end
+end
+
 function World.start()
 	folder = Instance.new("Folder")
 	folder.Name = "ClientWorld"
 	folder.Parent = workspace
+	task.spawn(bossCountdowns)
 
 	for _, name in { "QuestState", "QuestId", "QuestFound" } do
 		player:GetAttributeChangedSignal(name):Connect(refreshQuestVisuals)

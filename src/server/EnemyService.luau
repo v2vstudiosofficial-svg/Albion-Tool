@@ -443,6 +443,9 @@ end
 local function spawnAt(spawnIndex: number)
 	local spawn = WorldData.spawns[spawnIndex]
 	local stats = Balance.enemies[spawn.kind]
+	if stats.isBoss then
+		folder:SetAttribute("BossBack_" .. spawn.kind, nil)
+	end
 	local level = spawn.level or (if spawn.levels then random:NextInteger(spawn.levels[1], spawn.levels[2]) else 1)
 	local elite = not stats.isBoss and random:NextNumber() < Balance.elite.chance
 	createEnemy(spawn.kind, level, WorldData.vector(spawn.position), spawn.area, { spawnIndex = spawnIndex, elite = elite })
@@ -465,6 +468,10 @@ local function purify(enemy: Enemy)
 	Projectiles.clearFrom(enemy.id)
 	enemy.model:Destroy()
 	if enemy.spawnIndex then
+		-- Players reaching an empty lair see when its boss returns (client/World).
+		if enemy.stats.isBoss then
+			folder:SetAttribute("BossBack_" .. enemy.kind, workspace:GetServerTimeNow() + enemy.stats.respawnDelay)
+		end
 		task.delay(enemy.stats.respawnDelay, spawnAt, enemy.spawnIndex)
 	end
 	for _, listener in purifiedListeners do

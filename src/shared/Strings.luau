@@ -365,6 +365,7 @@ local texts = {
 	notice_upgrade_max = "That upgrade is already maxed!",
 	notice_can_upgrade = "You have enough coins! Power up your weapons at Smith Bram.",
 	notice_boss_reset = "%s rested and recovered.",
+	boss_returns = "%s returns in %d:%02d",
 	friend_popup = "Friend made!",
 	banner_quest_complete = "Quest complete!",
 	banner_boss = "%s woke up!",

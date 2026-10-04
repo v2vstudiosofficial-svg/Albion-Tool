@@ -683,6 +683,8 @@ test("quest 6: boss fight with telegraphed attacks, rewards, festival", function
 	eq(attr(alice, "QuestState"), "level", "and waits for a stronger player")
 	eq(attr(alice, "Flags"), "festival,gardens,lanterns")
 	eq(attr(alice, "Legends"), "Warden", "first Legendary Shadow")
+	local back = workspace.Enemies:GetAttribute("BossBack_Warden")
+	assert(back and math.abs(back - (workspace:GetServerTimeNow() - 3 + Balance.enemies.Warden.respawnDelay)) < 1, "the lair says when the Warden returns")
 	eq(H.loadModule("src/server/PlayerProfiles.luau").get(alice).counters.legendWins, nil, "the intro Warden does not count for legend bounties")
 	eq(attr(alice, "Chests"), "mystic:0", "a Mystic chest for the first win")
 	eq(logCount("Notice", function(e)
@@ -945,6 +947,7 @@ test("the boss cancels a pending attack when everyone leaves the arena", functio
 	advance(Balance.enemies.Warden.respawnDelay + 1)
 	local boss = enemiesOf("Warden")[1]
 	assert(boss, "boss respawned")
+	eq(workspace.Enemies:GetAttribute("BossBack_Warden"), nil, "back: no countdown")
 	local arena = vec(WorldData.areas.arena.center, 3)
 	local function countFx(kind)
 		return logCount("Fx", function(e)
