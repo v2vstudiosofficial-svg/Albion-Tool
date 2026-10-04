@@ -365,7 +365,7 @@
 - Studio'da ilk çalıştırma yapıldı (kullanıcı, yerel). Bulunan: kol animasyonu C0 tween hatası (düzeltildi). Elle test listesi sürüyor.
 
 ## Bilinen riskler
-- Silah/kostüm modelleri, açılar, sandık konumları tahmini; denge bir model. Ses kimlikleri boş; animasyonlar prosedürel.
+- Silah/kostüm modelleri, açılar, sandık konumları tahmini; denge bir model. Sesler Creator Store kimlikleriyle dolu (kulakla kontrol: `docs/SES_KONTROL.md`); animasyonlar prosedürel.
 - Mağaza ürün kimlikleri 0 (`StoreData`); sinematik kamera/PlayerModule kilidi Studio'da denenmedi.
 ## Bekleyen elle testler (ertelendi): `docs/SETUP.md` → "Elle test listesi" (1–16, 6b/6c, 10b–10v) oynanmadı.
 
