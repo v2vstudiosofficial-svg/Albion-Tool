@@ -1018,6 +1018,26 @@ test("other enemy behaviors run (shooter, charger) and hurt players", function()
 	end) > 0, "spores fired")
 end)
 
+test("a purified creature's shots in the air end with it", function()
+	local Projectiles = H.loadModule("src/server/Projectiles.luau")
+	local function ended(): number
+		return logCount("Fx", function(e)
+			return e.args[1] == "projectileEnd"
+		end)
+	end
+	local before = ended()
+	-- Far from everyone, slow and long-lived, so only clearFrom can end them.
+	Projectiles.fire(Vector3.new(0, 4, 900), Vector3.new(0, 0, 1), 1, 10, 30, "shadow", { kind = "Warden", level = 8, id = 9001 })
+	Projectiles.fire(Vector3.new(0, 4, 905), Vector3.new(0, 0, 1), 1, 10, 30, "shadow", { kind = "Warden", level = 8, id = 9001 })
+	Projectiles.fire(Vector3.new(0, 4, 910), Vector3.new(0, 0, 1), 1, 10, 30, "spore", { kind = "Sporeling", level = 3, id = 9002 })
+	Projectiles.clearFrom(9001)
+	eq(ended() - before, 2, "both of the purified creature's shots end")
+	Projectiles.clearFrom(9001)
+	eq(ended() - before, 2, "and only once")
+	Projectiles.clearFrom(9002)
+	eq(ended() - before, 3, "another creature's shot is its own")
+end)
+
 local function nearAnyEnemy(player, kind: string, area: string)
 	local model = nil
 	while not model do

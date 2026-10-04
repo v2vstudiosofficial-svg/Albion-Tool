@@ -112,9 +112,10 @@ function ctx.hurt(target: Target, amount: number, from: Vector3, enemy: Enemy)
 	CharacterService.damage(target.player, target.humanoid, amount, from, ctx.source(enemy))
 end
 
--- Who an attack came from, for the player's screen.
-function ctx.source(enemy: Enemy): { kind: string, level: number }
-	return { kind = enemy.kind, level = enemy.level }
+-- Who an attack came from, for the player's screen (and the shooter's id, so its shots in the air
+-- end when it is purified).
+function ctx.source(enemy: Enemy): { kind: string, level: number, id: number }
+	return { kind = enemy.kind, level = enemy.level, id = enemy.id }
 end
 
 function ctx.contact(enemy: Enemy, now: number, damage: number?)
@@ -461,6 +462,7 @@ local function purify(enemy: Enemy)
 	local position = enemy.body.Position
 	enemy.model:SetAttribute("Alive", false)
 	fx:FireAllClients("purify", position, enemy.kind, enemy.facing)
+	Projectiles.clearFrom(enemy.id)
 	enemy.model:Destroy()
 	if enemy.spawnIndex then
 		task.delay(enemy.stats.respawnDelay, spawnAt, enemy.spawnIndex)
@@ -479,6 +481,7 @@ function EnemyService.despawn(id: number)
 	enemies[id] = nil
 	enemy.model:SetAttribute("Alive", false)
 	fx:FireAllClients("despawn", enemy.body.Position)
+	Projectiles.clearFrom(id)
 	enemy.model:Destroy()
 end
 

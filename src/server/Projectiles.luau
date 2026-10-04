@@ -18,7 +18,7 @@ type Projectile = {
 	radius: number,
 	damage: number,
 	expires: number,
-	source: { kind: string, level: number }?,
+	source: { kind: string, level: number, id: number? }?,
 }
 
 local Projectiles = {}
@@ -69,6 +69,19 @@ local function step(dt: number)
 			end
 		end
 		if hit or now >= projectile.expires then
+			active[index] = active[#active]
+			active[#active] = nil
+		end
+	end
+end
+
+-- A purified creature's shots still in the air fade with it (they used to fly on and could still
+-- hurt a player who had just won the fight). `id` is the shooter's enemy id (source.id).
+function Projectiles.clearFrom(id: number)
+	for index = #active, 1, -1 do
+		local projectile = active[index]
+		if projectile.source and projectile.source.id == id then
+			fx:FireAllClients("projectileEnd", projectile.id, projectile.position)
 			active[index] = active[#active]
 			active[#active] = nil
 		end
