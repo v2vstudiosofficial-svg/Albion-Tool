@@ -192,7 +192,7 @@ function Waypoint.start()
 		-- In front means a positive depth, on screen or not: a goal far ahead (above the top edge)
 		-- used to count as "behind" and the arrow pointed the opposite way.
 		local ok, point, inFront = pcall(function()
-			local screen = camera:WorldToViewportPoint(goal + Vector3.new(0, 4, 0))
+			local screen = camera:WorldToViewportPoint(goal + gui.StudsOffset)
 			return screen, screen.Z > 0
 		end)
 		if not ok then
@@ -206,6 +206,9 @@ function Waypoint.start()
 		local top = (if insetOk then inset.Y else 0) + EDGE_TOP * UiKit.screenScale()
 		local x, y, angle = MapLogic.edgeArrow(point.X, point.Y, inFront, viewport.X, viewport.Y, EDGE_MARGIN, top)
 		edge.Visible = x ~= nil
+		-- One sign at a time: near the screen border both the marker and the arrow showed a distance.
+		diamond.Visible = x == nil
+		distanceLabel.Visible = x == nil
 		if x and y and angle then
 			edge.Position = UDim2.fromOffset(x, y)
 			pointer.Rotation = angle

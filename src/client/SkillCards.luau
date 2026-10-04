@@ -11,6 +11,7 @@ local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local UiKit = require(script.Parent.UiKit)
 local Cinematic = require(script.Parent.Cinematic)
+local Effects = require(script.Parent.Effects)
 
 local pickSkill = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("PickSkill") :: RemoteEvent
 local player = Players.LocalPlayer
@@ -142,6 +143,7 @@ function SkillCards.start()
 			panel.Visible = false
 		end
 		reopen.Visible = #offer > 0 and not panel.Visible
+		UiKit.setPulse(reopen, reopen.Visible)
 		reopen.Text = Strings.get("skill_button", math.max(pending, 1))
 	end
 
@@ -152,10 +154,11 @@ function SkillCards.start()
 		local isNew = knownOffer ~= nil and current ~= knownOffer and current ~= ""
 		knownOffer = current
 		if isNew then
-			-- A quest's closing scene often comes with the level-up: the cards wait for it to end
-			-- (they covered the caption; the button under the player card shows meanwhile).
+			-- A quest's closing scene often comes with the level-up, and most level-ups come mid-fight:
+			-- the cards wait for the scene to end and the fight to calm (they covered the caption and
+			-- the hero); the glowing button under the player card shows meanwhile.
 			task.spawn(function()
-				while Cinematic.playing() do
+				while Cinematic.playing() or Effects.fighting() do
 					task.wait(0.2)
 				end
 				if player:GetAttribute("SkillOffer") == current then

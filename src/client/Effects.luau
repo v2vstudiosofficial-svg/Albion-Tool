@@ -509,10 +509,20 @@ local function markTarget(aim: Vector3)
 	end)
 end
 
+-- The hero is fighting while their weapons attacked within the last FIGHT_CALM seconds.
+local FIGHT_CALM = 2.5
+local lastOwnAttack = -math.huge
+function Effects.fighting(): boolean
+	return os.clock() - lastOwnAttack < FIGHT_CALM
+end
+
 function Effects.attack(attacker: Player?, weaponId: string, slot: number, origin: Vector3, aim: Vector3, tier: number)
 	local weapon = WeaponData.weapons[weaponId]
 	if not weapon then
 		return
+	end
+	if attacker == player then
+		lastOwnAttack = os.clock()
 	end
 	if attacker == player and slot == 0 then
 		markTarget(aim)

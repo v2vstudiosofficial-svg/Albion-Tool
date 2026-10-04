@@ -1222,6 +1222,16 @@ test("skill cards: open on a new offer, pick sends the card, later hides, button
 	advance(1)
 	assert(shownText(Strings.get("skills_title")), "open once it ends")
 	setAttributes({ SkillOffer = "", PendingPicks = 0 })
+	-- A level-up mid-fight: a glowing button first, the cards once the fight calms down.
+	local origin = vec(WorldData.spawn, 3)
+	remotes.Fx.OnClientEvent:Fire("attack", hero, "staff", 0, origin, origin + Vector3.new(0, 0, -8), 0)
+	setAttributes({ SkillOffer = "swift,sharp,wave", PendingPicks = 1 })
+	assert(not shownText(Strings.get("skills_title")), "not over the fight")
+	local button = findButton(Strings.get("skill_button", 1))
+	assert(button and isShown(button) and button:FindFirstChild("Pulse"), "the button glows instead")
+	advance(3)
+	assert(shownText(Strings.get("skills_title")), "open once the fight calms")
+	setAttributes({ SkillOffer = "", PendingPicks = 0 })
 end)
 
 test("legends: silhouettes until purified; the waypoint picks a zone for the player's level", function()
@@ -2802,7 +2812,18 @@ test("the waypoint's edge arrow points the right way: ahead off screen at the to
 	assert(ahead >= (12 + 72) * panelScale, "below the quest panel, not over it")
 	local behind = arrowAt(Vector3.new(workspace.CurrentCamera.ViewportSize.X / 2, -400, -30))
 	assert(behind and behind > height / 2, "a goal behind: the arrow is at the bottom")
+	local marker = playerGui.WaypointMarker
+	local function markerSign(): boolean
+		for _, child in marker:GetChildren() do
+			if child:IsA("GuiObject") and child.Visible then
+				return true
+			end
+		end
+		return false
+	end
+	assert(not markerSign(), "with the arrow up, the marker shows nothing (one distance at a time)")
 	eq(arrowAt(Vector3.new(300, 200, 30)), nil, "on screen: no arrow")
+	assert(markerSign(), "the marker instead")
 	fakeViewportPoint = nil
 	advance(0.05)
 end)
