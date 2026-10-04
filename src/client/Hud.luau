@@ -250,17 +250,23 @@ function Hud.start()
 		TextStrokeTransparency = 0.4,
 		Visible = false,
 	}, topLeft)
-	-- What the next level milestone opens, so there is always something just ahead.
+	-- What the next level milestone opens, so there is always something just ahead. On a dark chip
+	-- that fits the text: over bright grass or a house wall the bare text was hard to read.
 	local nextUnlockLabel = UiKit.label({
 		Name = "NextUnlock",
-		Position = UDim2.fromOffset(4, 140),
-		Size = UDim2.fromOffset(236, 20),
+		Position = UDim2.fromOffset(0, 140),
+		Size = UDim2.fromOffset(0, 22),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = colors.panel,
+		BackgroundTransparency = 0.3,
 		TextSize = 14,
 		TextColor3 = colors.accent,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextStrokeTransparency = 0.4,
 		Visible = false,
 	}, topLeft)
+	UiKit.corner(nextUnlockLabel, 11)
+	UiKit.create("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, nextUnlockLabel)
 	local function refreshNextUnlock()
 		local level = player:GetAttribute("Level")
 		local nextUnlock = if typeof(level) == "number" and player:GetAttribute("DataState") == "ready" then Progression.nextUnlock(level) else nil
