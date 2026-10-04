@@ -3391,6 +3391,14 @@ test("pets: bag tab shows progress, equips earned pets only; the pet follows its
 	advance(0.3)
 	eq(#pets(), 1, "switching pets replaces the model")
 	eq(pets()[1]:GetAttribute("PetId"), "glowmoth")
+	-- A flying pet beats its wings.
+	local moth = pets()[1]
+	local function wingPose(): CFrame
+		return H.read(moth.PrimaryPart, "CFrame"):ToObjectSpace(H.read(moth.WingL, "CFrame"))
+	end
+	local before = wingPose()
+	advance(0.11)
+	assert((wingPose().Position - before.Position).Magnitude > 0.01, "the wings flap (relative to the body)")
 	setAttributes({ Pet = "nope" })
 	advance(0.3)
 	eq(#pets(), 0, "unknown pets are not drawn")

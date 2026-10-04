@@ -5,7 +5,7 @@ local PetData = if script then require(script.Parent.PetData) else require("./Pe
 local DARK = Color3.fromRGB(45, 40, 55)
 local SIDE = CFrame.Angles(0, 0, math.rad(90))
 
-type Spec = { name: string, shape: Enum.PartType?, size: Vector3, at: CFrame, color: Color3, material: Enum.Material? }
+type Spec = { name: string, shape: Enum.PartType?, size: Vector3, at: CFrame, color: Color3, material: Enum.Material?, transparency: number? }
 
 local function rgb(c: { number }): Color3
 	return Color3.fromRGB(c[1], c[2], c[3])
@@ -13,10 +13,13 @@ end
 
 -- Extra parts per look, in body space (the body is a 1.6-stud ball; +Z is behind the pet).
 local looks: { [string]: (Color3) -> { Spec } } = {
+	-- Pale, see-through wings (neon ones bloomed body and wings into one blob of light from above);
+	-- the client flaps them.
 	moth = function(color)
+		local wing = color:Lerp(Color3.new(1, 1, 1), 0.4)
 		return {
-			{ name = "WingL", size = Vector3.new(1.5, 0.12, 1.2), at = CFrame.new(-1.05, 0.45, 0.2) * CFrame.Angles(0, 0, math.rad(20)), color = color, material = Enum.Material.Neon },
-			{ name = "WingR", size = Vector3.new(1.5, 0.12, 1.2), at = CFrame.new(1.05, 0.45, 0.2) * CFrame.Angles(0, 0, math.rad(-20)), color = color, material = Enum.Material.Neon },
+			{ name = "WingL", size = Vector3.new(1.5, 0.12, 1.2), at = CFrame.new(-1.05, 0.45, 0.2) * CFrame.Angles(0, 0, math.rad(20)), color = wing, transparency = 0.2 },
+			{ name = "WingR", size = Vector3.new(1.5, 0.12, 1.2), at = CFrame.new(1.05, 0.45, 0.2) * CFrame.Angles(0, 0, math.rad(-20)), color = wing, transparency = 0.2 },
 		}
 	end,
 	sprout = function(color)
@@ -81,6 +84,7 @@ function PetModels.build(petId: string, base: CFrame): Model
 		part.CFrame = base * spec.at
 		part.Color = spec.color
 		part.Material = spec.material or Enum.Material.SmoothPlastic
+		part.Transparency = spec.transparency or 0
 		part.Anchored = true
 		part.CanCollide = false
 		part.CanQuery = false

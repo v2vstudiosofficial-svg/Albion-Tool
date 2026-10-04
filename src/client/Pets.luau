@@ -8,7 +8,10 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PetData = require(Shared:WaitForChild("PetData"))
 local PetModels = require(Shared:WaitForChild("PetModels"))
 
-type View = { id: string, model: Model, position: Vector3 }
+type View = { id: string, model: Model, position: Vector3, wings: { { part: BasePart, rest: CFrame, side: number, hinge: Vector3 } } }
+-- Flying pets' wings beat this fast (radians per second) and this far either way (radians).
+local WING_FLAP_SPEED = 14
+local WING_FLAP_ANGLE = 0.5
 
 local Pets = {}
 
@@ -55,7 +58,17 @@ local function update(dt: number)
 			else
 				local model = PetModels.build(wanted :: string, CFrame.new(goal))
 				model.Parent = folder
-				view = { id = wanted :: string, model = model, position = goal }
+				-- Wings (if any) flap about a hinge at the body's side, set again after each move.
+				local wings = {}
+				local pivot = model:GetPivot()
+				for name, side in { WingL = -1, WingR = 1 } do
+					local wing = model:FindFirstChild(name)
+					if wing and wing:IsA("BasePart") then
+						local rest = pivot:ToObjectSpace(wing.CFrame)
+						table.insert(wings, { part = wing, rest = rest, side = side, hinge = Vector3.new(side * 0.4, rest.Position.Y, rest.Position.Z) })
+					end
+				end
+				view = { id = wanted :: string, model = model, position = goal, wings = wings }
 				views[owner] = view
 			end
 			-- Far away (a teleport, e.g. into the tower): snap instead of sliding across the map.
@@ -73,6 +86,14 @@ local function update(dt: number)
 				view.model:PivotTo(CFrame.lookAt(at, at + flatLook))
 			else
 				view.model:PivotTo(CFrame.new(at) * view.model:GetPivot().Rotation)
+			end
+			if #view.wings > 0 then
+				local pivot = view.model:GetPivot()
+				local flap = math.sin(now * WING_FLAP_SPEED) * WING_FLAP_ANGLE
+				for _, wing in view.wings do
+					local hinge = CFrame.new(wing.hinge)
+					wing.part.CFrame = pivot * hinge * CFrame.Angles(0, 0, wing.side * flap) * hinge:Inverse() * wing.rest
+				end
 			end
 		end
 	end
