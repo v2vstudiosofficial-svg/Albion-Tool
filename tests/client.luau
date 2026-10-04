@@ -1924,6 +1924,15 @@ test("players board: everyone on the server, highest level first, opened by butt
 	assert(not shownText(Strings.get("title_keeper")), "no title for players who chose none")
 	local summary = Strings.get("rebirth_hud", 1) .. "   " .. Strings.get("players_tower", 7)
 	assert(shownText(summary), "rebirths and tower record: " .. summary)
+	local heroPlace = nil
+	for _, label in playerGui.PlayerBoard:GetDescendants() do
+		if label.Name == "Place" and label.Parent:FindFirstChild("LevelBadge") and label.Parent.LevelBadge.Text == tostring(hero:GetAttribute("Level") or 1) then
+			heroPlace = label.Text
+		end
+	end
+	local MusicLogic = H.loadModule("src/shared/MusicLogic.luau")
+	local at = H.read(hero.Character.HumanoidRootPart, "Position")
+	eq(heroPlace, Strings.get(MusicLogic.PLACE_KEYS[MusicLogic.theme(at.X, at.Z)]), "where each player is right now")
 	local friendRow = findText(friend.DisplayName or friend.Name)
 	local heroRow = findText(hero.DisplayName or hero.Name)
 	assert(friendRow and heroRow, "both names listed")

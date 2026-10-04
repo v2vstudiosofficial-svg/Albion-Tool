@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Strings = require(Shared:WaitForChild("Strings"))
+local MusicLogic = require(Shared:WaitForChild("MusicLogic"))
 local TitleData = require(Shared:WaitForChild("TitleData"))
 local Audio = require(script.Parent.Audio)
 local UiKit = require(script.Parent.UiKit)
@@ -111,7 +112,29 @@ function PlayerBoard.start()
 			if title ~= "" then
 				UiKit.label({ Position = UDim2.new(0, 76, 0.55, 0), Size = UDim2.new(0.42, 0, 0.4, 0), Text = title, TextSize = 12, TextColor3 = colors.accent, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
 			end
-			UiKit.label({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 0), Size = UDim2.new(0.4, 0, 1, 0), Text = PlayerBoard.summary(other), TextSize = 15, TextColor3 = colors.muted, TextXAlignment = Enum.TextXAlignment.Right }, row)
+			-- Where they are right now (so friends can find each other), over the summary.
+			local summary = PlayerBoard.summary(other)
+			local place = PlayerBoard.placeOf(other)
+			UiKit.label({
+				Name = "Place",
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -10, 0, if summary ~= "" then 1 else 0),
+				Size = UDim2.new(0.4, 0, if summary ~= "" then 0.5 else 1, 0),
+				Text = place,
+				TextSize = 13,
+				TextColor3 = colors.xp,
+				TextXAlignment = Enum.TextXAlignment.Right,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+			}, row)
+			UiKit.label({
+				AnchorPoint = Vector2.new(1, 0),
+				Position = if place ~= "" then UDim2.new(1, -10, 0.5, 0) else UDim2.new(1, -10, 0, 0),
+				Size = UDim2.new(0.4, 0, if place ~= "" then 0.5 else 1, 0),
+				Text = summary,
+				TextSize = if place ~= "" then 13 else 15,
+				TextColor3 = colors.muted,
+				TextXAlignment = Enum.TextXAlignment.Right,
+			}, row)
 		end
 		panel.Size = UDim2.fromOffset(480, 56 + math.min(#everyone, MAX_ROWS) * ROW_HEIGHT)
 	end
@@ -159,6 +182,17 @@ function PlayerBoard.start()
 			end
 		end
 	end)
+end
+
+-- The place a player is in right now ("" while they have no character).
+function PlayerBoard.placeOf(other: Player): string
+	local character = other.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return ""
+	end
+	local key = MusicLogic.PLACE_KEYS[MusicLogic.theme(root.Position.X, root.Position.Z)]
+	return if key then Strings.get(key) else ""
 end
 
 -- The title a player chose (their Title attribute), or "" when none is shown.

@@ -39,15 +39,7 @@ local REFRESH_SECONDS = 0.1
 local MAX_OTHERS = 12
 local MAX_RIFTS = 4
 -- Place names by MusicLogic theme.
-local PLACE_KEYS = {
-	village = "place_village",
-	wilds = "place_wilds",
-	marsh = "place_marsh",
-	peaks = "place_peaks",
-	citadel = "place_citadel",
-	boss = "place_boss",
-	tower = "place_tower",
-}
+local PLACE_KEYS = MusicLogic.PLACE_KEYS
 local EDGE_MARGIN = 7
 local ZONE_LABEL_FROM = 30 -- a zone disc this many pixels across or more names its creature levels
 

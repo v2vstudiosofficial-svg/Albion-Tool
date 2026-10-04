@@ -9,6 +9,16 @@ local MusicLogic = {}
 local SPECIAL = { arena = "boss", bog = "boss", summit = "boss", throne = "boss", tower = "tower" }
 local EAST = { marsh = "marsh", peaks = "peaks", citadel = "citadel", keep = "citadel" }
 MusicLogic.margin = 10
+-- The name players see for each place (the mini map's caption, the Players panel), by theme.
+MusicLogic.PLACE_KEYS = {
+	village = "place_village",
+	wilds = "place_wilds",
+	marsh = "place_marsh",
+	peaks = "place_peaks",
+	citadel = "place_citadel",
+	boss = "place_boss",
+	tower = "place_tower",
+}
 -- South of this line (z) the valley's creature zones begin (the glade's edge is at z = -86).
 MusicLogic.wildsZ = -75
 
