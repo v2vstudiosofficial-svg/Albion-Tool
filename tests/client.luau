@@ -1157,6 +1157,7 @@ test("legends: silhouettes until purified; the waypoint picks a zone for the pla
 	assert(shownText(Strings.get("legend_done")), "purified mark")
 	assert(not shownText(Strings.get(Balance.enemies.ShadowKing.nameKey)), "unknown legends stay hidden")
 	assert(shownText(Strings.get("legend_unknown")), "silhouette")
+	assert(shownText(Strings.get("place_marsh")) and shownText(Strings.get("place_citadel")), "where the legends wait")
 	setAttributes({ Legends = "BogMother,Warden" })
 	assert(shownText(Strings.get(Balance.enemies.BogMother.nameKey)), "updates live")
 	click(findButton(Strings.get("menu_legends")))

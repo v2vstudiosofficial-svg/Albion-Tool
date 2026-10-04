@@ -1011,6 +1011,8 @@ function Menus.start()
 			legendLevels[spawn.kind] = spawn.level
 		end
 	end
+	-- Where each legend waits (players asked where to find them; the name stays hidden until met).
+	local LEGEND_PLACES = { Warden = "place_wilds", BogMother = "place_marsh", FrostTitan = "place_peaks", ShadowKing = "place_citadel" }
 	local legendCards = {}
 	for order, kind in Balance.legends do
 		local stats = Balance.enemies[kind]
@@ -1036,7 +1038,16 @@ function Menus.start()
 			TextSize = 15,
 			TextColor3 = colors.xp,
 		}, card)
-		local done = UiKit.label({ Position = UDim2.fromOffset(0, 160), Size = UDim2.new(1, 0, 0, 26), TextSize = 16, TextColor3 = colors.good }, card)
+		UiKit.label({
+			Name = "Place",
+			Position = UDim2.fromOffset(2, 146),
+			Size = UDim2.new(1, -4, 0, 28),
+			Text = if LEGEND_PLACES[kind] then Strings.get(LEGEND_PLACES[kind]) else "",
+			TextSize = 12,
+			TextWrapped = true,
+			TextColor3 = colors.muted,
+		}, card)
+		local done = UiKit.label({ Position = UDim2.fromOffset(0, 174), Size = UDim2.new(1, 0, 0, 22), TextSize = 16, TextColor3 = colors.good }, card)
 		legendCards[kind] = { face = face, name = name, done = done, stats = stats }
 	end
 	local function refreshLegends()
