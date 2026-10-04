@@ -2300,6 +2300,39 @@ test("a quest's closing scene opens on its giver cheering with floating hearts",
 	advance(1)
 end)
 
+test("wild flowers sway near the hero, and stand still with Low effects", function()
+	setAttributes({ Pref_quality = "custom", Pref_effects = "high" })
+	local spot = vec(WorldData.spawn, 3)
+	teleport(spot)
+	-- Chosen by its stem (built with a CFrame; in Lune a head's CFrame stays at the origin).
+	local head = nil
+	for _, part in workspace.LanternValleyMap:GetDescendants() do
+		if string.match(part.Name, "^VillageFlower%d+_Stem$") and (H.read(part, "CFrame").Position - spot).Magnitude < 40 then
+			head = part.Parent:FindFirstChild((string.gsub(part.Name, "_Stem$", "_Head")))
+			break
+		end
+	end
+	assert(head, "a flower near the village spawn")
+	local positions = {}
+	for _ = 1, 6 do
+		advance(0.2)
+		table.insert(positions, H.read(head, "CFrame").Position)
+	end
+	local moved = false
+	for index = 2, #positions do
+		if (positions[index] - positions[1]).Magnitude > 0.01 then
+			moved = true
+		end
+	end
+	assert(moved, "the flower head moves with the breeze")
+	setAttributes({ Pref_effects = "low" })
+	advance(0.2)
+	local resting = H.read(head, "CFrame").Position
+	advance(0.6)
+	eq(H.read(head, "CFrame").Position, resting, "Low effects: it stands still")
+	setAttributes({ Pref_effects = "high" })
+end)
+
 test("glow pond: rings spread on the water and frogs croak nearby, nothing far away", function()
 	local pond = vec(WorldData.landmarks.glow_pond.position)
 	local function ripples(): number

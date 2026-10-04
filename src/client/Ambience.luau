@@ -152,7 +152,68 @@ end
 
 Ambience.looks = LOOKS
 
+-- Wild flowers sway in a light breeze: each stem leans from its foot in its own rhythm, now and then
+-- a little further with a gust. Only near the hero and not on Low effects (they stand still there);
+-- the map's parts move on this screen only.
+local SWAY_DISTANCE = 70
+local SWAY_STEP = 1 / 30
+local SWAY_ANGLE = math.rad(10)
+
+local function swayFlowers()
+	local map = workspace:WaitForChild("LanternValleyMap", 10)
+	if not map then
+		return
+	end
+	local flowers = {}
+	for _, stem in map:GetDescendants() do
+		if stem:IsA("BasePart") and string.match(stem.Name, "Flower%d+_Stem$") then
+			local head = stem.Parent and stem.Parent:FindFirstChild((string.gsub(stem.Name, "_Stem$", "_Head")))
+			if head and head:IsA("BasePart") then
+				table.insert(flowers, {
+					stem = stem,
+					head = head,
+					foot = stem.CFrame.Position - Vector3.new(0, stem.Size.X / 2, 0), -- cylinders lie along X, stood up
+					stemRest = stem.CFrame,
+					headRest = head.CFrame,
+					phase = #flowers * 1.37,
+				})
+			end
+		end
+	end
+	local since, still = 0, true
+	RunService.RenderStepped:Connect(function(dt)
+		since += dt
+		if since < SWAY_STEP then
+			return
+		end
+		since = 0
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if Settings.get("effects") == "low" or not root then
+			if not still then
+				still = true
+				for _, flower in flowers do
+					flower.stem.CFrame, flower.head.CFrame = flower.stemRest, flower.headRest
+				end
+			end
+			return
+		end
+		still = false
+		local now = os.clock()
+		local gust = 0.65 + 0.35 * math.sin(now * 0.31)
+		for _, flower in flowers do
+			if (flower.foot - root.Position).Magnitude <= SWAY_DISTANCE then
+				local swing = math.sin(now * 1.7 + flower.phase) * SWAY_ANGLE * gust
+				local lean = CFrame.new(flower.foot) * CFrame.Angles(swing * 0.4, 0, swing) * CFrame.new(-flower.foot)
+				flower.stem.CFrame = lean * flower.stemRest
+				flower.head.CFrame = lean * flower.headRest
+			end
+		end
+	end)
+end
+
 function Ambience.start()
+	task.spawn(swayFlowers)
 	local holder = holderPart("LvAmbience", Vector3.new(70, 24, 70))
 	local sky, rain, ground, splash = rainEmitters()
 	local emitter = Instance.new("ParticleEmitter")
