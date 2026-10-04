@@ -1109,6 +1109,13 @@ test("crystal pouch on the HUD; a full pouch guides back to the Great Lantern", 
 	local plaza = vec(WorldData.plaza)
 	assert(Vector3.new(at.X - plaza.X, 0, at.Z - plaza.Z).Magnitude < 1, "full pouch guides to the lantern")
 	remotes.Fx.OnClientEvent:Fire("crystals", plaza + Vector3.new(0, 0, -20), 5)
+	local Sounds = H.loadModule("src/shared/Sounds.luau")
+	local chimes = {}
+	H.localSound = function(sound)
+		if sound.SoundId == Sounds.pickup.id then
+			table.insert(chimes, sound.PlaybackSpeed)
+		end
+	end
 	remotes.Fx.OnClientEvent:Fire("deposit", plaza, 60)
 	-- The crystals arc from the hero into the lamp, then the coins earned pop up over it.
 	advance(0.15)
@@ -1127,6 +1134,8 @@ test("crystal pouch on the HUD; a full pouch guides back to the Great Lantern", 
 		end
 	end
 	assert(popped, "the coins earned pop up")
+	H.localSound = nil
+	assert(#chimes >= 3 and chimes[#chimes] > chimes[1], "landing crystals chime, rising: " .. #chimes)
 	advance(1)
 	setAttributes({ Crystals = 0 })
 	eq(icon:FindFirstChild("Pulse"), nil, "emptied: calm again")

@@ -1056,6 +1056,9 @@ function Hud.start()
 	}, topLeft)
 	local gainTotal, gainToken = 0, 0
 	local function showXpGain(xp: number)
+		-- The bar itself brightens for a moment as the XP flows in.
+		xpFill.BackgroundColor3 = colors.xp:Lerp(Color3.new(1, 1, 1), 0.6)
+		UiKit.tween(xpFill, 0.45, { BackgroundColor3 = colors.xp })
 		gainTotal = (if xpGain.Visible then gainTotal else 0) + xp
 		xpGain.Text = Strings.get("hud_xp_gain", Format.short(gainTotal))
 		xpGain.TextTransparency, xpGain.TextStrokeTransparency = 0, 0.3

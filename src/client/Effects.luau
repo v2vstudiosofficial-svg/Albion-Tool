@@ -903,6 +903,10 @@ local function onDeposit(lantern: Vector3, coins: number?)
 				task.delay(DEPOSIT_LEG, function()
 					UiKit.tween(shard, DEPOSIT_LEG, { CFrame = CFrame.new(lamp) * tilt, Size = Vector3.new(0.2, 0.2, 0.2) }, Enum.EasingStyle.Sine)
 					Debris:AddItem(shard, DEPOSIT_LEG + 0.02)
+					-- Every third crystal chimes as it lands, each a little higher.
+					if index % 3 == 1 then
+						task.delay(DEPOSIT_LEG, Audio.play, "pickup", 1 + (index // 3) * 0.15)
+					end
 				end)
 			end)
 		end
