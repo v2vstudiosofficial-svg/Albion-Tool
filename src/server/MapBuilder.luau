@@ -159,6 +159,41 @@ local function buildGround(map: Instance)
 	for name, spec in walls do
 		part(ground, name, { Size = spec[1], Position = spec[2], Transparency = 1 })
 	end
+	-- The world's edge reads as a place, not a cut into the void: ground runs on past the walls and
+	-- a hedge (rock cliffs by the ruins and the east lands) rises just outside them.
+	-- (Less of it to the west: the Shadow Tower's arena floats in the dark out there.)
+	part(ground, "OuterGround", {
+		Size = Vector3.new(width + 320, 2, depth + 400),
+		Position = Vector3.new(midX + 40, -1.2, midZ),
+		Color = Color3.fromRGB(60, 110, 70),
+		Material = Enum.Material.Grass,
+		CastShadow = false,
+	})
+	local SEGMENT = 50
+	local index = 0
+	local function border(from: Vector3, to: Vector3, outward: Vector3)
+		local length = (to - from).Magnitude
+		local along = (to - from).Unit
+		local count = math.ceil(length / SEGMENT)
+		for step = 1, count do
+			index += 1
+			local center = from + along * ((step - 0.5) * length / count)
+			local rocky = center.X > VALLEY_EDGE or center.Z < -230
+			local height = if rocky then 14 + (index % 3) * 4 else 8 + (index % 3) * 2
+			local thickness = if rocky then 10 else 6
+			part(ground, "Border_" .. index, {
+				Size = Vector3.new(length / count + thickness, height, thickness),
+				CFrame = CFrame.lookAt(center + outward * (thickness / 2) + Vector3.new(0, height / 2 - 0.5, 0), center + outward * (thickness / 2) + Vector3.new(0, height / 2 - 0.5, 0) + outward),
+				Color = if rocky then COLOR.ridge else COLOR.leavesDark,
+				Material = if rocky then Enum.Material.Slate else Enum.Material.LeafyGrass,
+				CastShadow = false,
+			})
+		end
+	end
+	border(Vector3.new(b.minX, 0, b.maxZ), Vector3.new(b.maxX, 0, b.maxZ), Vector3.new(0, 0, 1))
+	border(Vector3.new(b.minX, 0, b.minZ), Vector3.new(b.maxX, 0, b.minZ), Vector3.new(0, 0, -1))
+	border(Vector3.new(b.minX, 0, b.minZ), Vector3.new(b.minX, 0, b.maxZ), Vector3.new(-1, 0, 0))
+	border(Vector3.new(b.maxX, 0, b.minZ), Vector3.new(b.maxX, 0, b.maxZ), Vector3.new(1, 0, 0))
 end
 
 local function buildHouse(parent: Instance, name: string, base: Vector3)

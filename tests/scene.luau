@@ -180,6 +180,20 @@ test("key gameplay objects exist with the right classes", function()
 	for _, name in { "NorthWall", "SouthWall", "WestWall", "EastWall" } do
 		assert(map.Ground:FindFirstChild(name), name)
 	end
+	-- The world's edge: ground beyond the walls and a border just outside them (never inside).
+	local outer = map.Ground:FindFirstChild("OuterGround")
+	assert(outer, "ground past the walls")
+	local tower = WorldData.areas.tower
+	assert(outer.Position.X - outer.Size.X / 2 > tower.center[1] + tower.radius + 50, "well clear of the tower arena out in the dark")
+	local b, borders = WorldData.bounds, 0
+	for _, child in map.Ground:GetChildren() do
+		if string.match(child.Name, "^Border_") then
+			borders += 1
+			local at = child.CFrame.Position
+			assert(at.X < b.minX or at.X > b.maxX or at.Z < b.minZ or at.Z > b.maxZ, child.Name .. " outside the play area")
+		end
+	end
+	assert(borders >= 20, "a border all round: " .. borders)
 end)
 
 test("every generated part is anchored", function()
