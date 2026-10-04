@@ -283,6 +283,8 @@ local function buildBoard(parent: Instance)
 		Size = UDim2.fromOffset(220, 30),
 		StudsOffset = Vector3.new(0, 4.2, 0),
 		MaxDistance = 70,
+		-- The well's roof beside it cut off the first letters.
+		AlwaysOnTop = true,
 	})
 	ensure(tag, "Label", "TextLabel", {
 		Size = UDim2.fromScale(1, 1),

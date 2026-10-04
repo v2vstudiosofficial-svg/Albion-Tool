@@ -444,6 +444,7 @@ test("bounty board, tower gate and tower arena exist and can be used", function(
 	local board = map.Village.BountyBoard
 	eq(board.PrimaryPart, board.Body, "board primary part")
 	eq(board.Body.TalkPrompt.ClassName, "ProximityPrompt", "board prompt")
+	eq(board.Body.NameTag.AlwaysOnTop, true, "its name is never cut off by the well's roof")
 	local gate = map.Village.TowerGate
 	eq(gate.PrimaryPart, gate.Body, "gate primary part")
 	eq(gate.Body.TalkPrompt.ClassName, "ProximityPrompt", "gate prompt")
