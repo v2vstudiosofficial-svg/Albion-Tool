@@ -627,6 +627,7 @@ local texts = {
 	notice_chest_taken = "%s added to your chests!",
 	notice_chest_full = "Your chest slots are full! Open a chest first.",
 	notice_chest_busy = "Another chest is already unlocking.",
+	notice_chest_ready = "%s is ready to open!",
 	notice_chest_slot_unlocked = "A new chest slot opened!",
 	chest_reward_title = "%s opened!",
 	chest_reward_coins = "+%s coins",

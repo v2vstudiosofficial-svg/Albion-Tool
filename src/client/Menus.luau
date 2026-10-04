@@ -29,6 +29,7 @@ local Audio = require(script.Parent.Audio)
 local Attrs = require(script.Parent.Attrs)
 local Cinematic = require(script.Parent.Cinematic)
 local ChestReveal = require(script.Parent.ChestReveal)
+local Hud = require(script.Parent.Hud)
 local Settings = require(script.Parent.Settings)
 local SettingsMenu = require(script.Parent.SettingsMenu)
 local UiKit = require(script.Parent.UiKit)
@@ -1980,14 +1981,23 @@ function Menus.start()
 			showModal(shop)
 		end
 	end)
+	-- A chest whose timer runs out while the player is out playing says so once (the small "!" is
+	-- easy to miss mid-fight); chests already open when joining stay quiet.
+	local counting: { [string]: boolean } = {}
 	local function refreshBadge()
 		local list = chestStates()
 		local now = workspace:GetServerTimeNow()
 		local ready = false
 		for _, chest in list do
-			if remaining(chest, now) == 0 then
+			local left = remaining(chest, now)
+			local key = chest.type .. ":" .. chest.startedAt
+			if left == 0 then
 				ready = true
+				if counting[key] then
+					Hud.toast(Strings.get("notice_chest_ready", Strings.get(ChestData.chests[chest.type].nameKey)), colors.good)
+				end
 			end
+			counting[key] = left ~= nil and left > 0
 		end
 		chestBadge.Visible = ready or (#list > 0 and not anyUnlocking(list, now))
 	end

@@ -992,6 +992,30 @@ test("chests in the world: shown when ready, hidden while their spot is empty", 
 	end), 1, "asks the server")
 end)
 
+test("a chest whose timer runs out while playing says so once", function()
+	local ChestData = H.loadModule("src/shared/ChestData.luau")
+	local wood = ChestData.chests.wood
+	local function readyToasts(): number
+		local count = 0
+		for _, label in playerGui.Hud:GetDescendants() do
+			if label:IsA("TextLabel") and label.Text == Strings.get("notice_chest_ready", Strings.get(wood.nameKey)) then
+				count += 1
+			end
+		end
+		return count
+	end
+	advance(5) -- earlier toasts leave
+	local started = math.floor(workspace:GetServerTimeNow()) - wood.unlockSeconds + 2
+	setAttributes({ Chests = "wood:" .. started })
+	advance(1)
+	eq(readyToasts(), 0, "still unlocking: quiet")
+	advance(2)
+	eq(readyToasts(), 1, "the timer ran out: told once")
+	advance(6)
+	eq(readyToasts(), 0, "once gone, it does not come back")
+	setAttributes({ Chests = "" })
+end)
+
 test("chests menu: slots by level, one unlock at a time, timers, open and reward panel", function()
 	local ChestData = H.loadModule("src/shared/ChestData.luau")
 	setAttributes({ Level = 3, Chests = "wood:0,silver:0" })
