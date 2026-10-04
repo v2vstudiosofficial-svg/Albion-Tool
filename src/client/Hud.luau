@@ -407,6 +407,11 @@ function Hud.start()
 	-- Creature labels and the guide marker are drawn under the HUD, so one ahead of the hero can sit
 	-- behind the quest panel; while one does (and a moment after), the panel turns see-through.
 	local questGhosted, labelBehindAt = false, -math.huge
+	-- Set once the toasts exist: on short screens they lie over the panel, whose text then showed
+	-- through between the pills.
+	local toastsOverQuest: () -> boolean = function()
+		return false
+	end
 	local function labelBehindQuest(): boolean
 		local camera = workspace.CurrentCamera
 		local enemies = workspace:FindFirstChild("Enemies")
@@ -439,7 +444,7 @@ function Hud.start()
 	task.spawn(function()
 		while true do
 			task.wait(0.2)
-			if labelBehindQuest() then
+			if labelBehindQuest() or toastsOverQuest() then
 				labelBehindAt = os.clock()
 			end
 			local ghost = os.clock() - labelBehindAt < QUEST_GHOST_HOLD
@@ -765,6 +770,9 @@ function Hud.start()
 	-- once, and the same text again bumps a counter instead of stacking a copy.
 	local toastOrder = 0
 	local liveToasts: { { text: string, pill: Frame, label: TextLabel, count: number, token: number } } = {}
+	toastsOverQuest = function()
+		return toastsOnTop and not bossPanel.Visible and toasts.Visible and #liveToasts > 0
+	end
 	local function dropToast(entry)
 		local index = table.find(liveToasts, entry)
 		if index then

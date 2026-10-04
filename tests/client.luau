@@ -2893,6 +2893,7 @@ end)
 
 test("the quest panel turns see-through while a creature label is behind it", function()
 	local panel = playerGui.Hud:FindFirstChild("QuestPanel", true)
+	advance(4) -- toasts from earlier steps gone (on short screens they fade the panel too)
 	assert(isShown(panel), "quest panel up")
 	panel.AbsolutePosition, panel.AbsoluteSize = Vector2.new(470, 12), Vector2.new(340, 72)
 	local spot = vec(WorldData.spawn, 3)
@@ -2927,6 +2928,21 @@ test("the quest panel turns see-through while a creature label is behind it", fu
 	enemy:Destroy()
 	teleport(spot)
 	advance(1.5)
+end)
+
+test("on short screens toasts lie over the quest panel, which fades under them", function()
+	local panel = playerGui.Hud:FindFirstChild("QuestPanel", true)
+	advance(4) -- earlier toasts and banners gone
+	assert(isShown(panel) and panel.BackgroundTransparency < 0.2, "a solid quest panel")
+	remotes.Notice.OnClientEvent:Fire("notice_pouch_full")
+	advance(0.5)
+	if touchMode or workspace.CurrentCamera.ViewportSize.Y < 820 then
+		assert(panel.BackgroundTransparency > 0.5, "faded under the toast")
+	else
+		assert(panel.BackgroundTransparency < 0.2, "a tall screen keeps toasts under the panel: it stays solid")
+	end
+	advance(5)
+	assert(panel.BackgroundTransparency < 0.2, "solid again once the toast is gone")
 end)
 
 test("the creature the hero's weapon is hitting wears an outline and a ground ring that fade when attacks stop", function()
