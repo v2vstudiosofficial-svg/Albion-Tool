@@ -430,7 +430,9 @@ function Hud.start()
 		end
 		local playerGui = player:FindFirstChild("PlayerGui")
 		local marker = playerGui and playerGui:FindFirstChild("WaypointMarker") :: BillboardGui?
-		if marker and behind(marker, marker.Adornee) then
+		-- (Its sign hides while the edge arrow stands in for it, below the panel.)
+		local markerSign = marker and marker:FindFirstChildWhichIsA("GuiObject")
+		if marker and markerSign and markerSign.Visible and behind(marker, marker.Adornee) then
 			return true
 		end
 		for _, model in enemies:GetChildren() do

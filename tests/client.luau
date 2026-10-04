@@ -2945,6 +2945,13 @@ test("the quest panel turns see-through while a creature label is behind it", fu
 	fakeScreenPoint = Vector3.new(700, 60, 20)
 	advance(0.5)
 	assert(panel.BackgroundTransparency > 0.5, "see-through with the guide marker behind it")
+	-- While the edge arrow stands in for the marker (its sign hidden), the marker does not count.
+	fakeViewportPoint = Vector3.new(640, -400, 20)
+	advance(2)
+	assert(panel.BackgroundTransparency < 0.2, "a hidden marker sign does not fade the panel")
+	fakeViewportPoint = nil
+	advance(0.5)
+	assert(panel.BackgroundTransparency > 0.5, "the sign back behind it: see-through again")
 	-- Standing at the goal (no marker) with labels hidden: nothing is behind it.
 	teleport(goal + Vector3.new(0, 3, 0))
 	advance(2)

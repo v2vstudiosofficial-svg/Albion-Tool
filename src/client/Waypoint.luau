@@ -187,8 +187,12 @@ function Waypoint.start()
 	RunService.RenderStepped:Connect(function()
 		local camera = workspace.CurrentCamera
 		local goal = shownGoal
-		if not goal or not camera then
+		local function noArrow()
 			edge.Visible = false
+			diamond.Visible, distanceLabel.Visible = true, true
+		end
+		if not goal or not camera then
+			noArrow()
 			return
 		end
 		-- In front means a positive depth, on screen or not: a goal far ahead (above the top edge)
@@ -198,7 +202,7 @@ function Waypoint.start()
 			return screen, screen.Z > 0
 		end)
 		if not ok then
-			edge.Visible = false
+			noArrow()
 			return
 		end
 		local viewport = camera.ViewportSize
