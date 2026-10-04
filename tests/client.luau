@@ -2956,6 +2956,15 @@ if not touchMode then
 end
 
 if touchMode then
+	test("touch: a tap on a part of the player card says what it is for a few seconds", function()
+		local icon = playerGui:FindFirstChild("CrystalIcon", true)
+		icon.InputBegan:Fire({ UserInputType = Enum.UserInputType.Touch })
+		advance(0.1)
+		assert(shownText(Strings.get("tip_crystals")), "crystals explained on a tap")
+		advance(3.2)
+		assert(not shownText(Strings.get("tip_crystals")), "then it goes")
+	end)
+
 	test("touch: the mini map sits left of the Menu button, the daily gift under it, all in the top corner", function()
 		-- Both regions hang from the same top-right corner at the same scale, so their contents can be
 		-- compared as rectangles measured from that corner (x to the left is negative).

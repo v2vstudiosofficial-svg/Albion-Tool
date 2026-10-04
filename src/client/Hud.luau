@@ -52,6 +52,8 @@ local BOSS_DOWN_HOLD = 0.45
 local BOSS_DOWN_RETURN = 1.2
 -- A quest that has not moved for this long makes its panel beat gently (a nudge to look at it).
 local QUEST_NUDGE_SECONDS = 180
+-- A tap on a part of the player card shows what it is this long (touch screens).
+local CARD_TIP_TOUCH_SECONDS = 3
 -- The quest panel stays see-through this long after a creature label was last behind it.
 local QUEST_GHOST_HOLD = 1
 -- Confetti for the biggest moments (the top level, a rebirth): pieces at High effects, fewer below.
@@ -213,8 +215,9 @@ function Hud.start()
 	local pouchFill = UiKit.create("Frame", { Name = "PouchFill", Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.fromRGB(150, 210, 255), BorderSizePixel = 0 }, pouchBar)
 	UiKit.corner(pouchFill, 2)
 
-	-- On a computer, hovering a part of the card says what it is (new players ask about crystals).
-	if not isTouch then
+	-- Hovering a part of the card (a tap on touch screens, for a few seconds) says what it is - new
+	-- players ask about crystals.
+	do
 		local cardTip = UiKit.label({
 			Name = "CardTip",
 			Position = UDim2.fromOffset(0, 116),
@@ -229,13 +232,31 @@ function Hud.start()
 		UiKit.corner(cardTip, 10)
 		UiKit.create("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, cardTip)
 		local CARD_TIPS = { [badge] = "tip_level", [hpBack] = "tip_health", [xpBack] = "tip_xp", [coinIcon] = "tip_coins", [coinsLabel] = "tip_coins", [crystalIcon] = "tip_crystals", [crystalsLabel] = "tip_crystals" }
+		local tipToken = 0
 		for target, key in CARD_TIPS do
-			target.MouseEnter:Connect(function()
+			-- (On touch screens a lifted finger also sends MouseLeave, which hid the tip at once.)
+			if not isTouch then
+				target.MouseEnter:Connect(function()
+					cardTip.Text = Strings.get(key)
+					cardTip.Visible = true
+				end)
+				target.MouseLeave:Connect(function()
+					cardTip.Visible = false
+				end)
+			end
+			target.InputBegan:Connect(function(input: InputObject)
+				if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+					return
+				end
 				cardTip.Text = Strings.get(key)
 				cardTip.Visible = true
-			end)
-			target.MouseLeave:Connect(function()
-				cardTip.Visible = false
+				tipToken += 1
+				local token = tipToken
+				task.delay(CARD_TIP_TOUCH_SECONDS, function()
+					if token == tipToken then
+						cardTip.Visible = false
+					end
+				end)
 			end)
 		end
 	end
