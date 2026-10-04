@@ -3655,6 +3655,7 @@ end)
 
 test("boss bar and intro banner near an engaged boss", function()
 	local boss = enemies[wardenIndex]
+	assert(boss:FindFirstChild("BossOutline"), "the boss wears an outline (pale bosses vanished on snow)")
 	H.setAttribute(boss, "Engaged", true)
 	teleport(vec(WorldData.areas.arena.center, 3) + Vector3.new(0, 0, 10))
 	advance(0.6)

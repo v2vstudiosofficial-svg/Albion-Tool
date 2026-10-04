@@ -208,6 +208,19 @@ local function flash(model: Instance, color: Color3, seconds: number, startTrans
 	Debris:AddItem(highlight, seconds + 0.05)
 end
 
+-- Bosses wear a deep purple outline: the pale Frost Titan all but vanished on its snowy summit.
+local function outlineBoss(model: Instance)
+	if model:IsA("Model") and model:GetAttribute("Boss") and not model:FindFirstChild("BossOutline") then
+		local outline = Instance.new("Highlight")
+		outline.Name = "BossOutline"
+		outline.FillTransparency = 1
+		outline.OutlineColor = Color3.fromRGB(110, 50, 190)
+		outline.OutlineTransparency = 0.15
+		outline.DepthMode = Enum.HighlightDepthMode.Occluded
+		outline.Parent = model
+	end
+end
+
 local function tierColor(power: number): Color3
 	return UiKit.rgb(Progression.powerColor(power))
 end
@@ -1471,6 +1484,7 @@ function Effects.start()
 
 	local enemies = workspace:WaitForChild("Enemies")
 	enemies.ChildAdded:Connect(function(child)
+		outlineBoss(child)
 		task.spawn(attachEnemyUi, child)
 		task.spawn(watchAnimations, child)
 		task.spawn(function()
@@ -1481,6 +1495,7 @@ function Effects.start()
 		end)
 	end)
 	for _, child in enemies:GetChildren() do
+		outlineBoss(child)
 		task.spawn(attachEnemyUi, child)
 		task.spawn(watchAnimations, child)
 	end
