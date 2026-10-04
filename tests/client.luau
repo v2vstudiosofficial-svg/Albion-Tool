@@ -3135,6 +3135,9 @@ test("shadow tower: floor banner; a card with floor, best, boss distance, shadow
 	advance(4)
 	assert(not shownText(Strings.get("tower_card_record")), "the celebration ends")
 	assert(shownText(Strings.get("tower_card_best", 8) .. "   ·   " .. Strings.get("tower_card_boss_in", Balance.tower.bossEvery - 3)), "best floor follows")
+	-- A first climb has no record yet: no "Best 0", just the way to the boss (a lower best never celebrates).
+	setAttributes({ TowerBest = 0 })
+	assert(shownText(Strings.get("tower_card_boss_in", Balance.tower.bossEvery - 3)), "a first climb: just the boss")
 	remotes.Fx.OnClientEvent:Fire("towerFloor", "x", nil)
 	setAttributes({ TowerFloor = 0, TowerLeft = nil })
 	assert(not isShown(card()) and isShown(questPanel), "card hides after leaving, the quest is back")

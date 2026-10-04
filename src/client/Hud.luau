@@ -628,7 +628,9 @@ function Hud.start()
 			towerSub.TextColor3 = RECORD_GOLD
 		else
 			local bossText = if untilBoss == 0 then Strings.get("tower_card_boss_now") elseif untilBoss == 1 then Strings.get("tower_card_boss_next") else Strings.get("tower_card_boss_in", untilBoss)
-			towerSub.Text = Strings.get("tower_card_best", player:GetAttribute("TowerBest") or 0) .. "   ·   " .. bossText
+			-- The record shows once there is one ("Best 0" on a first climb read oddly).
+			local best = player:GetAttribute("TowerBest") or 0
+			towerSub.Text = if best > 0 then Strings.get("tower_card_best", best) .. "   ·   " .. bossText else bossText
 			towerSub.TextColor3 = if untilBoss <= 1 then colors.bad else colors.muted
 		end
 		-- Nothing to count before the first floor's shadows arrive.
