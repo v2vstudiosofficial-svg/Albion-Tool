@@ -3,6 +3,9 @@
 local PetData = if script then require(script.Parent.PetData) else require("./PetData")
 
 local DARK = Color3.fromRGB(45, 40, 55)
+-- Every pet is built this much bigger than its specs below (at the follow camera's distance a
+-- 1.6-stud pet read as a coloured dot beside the hero).
+local SCALE = 1.35
 local SIDE = CFrame.Angles(0, 0, math.rad(90))
 
 type Spec = { name: string, shape: Enum.PartType?, size: Vector3, at: CFrame, color: Color3, material: Enum.Material?, transparency: number? }
@@ -80,8 +83,8 @@ function PetModels.build(petId: string, base: CFrame): Model
 		if spec.shape then
 			part.Shape = spec.shape
 		end
-		part.Size = spec.size
-		part.CFrame = base * spec.at
+		part.Size = spec.size * SCALE
+		part.CFrame = base * CFrame.new(spec.at.Position * SCALE) * spec.at.Rotation
 		part.Color = spec.color
 		part.Material = spec.material or Enum.Material.SmoothPlastic
 		part.Transparency = spec.transparency or 0

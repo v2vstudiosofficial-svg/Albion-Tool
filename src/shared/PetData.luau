@@ -13,5 +13,5 @@ return {
 		shade_cat = { nameKey = "pet_shade_cat", look = "cat", color = { 150, 110, 200 }, unlock = { kind = "tower", goal = 15 } },
 	},
 	-- Follow spot behind the owner's root part, and how quickly the pet catches up (per second).
-	follow = { offset = { -3, -1.4, 3.2 }, flyLift = 2.4, catchUp = 6, snapDistance = 40 },
+	follow = { offset = { -3.4, -1.1, 3.6 }, flyLift = 2.6, catchUp = 6, snapDistance = 40 },
 }

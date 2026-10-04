@@ -65,7 +65,7 @@ local function update(dt: number)
 					local wing = model:FindFirstChild(name)
 					if wing and wing:IsA("BasePart") then
 						local rest = pivot:ToObjectSpace(wing.CFrame)
-						table.insert(wings, { part = wing, rest = rest, side = side, hinge = Vector3.new(side * 0.4, rest.Position.Y, rest.Position.Z) })
+						table.insert(wings, { part = wing, rest = rest, side = side, hinge = Vector3.new(side * 0.55, rest.Position.Y, rest.Position.Z) })
 					end
 				end
 				view = { id = wanted :: string, model = model, position = goal, wings = wings }
