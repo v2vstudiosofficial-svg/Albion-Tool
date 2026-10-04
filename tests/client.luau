@@ -2333,6 +2333,23 @@ test("wild flowers sway near the hero, and stand still with Low effects", functi
 	setAttributes({ Pref_effects = "high" })
 end)
 
+test("butterflies flutter over the village flowers, gone on Low effects", function()
+	setAttributes({ Pref_quality = "custom", Pref_effects = "high", Pref_dayNight = false }) -- always afternoon
+	teleport(vec(WorldData.spawn, 3))
+	advance(0.2)
+	local wings = workspace.LvButterflies:GetChildren()
+	assert(#wings >= 6, "a few butterflies (two wings each)")
+	local first = H.read(wings[1], "CFrame")
+	advance(0.3)
+	eq(wings[1].Transparency, 0, "seen by day")
+	assert((H.read(wings[1], "CFrame").Position - first.Position).Magnitude > 0.05, "they fly about")
+	setAttributes({ Pref_effects = "low" })
+	advance(0.1)
+	eq(wings[1].Transparency, 1, "Low effects: none")
+	setAttributes({ Pref_effects = "high", Pref_dayNight = true })
+	advance(0.1)
+end)
+
 test("glow pond: rings spread on the water and frogs croak nearby, nothing far away", function()
 	local pond = vec(WorldData.landmarks.glow_pond.position)
 	local function ripples(): number

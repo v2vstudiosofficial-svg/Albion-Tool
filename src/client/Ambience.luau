@@ -212,8 +212,86 @@ local function swayFlowers()
 	end)
 end
 
+-- By day a few butterflies flutter over the village flowers: lazy loops, flapping wings, turning
+-- the way they fly. Hidden at night (the fireflies' time), on Low effects and away from the hero.
+local BUTTERFLY_COUNT = 6
+local BUTTERFLY_DISTANCE = 90
+local BUTTERFLY_COLORS = { Color3.fromRGB(255, 190, 90), Color3.fromRGB(150, 200, 255), Color3.fromRGB(255, 150, 200), Color3.fromRGB(250, 245, 160) }
+
+local function butterflies()
+	local map = workspace:WaitForChild("LanternValleyMap", 10)
+	if not map then
+		return
+	end
+	local homes = {}
+	for _, stem in map:GetDescendants() do
+		if #homes < BUTTERFLY_COUNT and stem:IsA("BasePart") and string.match(stem.Name, "^VillageFlower%d+_Stem$") then
+			table.insert(homes, stem.CFrame.Position)
+		end
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "LvButterflies"
+	folder.Parent = workspace
+	local flock = {}
+	for index, home in homes do
+		local color = BUTTERFLY_COLORS[index % #BUTTERFLY_COLORS + 1]
+		local wings = {}
+		for side = -1, 1, 2 do
+			local wing = Instance.new("Part")
+			wing.Name = "Wing"
+			wing.Anchored, wing.CanCollide, wing.CanQuery, wing.CanTouch, wing.CastShadow = true, false, false, false, false
+			wing.Size = Vector3.new(0.7, 0.05, 0.6)
+			wing.Color = color
+			wing.Material = Enum.Material.SmoothPlastic
+			wing.Parent = folder
+			table.insert(wings, { part = wing, side = side })
+		end
+		table.insert(flock, { home = home, wings = wings, phase = index * 2.1, last = home })
+	end
+	local function show(on: boolean)
+		for _, butterfly in flock do
+			for _, wing in butterfly.wings do
+				wing.part.Transparency = if on then 0 else 1
+			end
+		end
+	end
+	local shown = true
+	RunService.RenderStepped:Connect(function()
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local near = false
+		for _, butterfly in flock do
+			if root and (butterfly.home - root.Position).Magnitude <= BUTTERFLY_DISTANCE then
+				near = true
+				break
+			end
+		end
+		local wanted = near and Settings.get("effects") ~= "low" and (DayNight.night or 0) < 0.5
+		if wanted ~= shown then
+			shown = wanted
+			show(wanted)
+		end
+		if not wanted then
+			return
+		end
+		local now = os.clock()
+		for _, butterfly in flock do
+			local t = now + butterfly.phase
+			local at = butterfly.home + Vector3.new(math.sin(t * 0.7) * 3.2, 1.6 + math.sin(t * 1.9) * 0.5, math.cos(t * 0.45) * 3.2)
+			local heading = at - butterfly.last
+			butterfly.last = at
+			local facing = if heading.Magnitude > 0.001 then CFrame.lookAt(at, at + Vector3.new(heading.X, 0, heading.Z)) else CFrame.new(at)
+			local flap = math.sin(t * 16) * 0.9
+			for _, wing in butterfly.wings do
+				wing.part.CFrame = facing * CFrame.Angles(0, 0, wing.side * flap) * CFrame.new(wing.side * 0.34, 0, 0)
+			end
+		end
+	end)
+end
+
 function Ambience.start()
 	task.spawn(swayFlowers)
+	task.spawn(butterflies)
 	local holder = holderPart("LvAmbience", Vector3.new(70, 24, 70))
 	local sky, rain, ground, splash = rainEmitters()
 	local emitter = Instance.new("ParticleEmitter")
