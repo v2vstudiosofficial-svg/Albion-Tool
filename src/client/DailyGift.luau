@@ -33,7 +33,9 @@ function DailyGift.start()
 		Text = Strings.get("daily_gift_button"),
 		TextSize = 17,
 		TextWrapped = true,
-		BackgroundColor3 = UiKit.colors.coin,
+		-- Soft pink, not gold: the gift emoji's box is gold, and on a gold button only its red ribbon
+		-- showed (it read as a "T").
+		BackgroundColor3 = Color3.fromRGB(255, 160, 190),
 	}, region, function()
 		coinsBefore = player:GetAttribute("Coins") or 0
 		claimDaily:FireServer()
