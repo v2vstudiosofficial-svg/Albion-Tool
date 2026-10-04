@@ -1352,7 +1352,8 @@ function Menus.start()
 		return UiKit.label({ LayoutOrder = order, Size = UDim2.new(1, 0, 0, 60), TextSize = 16, TextWrapped = true, TextColor3 = color }, rebirthBody)
 	end
 	local rebirthIntro = rebirthText(1, colors.text)
-	local rebirthResets = rebirthText(2, colors.muted)
+	-- What starts over reads in a warm warning tone; what stays and what is gained stay calm and green.
+	local rebirthResets = rebirthText(2, Color3.fromRGB(255, 190, 120))
 	local rebirthKeeps = rebirthText(3, colors.muted)
 	local rebirthGain = rebirthText(4, colors.good)
 	local rebirthButtons = UiKit.create("Frame", { LayoutOrder = 5, Size = UDim2.new(1, 0, 0, 52), BackgroundTransparency = 1 }, rebirthBody)
