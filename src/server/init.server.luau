@@ -171,12 +171,8 @@ PlayerProfiles.onLevelUp(function(player, level, previous)
 			end
 		end
 	end
-	if Progression.chestSlots(level) > Progression.chestSlots(previous) then
-		notice:FireClient(player, "notice_chest_slot_unlocked")
-	end
-	if Progression.companionSlots(level) > Progression.companionSlots(previous) then
-		notice:FireClient(player, "notice_companion_unlocked")
-	end
+	-- (New chest and floating weapon slots are announced by the client's level-up banner and
+	-- toasts, from Progression.unlocks; a notice here told the same news twice.)
 end)
 
 print("[LanternValley] Server started")

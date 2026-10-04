@@ -2048,6 +2048,9 @@ test("rebirth: the Great Lantern asks at level 100, resets once when confirmed n
 	PlayerProfiles.grant(alice, { xp = Progression.thresholds[3] }, "test")
 	advance(0.2)
 	assert(attr(alice, "Level") >= 3, "levelled up again")
+	eq(logCount("Notice", function(e)
+		return e.args[1] == "notice_chest_slot_unlocked" or e.args[1] == "notice_companion_unlocked"
+	end), 0, "new slots are told once, by the client's level-up news, not by a second notice")
 	eq(attr(alice, "PassXp"), passXp, "no Pass XP for levels after a rebirth")
 	profile.xp, profile.coins, profile.staffUpgrade, profile.upgrades = saved.xp, saved.coins, saved.staffUpgrade, saved.upgrades
 	profile.skills, profile.skillOffer, profile.pendingPicks = saved.skills, saved.skillOffer, saved.pendingPicks

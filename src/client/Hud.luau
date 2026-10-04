@@ -45,7 +45,7 @@ local HURT_ARROW_HOLD = 0.35
 local HURT_ARROW_FADE = 0.6
 local MAX_HURT_ARROWS = 4
 -- Level-up banner lines for the abilities (they also name the key); other unlocks say "Unlocked: X".
-local ABILITY_NOTICES = { wave_button = "notice_wave_unlocked", ability_star = "notice_star_unlocked", ability_heal = "notice_heal_unlocked" }
+local ABILITY_NOTICES = { wave_button = "notice_wave_unlocked", ability_star = "notice_star_unlocked", ability_heal = "notice_heal_unlocked", unlock_weapon_slot = "notice_companion_unlocked" }
 -- A boss falls: the colour drains from the world for a moment (as if time stood still), then floods
 -- back, with a zoom kick.
 local BOSS_DOWN_HOLD = 0.45
