@@ -2645,6 +2645,13 @@ test("defeat: the screen says what happened, counts down and gives a tip, then c
 	assert(not shownText(Strings.get("defeat_by", level + 20, Strings.get(Balance.enemies.Frostling.nameKey))), "an old hit is not named")
 	humanoid.Health = health
 	advance(0.2)
+	-- A boss of about the hero's level: the tip says how to dodge.
+	remotes.Fx.OnClientEvent:Fire("hurt", H.read(hero.Character.HumanoidRootPart, "Position") + Vector3.new(5, 0, 0), "FrostTitan", level)
+	humanoid.Health = 0
+	advance(0.3)
+	assert(shownText(Strings.get("defeat_tip_boss")), "dodge tip after a boss")
+	humanoid.Health = health
+	advance(7)
 	-- Lantern Glow is only suggested once it is unlocked.
 	local function healTipShown(heroLevel: number): boolean
 		setAttributes({ Level = heroLevel })

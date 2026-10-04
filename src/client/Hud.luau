@@ -1173,6 +1173,9 @@ function Hud.start()
 			end
 			if hit and hit.level >= (player:GetAttribute("Level") or 1) + MUCH_STRONGER then
 				defeatTip.Text = Strings.get("defeat_tip_level")
+			elseif foe and foe.isBoss then
+				-- Standing still in a boss fight is how heroes fall: say how to dodge.
+				defeatTip.Text = Strings.get("defeat_tip_boss")
 			else
 				-- The healing tip waits until Lantern Glow is unlocked.
 				repeat

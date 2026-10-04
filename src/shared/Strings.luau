@@ -383,6 +383,7 @@ local texts = {
 	defeat_tip_heal = "Tip: use Lantern Glow to heal in a fight.",
 	defeat_tip_level = "Tip: red names are far stronger than you - grow a little first.",
 	defeat_tip_weapons = "Tip: better weapons and floating slots come from chests.",
+	defeat_tip_boss = "Tip: keep moving - step out of the red circles before they fill.",
 
 	wave_button = "Light Wave",
 	ability_star = "Star Fall",
