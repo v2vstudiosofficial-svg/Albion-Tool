@@ -2283,6 +2283,9 @@ test("ambience: particles match the place (pollen, leaves, snow...), marsh showe
 	advance(6)
 	assert(math.abs(haze.Density - Graphics.HAZE.density) < 1e-3, "back to the usual haze off the peaks")
 	assert(not wind.Playing, "no wind in the village")
+	-- A hero strong enough for the peaks (a weaker one is warned of the creatures instead).
+	local level = hero:GetAttribute("Level")
+	setAttributes({ Level = 30 })
 	teleport(vec(WorldData.areas.peaks.center, 3))
 	local warned = false
 	for _ = 1, 6 do
@@ -2290,6 +2293,7 @@ test("ambience: particles match the place (pollen, leaves, snow...), marsh showe
 		warned = warned or shownText(Strings.get("place_blizzard"))
 	end
 	assert(warned, "walking into the storm, the place title warns of it")
+	setAttributes({ Level = level })
 	teleport(vec(WorldData.spawn, 3))
 	advance(6)
 	setAttributes({ Pref_quality = "custom", Pref_effects = "low" })
@@ -2619,6 +2623,20 @@ test("mini map: north mark, the place you are in, a title when you enter a new p
 	assert(bannerSays(Strings.get("place_peaks")), "entering the peaks shows their name in the banner")
 	advance(3.5)
 	assert(not bannerSays(Strings.get("place_peaks")), "then it goes")
+	-- A young hero walking into the marsh is warned how strong the creatures are.
+	local level = hero:GetAttribute("Level")
+	setAttributes({ Level = 1 })
+	teleport(vec(WorldData.areas.marsh.center, 3))
+	advance(0.3)
+	assert(bannerSays(Strings.get("place_danger", 8, 25)), "a level 1 hero is warned in the marsh")
+	advance(3.5)
+	setAttributes({ Level = 25 })
+	teleport(vec(WorldData.areas.peaks.center, 3))
+	advance(0.3)
+	assert(bannerSays(Strings.get("place_peaks")), "the peaks are announced")
+	assert(not bannerSays(Strings.get("place_danger", 26, 50)), "a level 25 hero is not warned in the peaks")
+	advance(3.5)
+	setAttributes({ Level = level })
 	local center = vec(WorldData.areas.marsh.center, 0)
 	remotes.Fx.OnClientEvent:Fire("riftOpened", "marsh", center)
 	advance(0.3)

@@ -212,6 +212,11 @@ function Minimap.start()
 		if shownPlace ~= nil and shownPlace ~= theme and theme ~= "boss" and not Cinematic.playing() then
 			local now = workspace:GetServerTimeNow()
 			local subtitle = if theme == "marsh" and DayCycle.rain(now) > 0 then Strings.get("place_raining") elseif theme == "peaks" and DayCycle.blizzard(now) > 0 then Strings.get("place_blizzard") else nil
+			-- Far stronger creatures here: say so first (a young hero wandering east fell at once).
+			local low, high = MapLogic.placeLevels(theme)
+			if low and high and low >= (player:GetAttribute("Level") or 1) + MapLogic.DANGER_GAP then
+				subtitle = Strings.get("place_danger", low, high)
+			end
 			Hud.banner(name, subtitle, "place")
 		end
 		shownPlace = theme

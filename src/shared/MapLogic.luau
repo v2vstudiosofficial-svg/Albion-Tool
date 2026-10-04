@@ -102,4 +102,20 @@ function MapLogic.heading(lookX: number, lookZ: number): number
 	return math.deg(math.atan2(lookX, -lookZ)) % 360
 end
 
+-- The creature levels of a place (by its music theme, see MusicLogic): the lowest and highest
+-- over its zones, or nil for places without creature zones (the village, lairs, the tower).
+local THEME_AREAS = { wilds = { "glade", "grove", "hollow" }, marsh = { "marsh" }, peaks = { "peaks" }, citadel = { "citadel", "keep" } }
+function MapLogic.placeLevels(theme: string): (number?, number?)
+	local low, high = nil, nil
+	for _, areaId in THEME_AREAS[theme] or {} do
+		local levels = WorldData.areas[areaId].levels
+		low = math.min(low or math.huge, levels[1])
+		high = math.max(high or 0, levels[2])
+	end
+	return low, high
+end
+
+-- Entering a place whose weakest creatures are this many levels above the player warns them.
+MapLogic.DANGER_GAP = 5
+
 return MapLogic

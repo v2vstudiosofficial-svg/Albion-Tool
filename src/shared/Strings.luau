@@ -274,6 +274,7 @@ local texts = {
 	map_zone_levels = "Lv %d-%d",
 	map_rain = "🌧️",
 	map_blizzard = "🌨️",
+	place_danger = "Creatures here are Lv %d-%d - be careful!",
 	place_raining = "It is raining",
 	place_blizzard = "A blizzard is blowing!",
 	hud_next_unlock = "Next at Lv %d: %s",
